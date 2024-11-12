@@ -16,6 +16,8 @@ Type = Literal[
   "user",
   "util",
   "warning",
+  "thinking",
+  "synthesis",
 ]
 
 @dataclass
