@@ -52,6 +52,9 @@ class Settings(TypedDict):
     stt_silence_duration: int
     stt_waiting_timeout: int
 
+    thinking_duration: float
+    thinking_trigger_type: Literal["enabled", "disabled"]
+
 
 class PartialSettings(Settings, total=False):
     pass
@@ -383,6 +386,33 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     agent_fields.append(
         {
+            "id": "thinking_duration",
+            "title": "Deep Thinking Duration",
+            "description": "Duration in seconds for the agent to think deeply through problems (min: 10s, max: 600s)",
+            "type": "range",
+            "min": 10.0,
+            "max": 600.0,
+            "step": 5.0,
+            "value": settings["thinking_duration"],
+        }
+    )
+
+    agent_fields.append(
+        {
+            "id": "thinking_trigger_type",
+            "title": "Deep Thinking Mode",
+            "description": "Enable or disable the agent's deep thinking capability",
+            "type": "select",
+            "value": settings.get("thinking_trigger_type", "enabled"),
+            "options": [
+                {"value": "enabled", "label": "Enabled"},
+                {"value": "disabled", "label": "Disabled"}
+            ],
+        }
+    )
+
+    agent_fields.append(
+        {
             "id": "agent_memory_subdir",
             "title": "Memory Subdirectory",
             "description": "Subdirectory of /memory folder to use for agent memory storage. Used to separate memory storage between different instances.",
@@ -547,6 +577,62 @@ def convert_out(settings: Settings) -> SettingsOutput:
         "title": "Speech to Text",
         "description": "Voice transcription preferences and server turn detection settings.",
         "fields": stt_fields,
+    }
+
+    # api keys model section
+    api_keys_fields: list[SettingsField] = []
+    api_keys_fields.append(_get_api_key_field(settings, "openai", "OpenAI API Key"))
+    api_keys_fields.append(
+        _get_api_key_field(settings, "anthropic", "Anthropic API Key")
+    )
+    api_keys_fields.append(_get_api_key_field(settings, "groq", "Groq API Key"))
+    api_keys_fields.append(_get_api_key_field(settings, "google", "Google API Key"))
+    api_keys_fields.append(
+        _get_api_key_field(settings, "openrouter", "OpenRouter API Key")
+    )
+    api_keys_fields.append(
+        _get_api_key_field(settings, "sambanova", "Sambanova API Key")
+    )
+    api_keys_fields.append(
+        _get_api_key_field(settings, "mistralai", "MistralAI API Key")
+    )
+    api_keys_fields.append(
+        _get_api_key_field(settings, "huggingface", "HuggingFace API Key")
+    )
+
+    api_keys_section: SettingsSection = {
+        "title": "API Keys",
+        "description": "API keys for model providers and services used by Agent Zero.",
+        "fields": api_keys_fields,
+    }
+
+    # basic auth section
+    auth_fields: list[SettingsField] = []
+
+    auth_fields.append(
+        {
+            "id": "auth_login",
+            "title": "Login",
+            "description": "User name",
+            "type": "input",
+            "value": dotenv.get_dotenv_value(dotenv.KEY_AUTH_LOGIN) or "",
+        }
+    )
+
+    auth_fields.append(
+        {
+            "id": "auth_password",
+            "title": "Password",
+            "description": "User password",
+            "type": "password",
+            "value": dotenv.get_dotenv_value(dotenv.KEY_AUTH_PASSWORD) or "",
+        }
+    )
+
+    auth_section: SettingsSection = {
+        "title": "Authentication",
+        "description": "Settings for authentication to use Agent Zero Web UI.",
+        "fields": auth_fields,
     }
 
     # Add the section to the result
@@ -728,6 +814,8 @@ def get_default_settings() -> Settings:
         stt_silence_threshold=0.3,
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
+        thinking_duration=300,
+        thinking_trigger_type="enabled",
     )
 
 

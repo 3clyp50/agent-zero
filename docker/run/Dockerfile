@@ -1,32 +1,57 @@
 # Use the latest slim version of Debian
-FROM debian:bookworm-slim
+FROM --platform=$TARGETPLATFORM debian:bookworm-slim
 
-# Check if the argument is provided, else throw an error
-ARG BRANCH
-RUN if [ -z "$BRANCH" ]; then echo "ERROR: BRANCH is not set!" >&2; exit 1; fi
-ENV BRANCH=$BRANCH
+# Set ARG for platform-specific commands
+ARG TARGETPLATFORM
 
-# Copy contents of the project to /a0
-COPY ./fs/ /
+# Update and install necessary packages
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    nodejs \
+    npm \
+    openssh-server \
+    sudo \
+    curl \
+    wget \
+    git
 
-# pre installation steps
-RUN bash /ins/pre_install.sh $BRANCH
+# Cleanup package list
+RUN rm -rf /var/lib/apt/lists/*
 
-# install additional software
-RUN bash /ins/install_additional.sh $BRANCH
+# Clone Agent Zero repository
+RUN git clone --branch development https://github.com/frdel/agent-zero.git /git/agent-zero
 
-# install A0
-RUN bash /ins/install_A0.sh $BRANCH
+# Set up SSH
+RUN mkdir /var/run/sshd && \
+    echo 'root:toor' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
-# cleanup repo and install A0 without caching, this speeds up builds
-ARG CACHE_DATE=none
-RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
+# Create and activate Python virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
 
-# post installation steps
-RUN bash /ins/post_install.sh $BRANCH
+# Copy the script to ensure .bashrc is in the root directory
+COPY initialize.sh /usr/local/bin/initialize.sh
+RUN chmod +x /usr/local/bin/initialize.sh
+
+# Copy contents of filesystem directory to /fs
+COPY ./fs/ /fs
+
+# Ensure the virtual environment and pip setup
+RUN $VIRTUAL_ENV/bin/pip install --upgrade pip
+
+# Install additional python packages
+RUN $VIRTUAL_ENV/bin/pip install \
+    ipython \
+    requests
+
+# Install A0 python packages
+RUN $VIRTUAL_ENV/bin/pip install -r /git/agent-zero/requirements.txt
 
 # Expose ports
 EXPOSE 22 80
 
-# initialize runtime
-CMD ["/bin/bash", "-c", "/bin/bash /exe/initialize.sh $BRANCH"]
+# Init .bashrc
+CMD ["/usr/local/bin/initialize.sh"]
