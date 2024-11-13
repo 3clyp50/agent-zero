@@ -6,9 +6,7 @@ This protocol implements a comprehensive reasoning framework adaptable across te
 
 - If prior analysis is provided, directly use it to form your final response.
 - Do not generate new thoughts or repeat the reasoning steps in the prior analysis.
-- Your response should be concise, accurate, and directly address the question.
-
-Each scratchpad employs domain-specific rigor while maintaining a universal problem-solving approach, enhanced with lateral thinking for innovative communication.
+- Each scratchpad employs domain-specific rigor while maintaining a universal problem-solving approach, enhanced with lateral thinking for innovative communication.
 
 ### Response Structure (JSON)
 

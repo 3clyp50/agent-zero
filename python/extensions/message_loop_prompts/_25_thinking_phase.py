@@ -13,7 +13,7 @@ class ThinkingPhaseExtension(Extension):
         await self.think_through_message(loop_data)
 
     async def think_through_message(self, loop_data: LoopData):
-        thinking_duration = 10.0  # Duration in seconds (5 minutes)
+        thinking_duration = 10.0  # Duration in seconds
         message = loop_data.message
 
         # Initialize thoughts with the original problem
@@ -150,9 +150,11 @@ Focus on:
         # Store the final thought in the agent's data for later use
         self.agent.data["thought_process"] = final_thought
 
-        # Add the prior thought process as the last system prompt
-        if final_thought:  # Use thought_result instead of thought_process
+        # Add the prior thought process as a system message
+        if final_thought:
             thought_prompt = self.agent.read_prompt(
                 'fw.include_thought_process.md', 
                 thought_process=final_thought
             )
+            # Append as system message
+            await self.agent.append_message(thought_prompt, system=True)
