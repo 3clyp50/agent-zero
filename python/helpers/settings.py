@@ -52,6 +52,8 @@ class Settings(TypedDict):
     stt_silence_duration: int
     stt_waiting_timeout: int
 
+    thinking_duration: float
+
 
 class PartialSettings(Settings, total=False):
     pass
@@ -378,6 +380,19 @@ def convert_out(settings: Settings) -> SettingsOutput:
                 {"value": subdir, "label": subdir}
                 for subdir in files.get_subdirectories("prompts")
             ],
+        }
+    )
+
+    agent_fields.append(
+        {
+            "id": "thinking_duration",
+            "title": "Thinking Duration",
+            "description": "Duration in seconds for the agent to think through problems (min: 10s, max: 600s)",
+            "type": "range",
+            "min": 10.0,
+            "max": 600.0,
+            "step": 1.0,
+            "value": settings["thinking_duration"],
         }
     )
 
@@ -728,6 +743,7 @@ def get_default_settings() -> Settings:
         stt_silence_threshold=0.3,
         stt_silence_duration=1000,
         stt_waiting_timeout=2000,
+        thinking_duration=300,
     )
 
 
