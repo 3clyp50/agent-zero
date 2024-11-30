@@ -34,13 +34,15 @@ class ThinkingPhaseExtension(Extension):
         # Get the current message
         current_message = loop_data.user_message
         
-        # Proceed with thinking phase if:
-        # 1. There is a message to process
-        # 2. We're not already in execution phase
-        # 3. It's a user message (not AI)
-        # 4. It's not a system message
-        # 5. It's not a tool result
-        # 6. We haven't processed this message before
+        # Get settings
+        current_settings = settings.get_settings()
+        thinking_trigger_type = current_settings.get("thinking_trigger_type", "enabled")
+        
+        # Check if thinking is disabled
+        if thinking_trigger_type == "disabled":
+            return
+            
+        # Proceed with thinking phase if conditions are met
         if (current_message and 
             not self.agent.data.get("execution_phase", False) and
             not getattr(current_message, 'is_system_message', False) and
@@ -51,14 +53,16 @@ class ThinkingPhaseExtension(Extension):
             # Mark this message as processed to prevent redundant thinking
             setattr(current_message, 'thinking_processed', True)
             
-            # Get settings
-            current_settings = settings.get_settings()
+            # Get thinking duration from settings
             thinking_duration = current_settings["thinking_duration"]
+            
+            # Format duration message consistently
+            duration_text = f"{int(thinking_duration)} seconds" if thinking_duration < 60 else f"{thinking_duration/60:.1f} minutes"
             
             # Show initial reasoning message in progress bar only
             self.agent.context.log.log(
                 type="util",
-                heading=f"Reasoning for {thinking_duration} seconds...",
+                heading=f"Reasoning for {duration_text}...",
                 content=""
             )
             
