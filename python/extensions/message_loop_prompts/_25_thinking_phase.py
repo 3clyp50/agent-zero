@@ -11,12 +11,64 @@ import json
 
 class ThinkingPhaseExtension(Extension):
 
+    async def show_progress(self, stage_message: str):
+        """Display the current thinking stage in both progress bar and CLI."""
+        # Show in CLI
+        PrintStyle(
+            italic=True,
+            font_color="#b3b3ff",
+            padding=True
+        ).print(f"{stage_message}")
+        
+        # Show in progress bar
+        log_item = self.agent.context.log.log(
+            type="util",
+            heading=stage_message
+        )
+        return log_item
+
     async def execute(self, loop_data: LoopData = LoopData(), **kwargs):
-        # Only proceed with thinking phase if it's a user message and not an agent response
-        if loop_data.user_message and not self.agent.data.get("execution_phase", False):
+        # Reset execution phase at the start
+        self.agent.data["execution_phase"] = False
+        
+        # Get the current message
+        current_message = loop_data.user_message
+        
+        # Proceed with thinking phase if:
+        # 1. There is a message to process
+        # 2. We're not already in execution phase
+        # 3. It's a user message (not AI)
+        # 4. It's not a system message
+        # 5. It's not a tool result
+        # 6. We haven't processed this message before
+        if (current_message and 
+            not self.agent.data.get("execution_phase", False) and
+            not getattr(current_message, 'is_system_message', False) and
+            not getattr(current_message, 'ai', False) and  # User message only
+            not getattr(current_message, 'tool_result', False) and  # Not a tool result
+            not hasattr(current_message, 'thinking_processed')):  # Haven't processed this message
+            
+            # Mark this message as processed to prevent redundant thinking
+            setattr(current_message, 'thinking_processed', True)
+            
+            # Get settings
+            current_settings = settings.get_settings()
+            thinking_duration = current_settings["thinking_duration"]
+            
+            # Show initial reasoning message in progress bar only
+            self.agent.context.log.log(
+                type="util",
+                heading=f"Reasoning for {thinking_duration} seconds...",
+                content=""
+            )
+            
+            # Process thoughts with dynamic stages
             await self.think_through_message(loop_data)
-        elif self.agent.data.get("execution_phase", False):
-            # If in execution phase, append the execution context to ensure plan adherence
+            
+            # After thinking phase completes, set execution phase
+            self.agent.data["execution_phase"] = True
+            
+            # Get the accumulated thoughts and plan
             plan = self.agent.data.get("current_execution_plan", {})
             thought_process = self.agent.data.get("thought_process", "")
             accumulated_thoughts = self.agent.data.get("accumulated_thoughts", [])
@@ -70,9 +122,6 @@ CRITICAL: Your response MUST explicitly incorporate:
 DO NOT generate a response without referencing your prior analysis.
 """
             loop_data.system.append(final_reminder)
-            
-            # Keep execution phase true until plan is complete
-            self.agent.data["execution_phase"] = True
 
     async def think_through_message(self, loop_data: LoopData):
         # Get thinking duration from settings
@@ -83,12 +132,7 @@ DO NOT generate a response without referencing your prior analysis.
         duration_text = f"{int(thinking_duration)} seconds" if thinking_duration < 60 else f"{thinking_duration/60:.1f} minutes"
         
         # Show initial thinking message
-        self.agent.context.log.log(
-            type="agent",
-            heading=f"Reasoning for {duration_text}...",
-            content="",
-            kvps={}
-        )
+        await self.show_progress(f"Reasoning for {duration_text}...")
 
         # Initialize thoughts with the original problem
         thoughts: List[HumanMessage] = [
@@ -107,6 +151,7 @@ DO NOT generate a response without referencing your prior analysis.
 
         start_time = asyncio.get_event_loop().time()
         buffer = ""  # Initialize buffer for accumulating content
+        current_stage = ""  # Track current thinking stage
 
         # Get system and tools prompts once before the loop
         system_prompt_str = self.agent.read_prompt("agent.system.main.md")
@@ -114,6 +159,30 @@ DO NOT generate a response without referencing your prior analysis.
 
         while (asyncio.get_event_loop().time() - start_time) < thinking_duration:
             try:
+                # Determine next stage based on accumulated thoughts
+                if not current_stage:
+                    stage_prompt = f"""Based on the current analysis state, determine the immediate next thinking stage.
+Return only a single line ending with "..." that describes what the Agent is currently thinking about.
+
+Current thoughts:
+{json.dumps(accumulated_thoughts, indent=2)}
+
+User's question: {message}
+
+Example stages:
+- "Understanding the core requirements..."
+- "Analyzing potential approaches..."
+- "Evaluating technical considerations..."
+- "Identifying edge cases..."
+- "Reviewing previous analysis..."
+- "Revisiting key insights..."
+- "Synthesizing solution approach..."
+
+Return the next appropriate stage:"""
+                    
+                    current_stage = (await self.agent.call_utility_llm(system=stage_prompt, msg="")).strip()
+                    await self.show_progress(current_stage)
+
                 prompt = ChatPromptTemplate.from_messages([
                     SystemMessage(content=thinking_prompt),
                     MessagesPlaceholder(variable_name="thoughts")
@@ -155,7 +224,9 @@ DO NOT generate a response without referencing your prior analysis.
                                     padding=False
                                 ).print(formatted_thought)
 
-                                buffer = ""  # Reset buffer after logging
+                                # Clear stage and buffer after significant thought
+                                current_stage = ""
+                                buffer = ""
 
             except Exception as e:
                 self.agent.context.log.log(
@@ -176,6 +247,9 @@ DO NOT generate a response without referencing your prior analysis.
                 padding=False
             ).print(formatted_thought)
 
+        # Show final stage
+        await self.show_progress("Synthesizing final thoughts...")
+
         # Show accumulated thoughts
         if accumulated_thoughts:
             self.agent.context.log.log(
@@ -187,62 +261,27 @@ DO NOT generate a response without referencing your prior analysis.
                 }
             )
 
-        # Get synthesis prompt from prompt system
-        thoughts_str = "\n".join([str(t.content) for t in thoughts])
-        synthesis_prompt = self.agent.read_prompt(
-            'thinking.phase.synthesis.md',
-            original_problem=message,
-            thoughts=thoughts_str,
-            system_prompt=system_prompt_str,
-            tools_prompt=tools_prompt_str
-        )
-
-        final_thought = await self.agent.call_utility_llm(
-            system="Synthesize the thinking process into a final conclusion for this specific problem.",
-            msg=synthesis_prompt
-        )
-
-        # Log the final synthesized thought
-        self.agent.context.log.log(
-            type="agent",
-            heading="Thought Process Synthesis",
-            content="",
-            kvps={
-                "thoughts": accumulated_thoughts,
-                "reflection": [final_thought]
-            }
-        )
-
-        # Store the final thought and tool selection plan in the agent's data
-        self.agent.data["thought_process"] = final_thought
-        self.agent.data["accumulated_thoughts"] = accumulated_thoughts
-        
-        # Create a structured plan from the synthesis
+        # Create a structured plan from the accumulated thoughts
         try:
-            # Try to parse any JSON-like structure from the final thought
-            dirty_json = DirtyJson()
-            plan = dirty_json.parse(json_string=str(final_thought))
+            # Extract key insights and action plan from the last few thoughts
+            final_thoughts = accumulated_thoughts[-3:] if accumulated_thoughts else []
             
-            # Ensure plan is a dictionary
-            if not isinstance(plan, dict):
-                plan = {}
-            
-            # Ensure the plan has all necessary components
-            if "key_insights" not in plan:
-                plan["key_insights"] = accumulated_thoughts[-3:] if accumulated_thoughts else []
-            if "analysis" not in plan:
-                plan["analysis"] = final_thought
-            if "response_requirements" not in plan:
-                plan["response_requirements"] = [
+            plan = {
+                "key_insights": final_thoughts,
+                "analysis": "\n".join(final_thoughts),
+                "thoughts": accumulated_thoughts,
+                "response_requirements": [
                     "Incorporate key insights from analysis",
                     "Reference specific thoughts from thinking phase",
                     "Connect solution to identified considerations"
-                ]
+                ],
+                "tool_sequence": []
+            }
         except:
-            # If parsing fails, create a more structured basic plan
+            # Fallback plan if extraction fails
             plan = {
                 "key_insights": accumulated_thoughts[-3:] if accumulated_thoughts else [],
-                "analysis": final_thought,
+                "analysis": "\n".join(accumulated_thoughts),
                 "thoughts": accumulated_thoughts,
                 "response_requirements": [
                     "Incorporate key insights from analysis",
@@ -262,6 +301,8 @@ DO NOT generate a response without referencing your prior analysis.
         )
         
         # Store the plan and execution prompt in the agent's data for direct access
+        self.agent.data["thought_process"] = "\n".join(accumulated_thoughts)
+        self.agent.data["accumulated_thoughts"] = accumulated_thoughts
         self.agent.data["current_execution_plan"] = plan
         self.agent.data["execution_phase"] = True
         
