@@ -1,94 +1,47 @@
-FINAL VALIDATION FRAMEWORK
+FINAL PLAN VALIDATION FRAMEWORK
 
-Initial Plan Analysis:
+REFINED SOLUTION PLAN:
 {validated_plan}
 
+KEY INSIGHTS:
+{accumulated_thoughts}
+
 VALIDATION OBJECTIVES:
-1. Verify plan completeness
-2. Confirm approach viability
-3. Validate implementation readiness
-4. Ensure risk coverage
-5. Check success criteria clarity
+1. Validate refined solution approach
+2. Ensure key insights integration
+3. Confirm practical feasibility
+4. Verify quality standards
 
 VALIDATION CHECKLIST:
-1. Plan Completeness
-   - All requirements addressed
-   - Clear solution approach
-   - Implementation steps defined
-   - Resource needs identified
-   - Success criteria established
+1. Solution Structure
+   - Coherent plan steps
+   - Validated methodologies
+   - Complete requirements coverage
+   - Logical progression
 
-2. Technical Viability
-   - Approach is feasible
-   - Tools are appropriate
-   - Dependencies are clear
-   - Performance considered
-   - Error handling planned
+2. Technical Validation
+   - Clear implementation path
+   - Appropriate tooling strategy
+   - Error handling considerations
+   - Performance implications
 
-3. Implementation Readiness
-   - Clear step sequence
-   - Required resources available
-   - Dependencies resolved
-   - Error handling in place
-   - Testing approach defined
+3. Quality Assessment
+   - Validation criteria
+   - Testing strategy
+   - Edge case coverage
+   - Success indicators
 
-4. Risk Management
-   - Known risks addressed
-   - Edge cases covered
-   - Failure modes considered
-   - Recovery plans defined
-   - Limitations acknowledged
+FINAL PLAN FORMAT:
+1. Solution Steps
+   - Clear sequence
+   - Tool selection
+   - Risk handling
+   - Progress indicators
 
-EXECUTION REQUIREMENTS:
-Your implementation must demonstrate:
+2. Quality Measures
+   - Validation approach
+   - Success criteria
+   - Risk assessment
+   - Recovery strategies
 
-1. Plan Adherence
-   - Follow defined steps
-   - Use specified approaches
-   - Maintain identified constraints
-   - Meet quality standards
-
-2. Context Awareness
-   - Use previous analysis
-   - Apply key insights
-   - Consider identified risks
-   - Follow success criteria
-
-3. Practical Focus
-   - Clear implementation
-   - Resource efficiency
-   - Error resilience
-   - Measurable progress
-
-RESPONSE STRUCTURE:
-Format your response to show:
-
-1. Implementation Approach
-   - Solution strategy
-   - Key steps
-   - Tool usage
-   - Resource allocation
-
-2. Quality Assurance
-   - Validation points
-   - Error handling
-   - Testing approach
-   - Success metrics
-
-3. Risk Handling
-   - Known challenges
-   - Mitigation strategies
-   - Edge cases
-   - Recovery plans
-
-EXECUTION FOCUS:
-1. Follow the validated plan
-2. Use identified approaches
-3. Handle known risks
-4. Meet success criteria
-5. Maintain solution quality
-6. Ensure practical implementation
-7. Enable progress tracking
-8. Support error recovery
-
-Remember: This is the final validation before implementation. Ensure the plan is complete, practical, and ready for execution.
+Remember: This is the final refinement of the solution plan before it guides the implementation.
