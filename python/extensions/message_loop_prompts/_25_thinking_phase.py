@@ -2,7 +2,7 @@ from datetime import datetime
 from python.helpers.extension import Extension
 from agent import Agent, LoopData
 from python.helpers.print_style import PrintStyle
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TypedDict, Union
 import asyncio
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -18,6 +18,15 @@ def get_prompt(file: str, agent: Agent) -> str:
         "agent_name": agent.agent_name,
     }
     return agent.read_prompt(file, **vars)
+
+class ThinkingComponent(TypedDict):
+    name: str
+    description: str
+
+class ThinkingComponents(TypedDict):
+    phases: List[ThinkingComponent]
+    strategies: List[ThinkingComponent]
+    patterns: List[ThinkingComponent]
 
 class ThinkingPhaseExtension(Extension):
 
@@ -442,7 +451,7 @@ Create a stage:"""
             return stage.strip()
         return "Thinking..."
 
-    async def _generate_thinking_components(self, message: str) -> Dict[str, Any]:
+    async def _generate_thinking_components(self, message: str) -> ThinkingComponents:
         """Generate dynamic thinking components based on the current problem context."""
         # Get the dynamic components prompt
         components_prompt = self.agent.read_prompt('dynamic_components.md')
@@ -478,50 +487,38 @@ IMPORTANT: You must respond with ONLY valid JSON matching this structure. Do not
                 response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())
                 components_str = str(response.content) if isinstance(response, AIMessage) else str(response)
                 
-                # Debug logging
-                print(f"Raw LLM response (attempt {attempt + 1}):", components_str[:200] + "..." if len(components_str) > 200 else components_str)
+                # Parse components using DirtyJson
+                components = DirtyJson.parse_string(components_str)
                 
-                # Clean the response string
-                components_str = str(components_str).strip()
-                if isinstance(components_str, str):
-                    if components_str.startswith("```json"):
-                        components_str = components_str[7:]
-                    if components_str.startswith("```"):
-                        components_str = components_str[3:]
-                    if components_str.endswith("```"):
-                        components_str = components_str[:-3]
-                    components_str = components_str.strip()
-                
-                # Debug logging
-                print(f"Cleaned response (attempt {attempt + 1}):", components_str[:200] + "..." if len(components_str) > 200 else components_str)
-                
-                # Try standard JSON first
-                try:
-                    components = json.loads(components_str)
-                except json.JSONDecodeError as e:
-                    print(f"JSON decode error (attempt {attempt + 1}):", str(e))
-                    # Fallback to DirtyJson for more lenient parsing
-                    components = DirtyJson.parse_string(components_str)
-                
-                # Validate structure
                 if not isinstance(components, dict):
                     raise ValueError("Components must be a dictionary")
-                
+
+                # Validate structure
                 required_keys = ["phases", "strategies", "patterns"]
-                if not all(k in components for k in required_keys):
-                    raise ValueError(f"Missing required keys: {[k for k in required_keys if k not in components]}")
+                missing_keys = [k for k in required_keys if k not in components]
+                if missing_keys:
+                    raise ValueError(f"Missing required keys: {missing_keys}")
                 
-                # Validate arrays
+                # Validate arrays and convert to TypedDict
+                result: ThinkingComponents = {
+                    "phases": [],
+                    "strategies": [],
+                    "patterns": []
+                }
+                
                 for key in required_keys:
-                    if not isinstance(components[key], list):
-                        raise ValueError(f"{key} must be an array")
-                    if not components[key]:
-                        raise ValueError(f"{key} array cannot be empty")
+                    if not isinstance(components[key], list) or not components[key]:
+                        raise ValueError(f"{key} must be a non-empty array")
+                    
                     for item in components[key]:
                         if not isinstance(item, dict) or "name" not in item or "description" not in item:
                             raise ValueError(f"Invalid item in {key}: {item}")
+                        result[key].append({
+                            "name": str(item["name"]),
+                            "description": str(item["description"])
+                        })
                 
-                return components
+                return result
                 
             except Exception as e:
                 if attempt == max_retries - 1:
