@@ -183,10 +183,6 @@ class LoopData:
         # override values with kwargs
         for key, value in kwargs.items():
             setattr(self, key, value)
-        self.message = ""
-        self.history_from = 0
-        self.history = []
-        self.attachments = []  # Add attachments field
 
 
 # intervention exception class - skips rest of message loop iteration
@@ -238,7 +234,6 @@ class Agent:
     async def monologue(self):
         while True:
             try:
-                
                 # loop data dictionary to pass to extensions
                 self.loop_data = LoopData(user_message=self.last_user_message)
                 # call monologue_start extensions

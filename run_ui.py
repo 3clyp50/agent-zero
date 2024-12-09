@@ -3,12 +3,13 @@ import os
 import threading
 from flask import Flask, request, Response
 from flask_basicauth import BasicAuth
-from python.helpers import files, git
+from python.helpers import errors, files, git
 from python.helpers.files import get_abs_path
-from python.helpers import persist_chat, runtime, dotenv
+from python.helpers import persist_chat, runtime, dotenv, process
 from python.helpers.cloudflare_tunnel import CloudflareTunnel
 from python.helpers.extract_tools import load_classes_from_folder
 from python.helpers.api import ApiHandler
+from python.helpers.print_style import PrintStyle
 
 
 # initialize the internal Flask server
@@ -51,37 +52,45 @@ async def serve_index():
         version_no=gitinfo["version"],
         version_time=gitinfo["commit_time"],
     )
+    
 
 def run():
-    print("Initializing framework...")
+    PrintStyle().print("Initializing framework...")
 
     # Suppress only request logs but keep the startup messages
     from werkzeug.serving import WSGIRequestHandler
+    from werkzeug.serving import make_server
 
     class NoRequestLoggingWSGIRequestHandler(WSGIRequestHandler):
         def log_request(self, code="-", size="-"):
             pass  # Override to suppress request logging
 
     # Get configuration from environment
-    port = runtime.get_arg("port") or int(os.environ.get("WEB_UI_PORT", 0)) or None
-    host = runtime.get_arg("host") or os.environ.get("WEB_UI_HOST") or None
-    use_cloudflare = (
-        runtime.get_arg("cloudflare_tunnel")
-        or os.environ.get("USE_CLOUDFLARE", "false").lower() == "true"
-    )
+    port = runtime.get_arg("port") or int(dotenv.get_dotenv_value("WEB_UI_PORT", 0)) or 5000
+    host = runtime.get_arg("host") or dotenv.get_dotenv_value("WEB_UI_HOST") or "localhost"
+    use_cloudflare = (runtime.get_arg("cloudflare_tunnel")
+        or dotenv.get_dotenv_value("USE_CLOUDFLARE", "false").lower()) == "true"
+    
 
-    # Initialize and start Cloudflare tunnel if enabled
     tunnel = None
-    if use_cloudflare and port:
-        try:
-            tunnel = CloudflareTunnel(port)
-            tunnel.start()
-        except Exception as e:
-            print(f"Failed to start Cloudflare tunnel: {e}")
-            print("Continuing without tunnel...")
 
-    # initialize contexts from persisted chats
-    persist_chat.load_tmp_chats()
+    try:    
+        # Initialize and start Cloudflare tunnel if enabled
+        if use_cloudflare and port:
+            try:
+                tunnel = CloudflareTunnel(port)
+                tunnel.start()
+            except Exception as e:
+                PrintStyle().error(f"Failed to start Cloudflare tunnel: {e}")
+                PrintStyle().print("Continuing without tunnel...")
+
+        # initialize contexts from persisted chats
+        persist_chat.load_tmp_chats()
+
+    except Exception as e:
+        PrintStyle().error(errors.format_error(e))
+
+    server = None
 
     def register_api_handler(app, handler):
         name = handler.__module__.split(".")[-1]
@@ -101,14 +110,15 @@ def run():
     for handler in handlers:
         register_api_handler(app, handler)
         
-
-
-
     try:
+        server = make_server(host=host, port=port, app=app, request_handler=NoRequestLoggingWSGIRequestHandler, threaded=True)
+        process.set_server(server)
+        server.log_startup()
+        server.serve_forever() 
         # Run Flask app
-        app.run(
-            request_handler=NoRequestLoggingWSGIRequestHandler, port=port, host=host
-        )
+        # app.run(
+        #     request_handler=NoRequestLoggingWSGIRequestHandler, port=port, host=host
+        # )
     finally:
         # Clean up tunnel if it was started
         if tunnel:
@@ -118,4 +128,5 @@ def run():
 # run the internal server
 if __name__ == "__main__":
     runtime.initialize()
+    dotenv.load_dotenv()
     run()

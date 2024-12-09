@@ -19,7 +19,6 @@ Type = Literal[
     "warning",
 ]
 
-
 @dataclass
 class LogItem:
     log: "Log"
@@ -75,7 +74,6 @@ class LogItem:
             "temp": self.temp,
             "kvps": self.kvps,
         }
-
 
 class Log:
 

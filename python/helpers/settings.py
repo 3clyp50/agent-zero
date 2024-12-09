@@ -386,19 +386,6 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     agent_fields.append(
         {
-            "id": "thinking_duration",
-            "title": "Deep Thinking Duration",
-            "description": "Duration in seconds for the agent to think deeply through problems (min: 10s, max: 600s)",
-            "type": "range",
-            "min": 10.0,
-            "max": 600.0,
-            "step": 5.0,
-            "value": settings["thinking_duration"],
-        }
-    )
-
-    agent_fields.append(
-        {
             "id": "thinking_trigger_type",
             "title": "Deep Thinking Mode",
             "description": "Enable or disable the agent's deep thinking capability",
@@ -408,6 +395,19 @@ def convert_out(settings: Settings) -> SettingsOutput:
                 {"value": "enabled", "label": "Enabled"},
                 {"value": "disabled", "label": "Disabled"}
             ],
+        }
+    )
+    
+    agent_fields.append(
+        {
+            "id": "thinking_duration",
+            "title": "Deep Thinking Duration",
+            "description": "Duration in seconds for the agent to think deeply through problems (min: 10s, max: 600s)",
+            "type": "range",
+            "min": 10.0,
+            "max": 600.0,
+            "step": 5.0,
+            "value": settings["thinking_duration"],
         }
     )
 
