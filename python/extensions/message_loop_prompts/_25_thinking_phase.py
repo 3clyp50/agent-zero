@@ -32,11 +32,7 @@ class ThinkingPhaseExtension(Extension):
 
     def get_thinking_prompt(self) -> str:
         """Get the main thinking phase prompt."""
-        return get_prompt("thinking.phase.prompt.md", self.agent)
-
-    def get_thought_iteration_prompt(self) -> str:
-        """Get the thought iteration framework prompt."""
-        return get_prompt("thought_iteration.md", self.agent)
+        return get_prompt("thinking.iterate.md", self.agent)
 
     def get_system_prompt(self) -> str:
         """Get the system prompt."""
@@ -143,80 +139,80 @@ class ThinkingPhaseExtension(Extension):
             return f"Building on: {last_thought['insights'][0][:50]}..."
         return f"Developing {last_thought['phase'].lower()}..."
 
-    async def think_through_message(self, loop_data: LoopData, thinking_duration: float) -> str:
-        """Generate solution plan through iterative thinking and refinement."""
-        message = loop_data.user_message.output_text() if loop_data.user_message else ""
-        
-        # Show initial planning message
-        duration_text = f"{int(thinking_duration)} seconds" if thinking_duration < 60 else f"{thinking_duration/60:.1f} minutes"
-        await self.show_progress(f"Planning solution approach for {duration_text}...")
-        
-        # Get system and tools prompts
-        system_prompt = self.get_system_prompt()
-        tools_prompt = self.get_tools_prompt()
-        
-        # Generate dynamic thinking components with tools context
-        thinking_components = await self._generate_thinking_components(message, tools_prompt)
-        
-        # Initialize planning context with dynamic components
-        planning_context = {
-            "thoughts": [],
-            "thought_evolution": [],
-            "current_focus": "Initial planning",
-            "iteration_phase": thinking_components["phases"][0]["name"],
-            "current_strategy": thinking_components["strategies"][0]["name"],
-            "thought_pattern": thinking_components["patterns"][0]["name"],
-            "thinking_components": thinking_components,
-            "system_prompt": system_prompt,
-            "tools_prompt": tools_prompt,
-            "phase_progress": {},
-            "strategy_insights": {}
-        }
-        self.agent.data["planning_context"] = planning_context
-        
-        # Initialize for thought collection
-        thoughts: List[str] = []
-        start_time = asyncio.get_event_loop().time()
-        
-        while (asyncio.get_event_loop().time() - start_time) < thinking_duration:
-            try:
-                # Generate complete thought
-                thought = await self._generate_thought(message, planning_context)
-                if thought and not thought.startswith("{") and not thought.startswith("["):
-                    thoughts.append(thought)
-                    
-                    # Update planning context and phase
-                    self._update_planning_context(planning_context, thought)
-                    await self._advance_iteration_phase(planning_context)
-                    
-                    # Generate and show stage
-                    stage = await self._generate_stage(thought, planning_context)
-                    await self.show_progress(stage)
-                    await self.show_thought(thought, stage)
-                
-                await asyncio.sleep(0.1)
+    async def think_through_message(self, loop_data: LoopData, thinking_duration: float) -> str:  
+        """Generate solution plan through iterative thinking and refinement."""  
+        message = loop_data.user_message.output_text() if loop_data.user_message else ""  
 
-            except Exception as e:
-                self.agent.context.log.log(
-                    type="warning",
-                    content=f"Thinking phase error: {str(e)}\n{traceback.format_exc()}"
-                )
-        
-        # Create final plan structure
-        plan = {
-            "thoughts": thoughts,
-            "thought_evolution": planning_context["thought_evolution"],
-            "iteration_phases": self._summarize_iteration_phases(planning_context),
-            "key_insights": self._extract_key_insights(thoughts)
-        }
-        
-        # Store in agent's data
-        self.agent.data["thought_process"] = "\n".join(thoughts)
-        self.agent.data["accumulated_thoughts"] = thoughts
-        self.agent.data["planning_context"] = planning_context
-        self.agent.data["current_plan"] = plan
-        
-        return json.dumps(plan, indent=2)
+        # Show initial planning message  
+        duration_text = f"{int(thinking_duration)} seconds" if thinking_duration < 60 else f"{thinking_duration/60:.1f} minutes"  
+        await self.show_progress(f"Planning solution approach for {duration_text}...")  
+
+        # Get system and tools prompts  
+        system_prompt = self.get_system_prompt()  
+        tools_prompt = self.get_tools_prompt()  
+
+        # Generate dynamic thinking components with tools context  
+        thinking_components = await self._generate_thinking_components(message, tools_prompt)  
+
+        # Initialize planning context with dynamic components  
+        planning_context = {  
+            "thoughts": [],  
+            "thought_evolution": [],  
+            "current_focus": "Initial planning",  
+            "iteration_phase": thinking_components["phases"][0]["name"],  
+            "current_strategy": thinking_components["strategies"][0]["name"],  
+            "thought_pattern": thinking_components["patterns"][0]["name"],  
+            "thinking_components": thinking_components,  
+            "system_prompt": system_prompt,  
+            "tools_prompt": tools_prompt,  
+            "phase_progress": {},  
+            "strategy_insights": {}  
+        }  
+        self.agent.data["planning_context"] = planning_context  
+
+        # Initialize for thought collection  
+        thoughts: List[str] = []  
+        start_time = asyncio.get_event_loop().time()  
+
+        while (asyncio.get_event_loop().time() - start_time) < thinking_duration:  
+            try:  
+                # Generate complete thought  
+                thought = await self._generate_thought(message, planning_context)  
+                if thought and not thought.startswith("{") and not thought.startswith("["):  
+                    thoughts.append(thought)  
+
+                    # Update planning context and phase  
+                    self._update_planning_context(planning_context, thought)  
+                    await self._advance_iteration_phase(planning_context)  
+
+                    # Generate and show stage  
+                    stage = await self._generate_stage(thought, planning_context)  
+                    await self.show_progress(stage)  
+                    await self.show_thought(thought, stage)  
+
+                await asyncio.sleep(0.1)  
+
+            except Exception as e:  
+                self.agent.context.log.log(  
+                    type="warning",  
+                    content=f"Thinking phase error: {str(e)}\n{traceback.format_exc()}"  
+                )  
+
+        # Create final plan structure  
+        plan = {  
+            "thoughts": thoughts,  
+            "thought_evolution": planning_context["thought_evolution"],  
+            "iteration_phases": self._summarize_iteration_phases(planning_context),  
+            "key_insights": self._extract_key_insights(thoughts)  
+        }  
+
+        # Store in agent's data  
+        self.agent.data["thought_process"] = "\n".join(thoughts)  
+        self.agent.data["accumulated_thoughts"] = thoughts  
+        self.agent.data["planning_context"] = planning_context  
+        self.agent.data["current_plan"] = plan  
+
+        return json.dumps(plan, indent=2)  
 
     def _update_planning_context(self, context: Dict[str, Any], thought: str):
         """Update planning context based on thought content and current phase."""
@@ -348,88 +344,94 @@ class ThinkingPhaseExtension(Extension):
         
         return phase_summary
 
-    async def _generate_thought(self, message: str, context: Dict[str, Any]) -> str:
-        """Generate a single thought based on current context and previous thoughts."""
-        # Get the thinking prompt, system prompt, and tools prompt
-        thinking_prompt = self.get_thinking_prompt()
-        system_prompt = context["system_prompt"]
-        tools_prompt = context["tools_prompt"]
+    async def _generate_thought(self, message: str, context: Dict[str, Any]) -> str:  
+        """Generate a single thought based on current context and previous thoughts."""  
+        # Get the thinking prompt, system prompt, and tools prompt  
+        thinking_prompt = self.get_thinking_prompt()  
+        system_prompt = context["system_prompt"]  
+        tools_prompt = context["tools_prompt"]  
 
-        # Get recent thoughts and insights
-        recent_thoughts = context["thought_evolution"][-3:] if context["thought_evolution"] else []
-        recent_insights = []
-        for t in recent_thoughts:
-            recent_insights.extend(t.get("insights", []))
+        # Get recent thoughts and insights  
+        recent_thoughts = context["thought_evolution"][-3:] if context["thought_evolution"] else []  
+        recent_insights = []  
+        for t in recent_thoughts:  
+            recent_insights.extend(t.get("insights", []))  
 
-        # Create thought generation context
-        thought_context = {
-            "phase": context["iteration_phase"],
-            "strategy": context["current_strategy"],
-            "pattern": context["thought_pattern"],
-            "recent_thoughts": [t["thought"] for t in recent_thoughts],
-            "recent_insights": recent_insights
-        }
+        # Create thought generation context  
+        thought_context = {  
+            "phase": context["iteration_phase"],  
+            "strategy": context["current_strategy"],  
+            "pattern": context["thought_pattern"],  
+            "recent_thoughts": [t["thought"] for t in recent_thoughts],  
+            "recent_insights": recent_insights  
+        }  
 
-        # Combine prompts with enhanced context
-        system_content = f"""
-{system_prompt}
+        # Combine prompts with enhanced context  
+        system_content = f"""  
+    {system_prompt}  
 
-{thinking_prompt}
+    {thinking_prompt}  
 
-AVAILABLE TOOLS AND CAPABILITIES:
-{tools_prompt}
+    AVAILABLE TOOLS AND CAPABILITIES:  
+    {tools_prompt}  
 
-CURRENT THINKING CONTEXT:
-Phase: {thought_context['phase']}
-Strategy: {thought_context['strategy']}
-Pattern: {thought_context['pattern']}
+    CURRENT THINKING CONTEXT:  
+    Phase: {thought_context['phase']}  
+    Strategy: {thought_context['strategy']}  
+    Pattern: {thought_context['pattern']}  
 
-Recent Thoughts:
-{chr(10).join(['- ' + t for t in thought_context['recent_thoughts']])}
+    Recent Thoughts:  
+    {chr(10).join(['- ' + t for t in thought_context['recent_thoughts']])}  
 
-Recent Insights:
-{chr(10).join(['- ' + i for i in thought_context['recent_insights']])}
+    Recent Insights:  
+    {chr(10).join(['- ' + i for i in thought_context['recent_insights']])}  
 
-IMPORTANT: Your thoughts must be expressed in JSON format with a "thoughts" array containing your thought process. 
-For example:
-{{
-    "thoughts": [
-        "Building on the previous insight about X...",
-        "This connects to our understanding of Y...",
-        "This suggests a new approach using Z..."
-    ]
-}}
-"""
+    IMPORTANT:  
+    - During this thinking phase, consider the tools and plan how you might use them, but **do not execute or use any tools at this stage**.  
+    - Focus on planning and analysis.  
+    - Your thoughts must be expressed in JSON format with a "thoughts" array containing your thought process.  
+    For example:  
+    {{  
+        "thoughts": [  
+            "Building on the previous insight about X...",  
+            "This connects to our understanding of Y...",  
+            "This suggests a new approach using Z..."  
+        ]  
+    }}  
+    """  
 
-        prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=system_content),
-            HumanMessage(content=f"""Problem to Solve: {message}
+        prompt = ChatPromptTemplate.from_messages([  
+            SystemMessage(content=system_content),  
+            HumanMessage(content=f"""Problem to Solve: {message}  
 
-Generate the next thought in our analysis, building on previous insights and following the current phase, strategy, and pattern.
-Show clear progression from previous thoughts and demonstrate evolving understanding.
+    Generate the next thought in our analysis, building on previous insights and following the current phase, strategy, and pattern.  
+    Show clear progression from previous thoughts and demonstrate evolving understanding.  
 
-Remember to format your response as JSON with a "thoughts" array.""")
-        ])
-        
-        response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())
-        response_text = response.content if isinstance(response, AIMessage) else str(response)
-        
-        try:
-            # Try to parse the response as JSON
-            thought_data = DirtyJson.parse_string(response_text)
-            if isinstance(thought_data, dict) and "thoughts" in thought_data:
-                # If it's a JSON object with thoughts array, join them into a single string
-                thoughts = thought_data["thoughts"]
-                if isinstance(thoughts, list):
-                    return "\n".join(str(t) for t in thoughts)
-                else:
-                    return str(thoughts)
-            
-            # If it's JSON but doesn't match our expected format, return the whole response
-            return response_text
-        except:
-            # If it's not valid JSON, return the raw response
-            return response_text
+    **Remember:**  
+    - Do not execute or use any tools during this thinking phase.  
+    - Focus on planning and analysis.  
+    - Format your response as JSON with a "thoughts" array.""")  
+        ])  
+
+        response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())  
+        response_text = response.content if isinstance(response, AIMessage) else str(response)  
+
+        try:  
+            # Try to parse the response as JSON  
+            thought_data = DirtyJson.parse_string(response_text)  
+            if isinstance(thought_data, dict) and "thoughts" in thought_data:  
+                # If it's a JSON object with thoughts array, join them into a single string  
+                thoughts = thought_data["thoughts"]  
+                if isinstance(thoughts, list):  
+                    return "\n".join(str(t) for t in thoughts)  
+                else:  
+                    return str(thoughts)  
+
+            # If it's JSON but doesn't match our expected format, return the whole response  
+            return response_text  
+        except:  
+            # If it's not valid JSON, return the raw response  
+            return response_text  
 
     async def _generate_stage(self, thought: str, context: Dict[str, Any]) -> str:
         """Generate a stage marker for the current thought."""
@@ -462,203 +464,154 @@ Create a stage:"""
             return stage.strip()
         return "Thinking..."
 
-    async def _generate_thinking_components(self, message: str, tools_prompt: str) -> ThinkingComponents:
-        """Generate dynamic thinking components based on the current problem context."""
-        # Get the dynamic components prompt
-        components_prompt = self.agent.read_prompt('dynamic_components.md')
-        
-        base_prompt = f"""Generate thinking components for solving this problem: {message}
+    async def _generate_thinking_components(self, message: str, tools_prompt: str) -> ThinkingComponents:  
+        """Generate dynamic thinking components based on the current problem context."""  
+        # Get the dynamic components prompt  
+        components_prompt = self.agent.read_prompt('dynamic_components.md')  
 
-Available tools and capabilities:
-{tools_prompt}
+        base_prompt = f"""Generate thinking components for solving this problem: {message}  
 
-IMPORTANT: You must respond with ONLY valid JSON matching this structure. Do not include any other text or markdown:
-{{
-    "phases": [
-        {{"name": string, "description": string, "tool_considerations": [string]}},
-        // 2-4 phases total
-    ],
-    "strategies": [
-        {{"name": string, "description": string, "tool_applications": [string]}},
-        // 2-3 strategies total
-    ],
-    "patterns": [
-        {{"name": string, "description": string, "tool_integration": [string]}},
-        // 2-3 patterns total
-    ]
-}}"""
+    Available tools and capabilities:  
+    {tools_prompt}  
 
-        prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=components_prompt),
-            HumanMessage(content=base_prompt)
-        ])
-        
-        # Keep trying until we get valid components
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                # Generate components using LLM
-                response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())
-                components_str = str(response.content) if isinstance(response, AIMessage) else str(response)
-                
-                # Parse components using DirtyJson
-                components = DirtyJson.parse_string(components_str)
-                
-                if not isinstance(components, dict):
-                    raise ValueError("Components must be a dictionary")
+    **IMPORTANT:**  
+    - Consider how the tools can be leveraged in different phases, strategies, and patterns.  
+    - Do not execute or use any tools at this stage.  
+    - Your response must be ONLY valid JSON matching this structure without any other text or markdown:  
+    {{  
+        "phases": [  
+            {{"name": string, "description": string, "tool_considerations": [string]}},  
+            // 2-4 phases total  
+        ],  
+        "strategies": [  
+            {{"name": string, "description": string, "tool_applications": [string]}},  
+            // 2-3 strategies total  
+        ],  
+        "patterns": [  
+            {{"name": string, "description": string, "tool_integration": [string]}},  
+            // 2-3 patterns total  
+        ]  
+    }}"""  
 
-                # Validate structure
-                required_keys = ["phases", "strategies", "patterns"]
-                missing_keys = [k for k in required_keys if k not in components]
-                if missing_keys:
-                    raise ValueError(f"Missing required keys: {missing_keys}")
-                
-                # Validate arrays and convert to TypedDict
-                result: ThinkingComponents = {
-                    "phases": [],
-                    "strategies": [],
-                    "patterns": []
-                }
-                
-                for key in required_keys:
-                    if not isinstance(components[key], list) or not components[key]:
-                        raise ValueError(f"{key} must be a non-empty array")
-                    
-                    for item in components[key]:
-                        if not isinstance(item, dict) or "name" not in item or "description" not in item:
-                            raise ValueError(f"Invalid item in {key}: {item}")
-                        result[key].append({
-                            "name": str(item["name"]),
-                            "description": str(item["description"])
-                        })
-                
-                return result
-                
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    raise ValueError(f"Failed to generate valid thinking components after {max_retries} attempts: {str(e)}")
-                
-                # Add more explicit instruction for retry
-                prompt = ChatPromptTemplate.from_messages([
-                    SystemMessage(content=components_prompt),
-                    HumanMessage(content=f"{base_prompt}\n\nPrevious attempt failed with: {str(e)}\nPlease ensure your response is properly formatted JSON."),
-                ])
-        
-        raise ValueError("Failed to generate valid thinking components")
+        prompt = ChatPromptTemplate.from_messages([  
+            SystemMessage(content=components_prompt),  
+            HumanMessage(content=base_prompt)  
+        ])  
 
-    async def validate_plan(self, initial_plan: str) -> str:
-        """Validate and refine the solution plan."""
-        await self.show_progress("Validating solution plan...")
-        
-        # Get validation prompt
-        validation_prompt = self.agent.read_prompt('thinking.phase.design.md')
-        
-        prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=validation_prompt),
-            HumanMessage(content=initial_plan)
-        ])
-        
-        # Generate validated plan
-        validation_response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())
-        
-        try:
-            if isinstance(validation_response, AIMessage):
-                validated_plan = validation_response.content if isinstance(validation_response.content, str) else str(validation_response.content)
-            else:
-                validated_plan = str(validation_response)
-            
-            # Parse the initial plan
-            try:
-                initial_plan_dict = json.loads(initial_plan)
-                thoughts = initial_plan_dict.get("thoughts", [])
-                
-                # Format the initial plan
-                initial_plan_text = "\n".join(['- ' + thought for thought in thoughts]) if thoughts else initial_plan
-                
-            except:
-                initial_plan_text = initial_plan
-            
-            # Show planning progress
-            self.agent.context.log.log(
-                type="agent",
-                heading="Solution Planning Progress",
-                content="Finalizing solution plan",
-                kvps={
-                    "Initial Analysis": initial_plan_text,
-                    "Refined Plan": validated_plan
-                }
-            )
-            
-        except Exception as e:
-            self.agent.context.log.log(
-                type="warning",
-                heading="Plan validation warning:",
-                content=f"Error during plan validation: {str(e)}\n{traceback.format_exc()}"
-            )
-            validated_plan = initial_plan
-        
-        return validated_plan
+        # Keep trying until we get valid components  
+        max_retries = 3  
+        for attempt in range(max_retries):  
+            try:  
+                # Generate components using LLM  
+                response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())  
+                components_str = str(response.content) if isinstance(response, AIMessage) else str(response)  
 
-    async def prepare_execution_phase(self, validated_plan: str, loop_data: LoopData):
-        """Prepare execution phase based on validated plan and key insights."""
-        # Get planning context for richer insights
-        planning_context = self.agent.data.get("planning_context", {})
-        
-        # Extract key insights and strategy effectiveness
-        key_insights = self._extract_key_insights(planning_context.get("thoughts", []))
-        strategy_insights = planning_context.get("strategy_insights", {})
-        
-        # Format strategy effectiveness
-        strategy_summary = []
-        for strategy, data in strategy_insights.items():
-            effectiveness = data.get("effectiveness", 0)
-            applications = len(data.get("applications", []))
-            if applications > 0:
-                strategy_summary.append(f"- {strategy}: {effectiveness} insights from {applications} applications")
-        
-        # Add analysis context and instructions as a single system message
-        analysis_context = f"""
-IMPORTANT - Solution Plan Execution:
+                # Parse components using DirtyJson  
+                components = DirtyJson.parse_string(components_str)  
 
-REFINED PLAN:
-{validated_plan}
+                if not isinstance(components, dict):  
+                    raise ValueError("Components must be a dictionary")  
 
-KEY INSIGHTS:
-{key_insights}
+                # Validate structure  
+                required_keys = ["phases", "strategies", "patterns"]  
+                missing_keys = [k for k in required_keys if k not in components]  
+                if missing_keys:  
+                    raise ValueError(f"Missing required keys: {missing_keys}")  
 
-STRATEGY EFFECTIVENESS:
-{chr(10).join(strategy_summary)}
+                # Validate arrays and convert to TypedDict  
+                result: ThinkingComponents = {  
+                    "phases": [],  
+                    "strategies": [],  
+                    "patterns": []  
+                }  
 
-EXECUTION REQUIREMENTS:
-1. Follow the refined plan structure
-2. Verify approach and strategy alignment
-3. Integrate key insights
-4. Ensure solution completeness and quality
-5. Build on successful strategies
-6. Apply validated patterns
+                for key in required_keys:  
+                    if not isinstance(components[key], list) or not components[key]:  
+                        raise ValueError(f"{key} must be a non-empty array")  
 
-Remember: The refined plan will guide the implementation phase.
-"""
-        loop_data.system.append(analysis_context)
+                    for item in components[key]:  
+                        if not isinstance(item, dict) or "name" not in item or "description" not in item:  
+                            raise ValueError(f"Invalid item in {key}: {item}")  
+                        result[key].append({  
+                            "name": str(item["name"]),  
+                            "description": str(item["description"])  
+                        })  
 
-    def _extract_key_insights(self, thoughts: List[str]) -> str:
-        """Extract key insights from accumulated thoughts."""
-        if not thoughts:
-            return "No prior insights available."
-            
-        # Get the most significant thoughts (last 3-5 thoughts that represent conclusions)
-        significant_thoughts = thoughts[-5:] if len(thoughts) > 5 else thoughts
-        
-        # Format insights
-        insights = []
-        for thought in significant_thoughts:
-            # Clean up the thought and make it concise
-            cleaned = thought.strip().split('\n')[0]  # Take first line if multiple
-            if len(cleaned) > 100:  # If still too long, truncate
-                cleaned = cleaned[:97] + "..."
-            insights.append(f"- {cleaned}")
-            
-        return "\n".join(insights)
+                return result  
+
+            except Exception as e:  
+                if attempt == max_retries - 1:  
+                    raise ValueError(f"Failed to generate valid thinking components after {max_retries} attempts: {str(e)}")  
+
+                # Add more explicit instruction for retry  
+                prompt = ChatPromptTemplate.from_messages([  
+                    SystemMessage(content=components_prompt),  
+                    HumanMessage(content=f"{base_prompt}\n\nPrevious attempt failed with: {str(e)}\nPlease ensure your response is properly formatted JSON."),  
+                ])  
+
+        raise ValueError("Failed to generate valid thinking components")  
+
+    async def validate_plan(self, initial_plan: str) -> str:  
+        """Validate and refine the solution plan."""  
+        await self.show_progress("Validating solution plan...")  
+
+        # Get validation prompt  
+        validation_prompt = self.agent.read_prompt('thinking.validate.md')  
+
+        # Ensure the validation prompt includes instructions about not using tools directly  
+        # If the 'thinking.validate.md' does not include this, we can add it here  
+
+        prompt = ChatPromptTemplate.from_messages([  
+            SystemMessage(content=validation_prompt),  
+            HumanMessage(content=f"""{initial_plan}  
+
+    **IMPORTANT:**  
+    - While refining the plan, consider how to use the available tools, but **do not execute or use any tools at this stage**.  
+    - Focus on improving the plan and ensuring its practicality.  
+
+    Your goal is to produce a refined, validated, and implementation-ready solution plan.""")  
+        ])  
+
+        # Generate validated plan  
+        validation_response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())  
+
+        try:  
+            if isinstance(validation_response, AIMessage):  
+                validated_plan = validation_response.content if isinstance(validation_response.content, str) else str(validation_response.content)  
+            else:  
+                validated_plan = str(validation_response)  
+
+            # Parse the initial plan  
+            try:  
+                initial_plan_dict = json.loads(initial_plan)  
+                thoughts = initial_plan_dict.get("thoughts", [])  
+
+                # Format the initial plan  
+                initial_plan_text = "\n".join(['- ' + thought for thought in thoughts]) if thoughts else initial_plan  
+
+            except:  
+                initial_plan_text = initial_plan  
+
+            # Show planning progress  
+            self.agent.context.log.log(  
+                type="agent",  
+                heading="Solution Planning Progress",  
+                content="Finalizing solution plan",  
+                kvps={  
+                    "Initial Analysis": initial_plan_text,  
+                    "Refined Plan": validated_plan  
+                }  
+            )  
+
+        except Exception as e:  
+            self.agent.context.log.log(  
+                type="warning",  
+                heading="Plan validation warning:",  
+                content=f"Error during plan validation: {str(e)}\n{traceback.format_exc()}"  
+            )  
+            validated_plan = initial_plan  
+
+        return validated_plan  
 
     async def prepare_execution_phase(self, validated_plan: str, loop_data: LoopData):
         """Prepare execution phase based on validated plan and key insights."""
@@ -720,3 +673,4 @@ Remember: The refined plan will guide the implementation phase.
             insights.append(f"- {cleaned}")
             
         return "\n".join(insights)
+        
