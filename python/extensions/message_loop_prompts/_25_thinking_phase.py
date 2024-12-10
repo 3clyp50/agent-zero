@@ -673,4 +673,3 @@ Remember: The refined plan will guide the implementation phase.
             insights.append(f"- {cleaned}")
             
         return "\n".join(insights)
-        
