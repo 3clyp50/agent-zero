@@ -97,35 +97,6 @@ class ThinkingPhaseExtension(Extension):
         if log_item:
             log_item.stream(progress=stage_message)
 
-    async def show_thought(self, thought: str, stage: str):
-        """Display a thought as an Agent message with enhanced context."""
-        # Get current planning context
-        planning_context = self.agent.data.get("planning_context", {})
-        
-        # Show in CLI with proper formatting
-        PrintStyle(
-            italic=True,
-            font_color="#b3b3ff",
-            padding=True
-        ).print(thought)
-        
-        # Show in agent log with thoughts and context
-        log_item = self.agent.context.log.log(
-            type="agent",
-            heading="Thinking...",
-            content=thought,
-            kvps={
-                "Thoughts": [thought],
-                "Phase": planning_context.get("iteration_phase", "Initial"),
-                "Strategy": planning_context.get("current_strategy", "None"),
-                "Pattern": planning_context.get("thought_pattern", "None"),
-                "Evolution": self._get_thought_evolution_summary(planning_context)
-            }
-        )
-        
-        # Update progress bar using show_progress
-        if stage:
-            await self.show_progress(stage.strip())
 
     def _get_thought_evolution_summary(self, context: Dict[str, Any]) -> str:
         """Generate a concise summary of thought evolution."""
@@ -139,80 +110,6 @@ class ThinkingPhaseExtension(Extension):
             return f"Building on: {last_thought['insights'][0][:50]}..."
         return f"Developing {last_thought['phase'].lower()}..."
 
-    async def think_through_message(self, loop_data: LoopData, thinking_duration: float) -> str:  
-        """Generate solution plan through iterative thinking and refinement."""  
-        message = loop_data.user_message.output_text() if loop_data.user_message else ""  
-
-        # Show initial planning message  
-        duration_text = f"{int(thinking_duration)} seconds" if thinking_duration < 60 else f"{thinking_duration/60:.1f} minutes"  
-        await self.show_progress(f"Planning solution approach for {duration_text}...")  
-
-        # Get system and tools prompts  
-        system_prompt = self.get_system_prompt()  
-        tools_prompt = self.get_tools_prompt()  
-
-        # Generate dynamic thinking components with tools context  
-        thinking_components = await self._generate_thinking_components(message, tools_prompt)  
-
-        # Initialize planning context with dynamic components  
-        planning_context = {  
-            "thoughts": [],  
-            "thought_evolution": [],  
-            "current_focus": "Initial planning",  
-            "iteration_phase": thinking_components["phases"][0]["name"],  
-            "current_strategy": thinking_components["strategies"][0]["name"],  
-            "thought_pattern": thinking_components["patterns"][0]["name"],  
-            "thinking_components": thinking_components,  
-            "system_prompt": system_prompt,  
-            "tools_prompt": tools_prompt,  
-            "phase_progress": {},  
-            "strategy_insights": {}  
-        }  
-        self.agent.data["planning_context"] = planning_context  
-
-        # Initialize for thought collection  
-        thoughts: List[str] = []  
-        start_time = asyncio.get_event_loop().time()  
-
-        while (asyncio.get_event_loop().time() - start_time) < thinking_duration:  
-            try:  
-                # Generate complete thought  
-                thought = await self._generate_thought(message, planning_context)  
-                if thought and not thought.startswith("{") and not thought.startswith("["):  
-                    thoughts.append(thought)  
-
-                    # Update planning context and phase  
-                    self._update_planning_context(planning_context, thought)  
-                    await self._advance_iteration_phase(planning_context)  
-
-                    # Generate and show stage  
-                    stage = await self._generate_stage(thought, planning_context)  
-                    await self.show_progress(stage)  
-                    await self.show_thought(thought, stage)  
-
-                await asyncio.sleep(0.1)  
-
-            except Exception as e:  
-                self.agent.context.log.log(  
-                    type="warning",  
-                    content=f"Thinking phase error: {str(e)}\n{traceback.format_exc()}"  
-                )  
-
-        # Create final plan structure  
-        plan = {  
-            "thoughts": thoughts,  
-            "thought_evolution": planning_context["thought_evolution"],  
-            "iteration_phases": self._summarize_iteration_phases(planning_context),  
-            "key_insights": self._extract_key_insights(thoughts)  
-        }  
-
-        # Store in agent's data  
-        self.agent.data["thought_process"] = "\n".join(thoughts)  
-        self.agent.data["accumulated_thoughts"] = thoughts  
-        self.agent.data["planning_context"] = planning_context  
-        self.agent.data["current_plan"] = plan  
-
-        return json.dumps(plan, indent=2)  
 
     def _update_planning_context(self, context: Dict[str, Any], thought: str):
         """Update planning context based on thought content and current phase."""
@@ -344,94 +241,210 @@ class ThinkingPhaseExtension(Extension):
         
         return phase_summary
 
+    async def show_thought(self, thought_stream: str, stage: str):  
+        """Display a thought as an Agent message with real-time character streaming."""  
+        # Get current planning context  
+        planning_context = self.agent.data.get("planning_context", {})  
+
+        # Show in CLI with proper formatting  
+        PrintStyle(  
+            italic=True,  
+            font_color="#b3b3ff",  
+            padding=True  
+        ).stream(thought_stream)  
+
+        # Accumulate the thought stream  
+        accumulated_content = self.agent.data.get("accumulated_content", "")  
+        accumulated_content += thought_stream  
+        self.agent.data["accumulated_content"] = accumulated_content  
+
+        # Get or create the current batch log item  
+        current_batch = self.agent.data.get("current_thought_batch", None)  
+        if not current_batch or self._should_create_new_batch(planning_context):  
+            # Create new batch log item  
+            current_batch = self.agent.context.log.log(  
+                type="agent",  
+                heading="Thinking...",  
+                content=accumulated_content,  # Use accumulated content  
+                kvps={  
+                    "Thoughts": [accumulated_content],  # Initialize with accumulated content  
+                    "Phase": planning_context.get("iteration_phase", "Initial"),  
+                    "Strategy": planning_context.get("current_strategy", "None"),  
+                    "Pattern": planning_context.get("thought_pattern", "None"),  
+                    "Evolution": self._get_thought_evolution_summary(planning_context)  
+                }  
+            )  
+            self.agent.data["current_thought_batch"] = current_batch  
+            self.agent.data["current_batch_thoughts"] = [accumulated_content]  
+        else:  
+            # Update the content with accumulated content  
+            current_batch.update(content=accumulated_content)  
+            # Update Thoughts key with current batch thoughts  
+            current_batch_thoughts = self.agent.data.get("current_batch_thoughts", [])  
+            # Update the last thought in current_batch_thoughts  
+            if current_batch_thoughts:  
+                current_batch_thoughts[-1] = accumulated_content  
+            else:  
+                current_batch_thoughts = [accumulated_content]  
+            self.agent.data["current_batch_thoughts"] = current_batch_thoughts  
+
+            # Update the thoughts array in kvps  
+            if current_batch.kvps:  
+                current_batch.kvps["Thoughts"] = current_batch_thoughts  
+                current_batch.update(kvps=current_batch.kvps)  
+
+        # Check if this is a complete thought (ends with period or newline)  
+        if thought_stream.strip().endswith('.') or '\n' in thought_stream:  
+            # Clear the accumulated content  
+            self.agent.data["accumulated_content"] = ""  
+            current_thoughts = self.agent.data.get("current_batch_thoughts", [])  
+            # Start a new thought in current_batch_thoughts  
+            current_thoughts.append("")  
+            self.agent.data["current_batch_thoughts"] = current_thoughts  
+
+        # Update progress bar using show_progress  
+        if stage:  
+            await self.show_progress(stage.strip())  
+
+    def _should_create_new_batch(self, context: Dict[str, Any]) -> bool:  
+        """Determine if a new thought batch should be created."""  
+        current_thoughts = self.agent.data.get("current_batch_thoughts", [])  
+
+        # Check number of thoughts in current batch  
+        if len(current_thoughts) >= 35:  # Create new batch after 5 thoughts  
+            return True  
+
+        # Check if phase has changed  
+        current_batch = self.agent.data.get("current_thought_batch")  
+        if current_batch and current_batch.kvps:  
+            if current_batch.kvps.get("Phase") != context.get("iteration_phase"):  
+                return True  
+
+        return False      
+
     async def _generate_thought(self, message: str, context: Dict[str, Any]) -> str:  
-        """Generate a single thought based on current context and previous thoughts."""  
+        """Generate a single thought with real-time streaming."""  
         # Get the thinking prompt, system prompt, and tools prompt  
         thinking_prompt = self.get_thinking_prompt()  
         system_prompt = context["system_prompt"]  
         tools_prompt = context["tools_prompt"]  
-
-        # Get recent thoughts and insights  
-        recent_thoughts = context["thought_evolution"][-3:] if context["thought_evolution"] else []  
-        recent_insights = []  
-        for t in recent_thoughts:  
-            recent_insights.extend(t.get("insights", []))  
 
         # Create thought generation context  
         thought_context = {  
             "phase": context["iteration_phase"],  
             "strategy": context["current_strategy"],  
             "pattern": context["thought_pattern"],  
-            "recent_thoughts": [t["thought"] for t in recent_thoughts],  
-            "recent_insights": recent_insights  
+            "recent_thoughts": [t["thought"] for t in context["thought_evolution"][-3:]] if context["thought_evolution"] else [],  
+            "recent_insights": []  
         }  
 
-        # Combine prompts with enhanced context  
+        # Build the prompt  
         system_content = f"""  
-    {system_prompt}  
+        {system_prompt}  
 
-    {thinking_prompt}  
+        {thinking_prompt}  
 
-    AVAILABLE TOOLS AND CAPABILITIES:  
-    {tools_prompt}  
+        AVAILABLE TOOLS AND CAPABILITIES:  
+        {tools_prompt}  
 
-    CURRENT THINKING CONTEXT:  
-    Phase: {thought_context['phase']}  
-    Strategy: {thought_context['strategy']}  
-    Pattern: {thought_context['pattern']}  
+        CURRENT THINKING CONTEXT:  
+        Phase: {thought_context['phase']}  
+        Strategy: {thought_context['strategy']}  
+        Pattern: {thought_context['pattern']}  
 
-    Recent Thoughts:  
-    {chr(10).join(['- ' + t for t in thought_context['recent_thoughts']])}  
-
-    Recent Insights:  
-    {chr(10).join(['- ' + i for i in thought_context['recent_insights']])}  
-
-    IMPORTANT:  
-    - During this thinking phase, consider the tools and plan how you might use them, but **do not execute or use any tools at this stage**.  
-    - Focus on planning and analysis.  
-    - Your thoughts must be expressed in JSON format with a "thoughts" array containing your thought process.  
-    For example:  
-    {{  
-        "thoughts": [  
-            "Building on the previous insight about X...",  
-            "This connects to our understanding of Y...",  
-            "This suggests a new approach using Z..."  
-        ]  
-    }}  
-    """  
+        Recent Thoughts:  
+        {chr(10).join(['- ' + t for t in thought_context['recent_thoughts']])}  
+        """  
 
         prompt = ChatPromptTemplate.from_messages([  
             SystemMessage(content=system_content),  
             HumanMessage(content=f"""Problem to Solve: {message}  
 
-    Generate the next thought in our analysis, building on previous insights and following the current phase, strategy, and pattern.  
-    Show clear progression from previous thoughts and demonstrate evolving understanding.  
+        Generate the next thought in our analysis, building on previous insights and following the current phase, strategy, and pattern.  
+        Show clear progression from previous thoughts and demonstrate evolving understanding.  
 
-    **Remember:**  
-    - Do not execute or use any tools during this thinking phase.  
-    - Focus on planning and analysis.  
-    - Format your response as JSON with a "thoughts" array.""")  
+        **Remember:**  
+        - Do not execute or use any tools during this thinking phase.  
+        - Focus on planning and analysis.  
+        - Format your response as natural text, not JSON.""")  
         ])  
 
-        response = await self.agent.config.chat_model.ainvoke(prompt.format_messages())  
-        response_text = response.content if isinstance(response, AIMessage) else str(response)  
+        # Get streaming response  
+        response = ""  
+        stage = await self._generate_stage("", context)  
+
+        async for chunk in self.agent.config.chat_model.astream(prompt.format_messages()):  
+            chunk_content = chunk.content if hasattr(chunk, 'content') else str(chunk)  
+            if chunk_content:  
+                response += chunk_content  
+                # Stream each chunk in real-time  
+                await self.show_thought(chunk_content, stage)  
+
+        return response  
+
+    async def think_through_message(self, loop_data: LoopData, thinking_duration: float) -> str:  
+        """Generate solution plan through iterative thinking and refinement."""  
+        message = loop_data.user_message.output_text() if loop_data.user_message else ""  
+
+        # Show initial planning message  
+        duration_text = f"{int(thinking_duration)} seconds" if thinking_duration < 60 else f"{thinking_duration/60:.1f} minutes"  
+        await self.show_progress(f"Planning solution approach for {duration_text}...")  
+
+        # Initialize components and context  
+        system_prompt = self.get_system_prompt()  
+        tools_prompt = self.get_tools_prompt()  
+        thinking_components = await self._generate_thinking_components(message, tools_prompt)  
+
+        planning_context = {  
+            "thoughts": [],  
+            "thought_evolution": [],  
+            "current_focus": "Initial planning",  
+            "iteration_phase": thinking_components["phases"][0]["name"],  
+            "current_strategy": thinking_components["strategies"][0]["name"],  
+            "thought_pattern": thinking_components["patterns"][0]["name"],  
+            "thinking_components": thinking_components,  
+            "system_prompt": system_prompt,  
+            "tools_prompt": tools_prompt,  
+            "phase_progress": {},  
+            "strategy_insights": {}  
+        }  
+        self.agent.data["planning_context"] = planning_context  
+
+        thoughts: List[str] = []  
+        start_time = asyncio.get_event_loop().time()  
 
         try:  
-            # Try to parse the response as JSON  
-            thought_data = DirtyJson.parse_string(response_text)  
-            if isinstance(thought_data, dict) and "thoughts" in thought_data:  
-                # If it's a JSON object with thoughts array, join them into a single string  
-                thoughts = thought_data["thoughts"]  
-                if isinstance(thoughts, list):  
-                    return "\n".join(str(t) for t in thoughts)  
-                else:  
-                    return str(thoughts)  
+            while (asyncio.get_event_loop().time() - start_time) < thinking_duration:  
+                thought = await self._generate_thought(message, planning_context)  
 
-            # If it's JSON but doesn't match our expected format, return the whole response  
-            return response_text  
-        except:  
-            # If it's not valid JSON, return the raw response  
-            return response_text  
+                if thought and not thought.startswith("{") and not thought.startswith("["):  
+                    thoughts.append(thought)  
+                    self._update_planning_context(planning_context, thought)  
+                    await self._advance_iteration_phase(planning_context)  
+
+                await asyncio.sleep(0.1)  
+
+        except Exception as e:  
+            self.agent.context.log.log(  
+                type="warning",  
+                content=f"Thinking phase error: {str(e)}\n{traceback.format_exc()}"  
+            )  
+
+        # Create final plan  
+        plan = {  
+            "thoughts": thoughts,  
+            "thought_evolution": planning_context["thought_evolution"],  
+            "iteration_phases": self._summarize_iteration_phases(planning_context),  
+            "key_insights": self._extract_key_insights(thoughts)  
+        }  
+
+        # Store in agent's data  
+        self.agent.data["thought_process"] = "\n".join(thoughts)  
+        self.agent.data["accumulated_thoughts"] = thoughts  
+        self.agent.data["planning_context"] = planning_context  
+        self.agent.data["current_plan"] = plan  
+
+        return json.dumps(plan, indent=2)  
 
     async def _generate_stage(self, thought: str, context: Dict[str, Any]) -> str:
         """Generate a stage marker for the current thought."""
