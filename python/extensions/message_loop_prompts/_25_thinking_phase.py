@@ -347,11 +347,13 @@ class ThinkingPhaseExtension(Extension):
   		HumanMessage(content=f"""Problem to Solve: {message}    
 
   	Generate the next thought in our analysis, building on previous insights and following the current phase, strategy, and pattern.    
-  	Show clear progression from previous thoughts and demonstrate evolving understanding.    
+  	Show clear progression from previous thoughts and demonstrate evolving understanding.   
 
   	**Remember:**    
   	- Do not execute or use any tools during this thinking phase.    
   	- Focus on planning and analysis.    
+    - Avoid starting multiple thoughts with the same phrase.  
+    - Demonstrate learning and growth through diverse expression.
   	- Format your response as natural text, not JSON.""")    
   	])    
 
