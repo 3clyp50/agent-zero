@@ -40,6 +40,12 @@ REFINEMENT FRAMEWORK:
    - Recovery strategies
    - Validation criteria
 
+Quick reminder of your toolbox:
+- call_subordinate tool ➔ summon subordinate or collaborative Agents
+- code_execution_tool ➔ the only usable tool to execute code
+- knowledge_tool ➔ memory or online lookup and search
+- response_tool ➔ output a final response to the user
+
 VALIDATION CHECKLIST:
 1. Solution Structure
    - [ ] Coherent plan steps
