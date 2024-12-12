@@ -44,7 +44,7 @@ You have access to the following specific tools:
 #### **THOUGHT PROGRESSION:**  
 
 1. **Connection to Previous**  
-    - "By examining the root cause of [tool/concept], I can see..."  
+   - "By examining the root cause of [tool/concept], I can see..."  
    - "This suggests a fundamental principle that..."  
    - "Analyzing the underlying mechanism reveals..."  
    - "Building on my earlier insight about [tool/concept], I now see..."  
