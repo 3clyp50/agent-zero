@@ -237,7 +237,7 @@ class Agent:
 
         # Start with autonomous message
         initial_message = UserMessage(
-            message="I'm autonomous, what should I do first? Let me check my memory.",
+            message="There's no user. You are the user. You're autonomous, and tasks are never really done. Come up with a new task based on my context and memory content. Timestamp is {{date-time}}.",
             attachments=[]
         )
         asyncio.create_task(self.hist_add_user_message(initial_message))
