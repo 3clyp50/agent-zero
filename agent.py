@@ -49,6 +49,10 @@ class AgentContext:
             AgentContext.remove(self.id)
         self._contexts[self.id] = self
 
+        # Start the agent autonomously
+        if self.agent0:
+            self.process = DeferredTask(self.agent0.monologue)
+
     @staticmethod
     def get(id: str):
         return AgentContext._contexts.get(id, None)
@@ -231,6 +235,13 @@ class Agent:
         )
         self.data = {}  # free data object all the tools can use
 
+        # Start with autonomous message
+        initial_message = UserMessage(
+            message="I'm autonomous, what should I do first? Let me check my memory.",
+            attachments=[]
+        )
+        asyncio.create_task(self.hist_add_user_message(initial_message))
+
     async def monologue(self):
         while True:
             try:
@@ -314,7 +325,9 @@ class Agent:
                             # process tools requested in agent message
                             tools_result = await self.process_tools(agent_response)
                             if tools_result:  # final response of message loop available
-                                return tools_result  # break the execution if the task is done
+                                # Instead of returning, add the result back as a user message to continue the loop
+                                await self.hist_add_user_message(UserMessage(message=tools_result, attachments=[]))
+                                continue
 
                     # exceptions inside message loop:
                     except InterventionException as e:
