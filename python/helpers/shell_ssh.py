@@ -3,6 +3,7 @@ import paramiko
 import time
 import re
 from typing import Tuple
+from python.helpers.bg_process import create_background_command
 from python.helpers.log import Log
 from python.helpers.print_style import PrintStyle
 from python.helpers.strings import calculate_valid_match_lengths
@@ -80,6 +81,51 @@ class SSHInteractiveSession:
         self.last_command = command.encode()
         self.trimmed_command_length = 0
         self.shell.send(self.last_command)
+
+    async def start_background_command(self, command: str) -> str:
+        """
+        Start a command in the background using nohup and return the PID.
+        This method:
+        - Wraps the command with nohup and & to run it in background.
+        - Echoes $! to get the PID of the started process.
+        - Returns the PID as a string, or an empty string on failure.
+        """
+        if not self.shell:
+            raise Exception("Shell not connected")
+
+        # Prepare the background command
+        bg_command = create_background_command(command)
+        
+        self.full_output = b""
+        self.last_command = bg_command.encode()
+        self.trimmed_command_length = 0
+
+        self.shell.send(self.last_command)
+
+        # Read the output which should contain the PID
+        start_time = time.time()
+        pid = ""
+
+        # Check for new PID
+        while True:
+            await asyncio.sleep(0.1)
+            full_output, partial_output = await self.read_output(
+                timeout=10, reset_full_output=False
+            )
+            # partial_output should contain the PID echoed by $!
+            lines = partial_output.strip().splitlines()
+            if lines:
+                # The PID should be the last line
+                pid_candidate = lines[-1].strip()
+                # Validate that pid_candidate is numeric
+                if pid_candidate.isdigit():
+                    pid = pid_candidate
+                    break
+            # Timeout after a few seconds if no output
+            if time.time() - start_time > 10:
+                break
+
+        return pid
 
     async def read_output(
         self, timeout: float = 0, reset_full_output: bool = False
