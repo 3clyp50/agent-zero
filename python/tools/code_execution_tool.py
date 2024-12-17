@@ -68,10 +68,10 @@ class CodeExecution(Tool):
                 docker = None
 
             # initialize local or remote interactive shell interface
-            if self.agent.config.code_exec_ssh_enabled:
-                shell = await self._setup_ssh_shell()
-            else:
-                shell = await self._setup_local_shell()
+            # if self.agent.config.code_exec_ssh_enabled:
+            #     shell = await self._setup_ssh_shell()
+            # else:
+            shell = await self._setup_local_shell()
 
             self.state = State(shell=shell, docker=docker)
             await shell.connect()
