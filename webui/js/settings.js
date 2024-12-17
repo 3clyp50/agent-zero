@@ -11,8 +11,8 @@ const settingsModalProxy = {
 
         //get settings from backend
         try {
-            const set = await sendJsonData("/settings_get", null);
-
+            const response = await fetch('/settings_get');
+            const data = await response.json();
 
             const settings = {
                 "title": "Settings page",
@@ -29,7 +29,7 @@ const settingsModalProxy = {
                         "classes": "btn btn-cancel"
                     }
                 ],
-                "sections": set.settings.sections
+                "sections": data.settings.sections
             }
 
             modalAD.isOpen = true; // Update directly
