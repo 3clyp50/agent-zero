@@ -12,6 +12,5 @@ apt-get update && apt-get install -y \
     libxext6 \
     python3-tk \
     x11vnc \
-    fluxbox \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
