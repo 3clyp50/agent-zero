@@ -1,8 +1,8 @@
 from functools import wraps
-import os
 import threading
 from flask import Flask, request, Response
 from flask_basicauth import BasicAuth
+from flasgger import Swagger
 from python.helpers import errors, files, git
 from python.helpers.files import get_abs_path
 from python.helpers import persist_chat, runtime, dotenv, process
@@ -11,8 +11,7 @@ from python.helpers.extract_tools import load_classes_from_folder
 from python.helpers.api import ApiHandler
 from python.helpers.print_style import PrintStyle
 
-
-# initialize the internal Flask server
+# Initialize the internal Flask server
 app = Flask("app", static_folder=get_abs_path("./webui"), static_url_path="/")
 app.config["JSON_SORT_KEYS"] = False  # Disable key sorting in jsonify
 
@@ -22,7 +21,7 @@ lock = threading.Lock()
 basic_auth = BasicAuth(app)
 
 
-# require authentication for handlers
+# Require authentication for handlers
 def requires_auth(f):
     @wraps(f)
     async def decorated(*args, **kwargs):
@@ -42,39 +41,84 @@ def requires_auth(f):
     return decorated
 
 
-# handle default address, load index
+# Handle default address, load index
 @app.route("/", methods=["GET"])
 @requires_auth
 async def serve_index():
+    """
+    Serve the Index Page
+    ---
+    get:
+      description: Serve the main index page of the web UI.
+      responses:
+        200:
+          description: Returns the index HTML page.
+          content:
+            text/html:
+              schema:
+                type: string
+    """
     gitinfo = git.get_git_info()
     return files.read_file(
         "./webui/index.html",
         version_no=gitinfo["version"],
         version_time=gitinfo["commit_time"],
     )
-    
+
+
+def register_api_handler(app, handler: type[ApiHandler]):
+    name = handler.__module__.split(".")[-1]
+    instance = handler(app, lock)
+
+    docstring = instance.get_docstring()
+    http_method = instance.get_supported_http_method()  # Get HTTP methods from handler
+
+    async def handle_request():
+        """
+        Attach the handler's docstring here.
+        """
+        return await instance.handle_request(request=request)
+
+    # Assign the docstring to the handle_request function
+    handle_request.__doc__ = docstring
+
+    app.add_url_rule(
+        f"/{name}",
+        f"/{name}",
+        handle_request,
+        methods=[http_method],  # Use dynamic methods
+    )
+
+    PrintStyle().print(f"Registered dynamic route: /{name} with methods {http_method}")
+
 
 def run():
     PrintStyle().print("Initializing framework...")
 
-    # Suppress only request logs but keep the startup messages
-    from werkzeug.serving import WSGIRequestHandler
-    from werkzeug.serving import make_server
+    # Suppress request logs
+    from werkzeug.serving import WSGIRequestHandler, make_server
 
     class NoRequestLoggingWSGIRequestHandler(WSGIRequestHandler):
         def log_request(self, code="-", size="-"):
             pass  # Override to suppress request logging
 
     # Get configuration from environment
-    port = runtime.get_arg("port") or int(dotenv.get_dotenv_value("WEB_UI_PORT", 0)) or 5000
-    host = runtime.get_arg("host") or dotenv.get_dotenv_value("WEB_UI_HOST") or "localhost"
-    use_cloudflare = (runtime.get_arg("cloudflare_tunnel")
-        or dotenv.get_dotenv_value("USE_CLOUDFLARE", "false").lower()) == "true"
-    
+    port = (
+        runtime.get_arg("port")
+        or int(dotenv.get_dotenv_value("WEB_UI_PORT", 0))
+        or 5000
+    )
+    host = (
+        runtime.get_arg("host") or dotenv.get_dotenv_value("WEB_UI_HOST") or "localhost"
+    )
+    use_cloudflare = (
+        runtime.get_arg("cloudflare_tunnel")
+        or dotenv.get_dotenv_value("USE_CLOUDFLARE", "false").lower()
+    ) == "true"
 
     tunnel = None
 
-    try:    
+    try:
         # Initialize and start Cloudflare tunnel if enabled
         if use_cloudflare and port:
             try:
@@ -84,48 +128,59 @@ def run():
                 PrintStyle().error(f"Failed to start Cloudflare tunnel: {e}")
                 PrintStyle().print("Continuing without tunnel...")
 
-        # initialize contexts from persisted chats
+        # Initialize contexts from persisted chats
         persist_chat.load_tmp_chats()
+
+        # Initialize and register API handlers
+        handlers = load_classes_from_folder("python/api", "*.py", ApiHandler)
+        for handler in handlers:
+            register_api_handler(app, handler)
 
     except Exception as e:
         PrintStyle().error(errors.format_error(e))
 
+    # Initialize Flasgger after all routes have been registered
+    swagger_config = {
+        "headers": [],
+        "specs": [
+            {
+                "endpoint": "apispec",
+                "route": "/apispec.json",
+                "rule_filter": lambda rule: not rule.rule.startswith(
+                    "/static"
+                ),  # Exclude static routes
+                "model_filter": lambda tag: True,  # all in
+            }
+        ],
+        "swagger_ui": True,
+        "specs_route": "/docs",
+        "title": "My Flask API",
+        "description": "This is the API documentation for my Flask server.",
+        "version": "1.0.0",
+    }
+
+    Swagger(app, config=swagger_config)
+
     server = None
 
-    def register_api_handler(app, handler: type[ApiHandler]):
-        name = handler.__module__.split(".")[-1]
-        instance = handler(app, lock)
-        @requires_auth
-        async def handle_request():
-            return await instance.handle_request(request=request)
-        app.add_url_rule(
-            f"/{name}",
-            f"/{name}",
-            handle_request,
-            methods=["POST", "GET"],
-        )
-        
-    # initialize and register API handlers
-    handlers = load_classes_from_folder("python/api", "*.py", ApiHandler)
-    for handler in handlers:
-        register_api_handler(app, handler)
-        
     try:
-        server = make_server(host=host, port=port, app=app, request_handler=NoRequestLoggingWSGIRequestHandler, threaded=True)
+        server = make_server(
+            host=host,
+            port=port,
+            app=app,
+            request_handler=NoRequestLoggingWSGIRequestHandler,
+            threaded=True,
+        )
         process.set_server(server)
         server.log_startup()
-        server.serve_forever() 
-        # Run Flask app
-        # app.run(
-        #     request_handler=NoRequestLoggingWSGIRequestHandler, port=port, host=host
-        # )
+        server.serve_forever()
     finally:
         # Clean up tunnel if it was started
         if tunnel:
             tunnel.stop()
 
 
-# run the internal server
+# Run the internal server
 if __name__ == "__main__":
     runtime.initialize()
     dotenv.load_dotenv()

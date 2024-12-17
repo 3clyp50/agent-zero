@@ -6,7 +6,6 @@ from python.helpers import files, memory
 import os
 from werkzeug.utils import secure_filename
 
-
 class ImportKnowledge(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
         if "files[]" not in request.files:
@@ -37,3 +36,48 @@ class ImportKnowledge(ApiHandler):
             "message": "Knowledge Imported",
             "filenames": saved_filenames[:5]
         }
+
+    def get_docstring(self) -> str:
+        return """
+        Import Knowledge API Request
+        Import knowledge files into the system.
+        ---
+        tags:
+            -   knowledge
+        parameters:
+            -   in: formData
+                name: files[]
+                type: file
+                required: true
+                description: List of files to be imported.
+            -   in: formData
+                name: ctxid
+                type: string
+                required: true
+                description: Context ID for the knowledge import.
+        responses:
+            200:
+                description: Knowledge imported successfully.
+                schema:
+                    type: object
+                    properties:
+                        message:
+                            type: string
+                            description: Success message.
+                        filenames:
+                            type: array
+                            items:
+                                type: string
+                            description: List of imported filenames.
+            400:
+                description: Bad request, missing files or context ID.
+                schema:
+                    type: object
+                    properties:
+                        error:
+                            type: string
+                            description: Error message indicating the issue.
+        """
+
+    def get_supported_http_method(self) -> str:
+        return "POST"

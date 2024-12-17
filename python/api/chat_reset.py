@@ -15,3 +15,36 @@ class Reset(ApiHandler):
         return {
             "message": "Agent restarted.",
         }
+
+    def get_docstring(self) -> str:
+        return """
+        Reset API Request
+        Reset the agent's context.
+        ---
+        tags:
+            -   chat
+        parameters:
+            -   in: body
+                name: body
+                required: true
+                schema:
+                    id: ResetRequest
+                    required:
+                        - context
+                    properties:
+                        context:
+                            type: string
+                            description: The context ID to reset.
+        responses:
+            200:
+                description: Agent restarted successfully.
+                schema:
+                    type: object
+                    properties:
+                        message:
+                            type: string
+                            description: Confirmation message indicating the agent has been restarted.
+        """
+
+    def get_supported_http_method(self) -> str:
+        return "POST"

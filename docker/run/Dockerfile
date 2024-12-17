@@ -2,31 +2,41 @@
 FROM debian:bookworm-slim
 
 # Check if the argument is provided, else throw an error
+ARG GIT_REPOSITORY
+RUN if [ -z "$GIT_REPOSITORY" ]; then echo "ERROR: GIT_REPOSITORY is not set!" >&2; exit 1; fi
+ENV GIT_REPOSITORY=$GIT_REPOSITORY
+
 ARG BRANCH
 RUN if [ -z "$BRANCH" ]; then echo "ERROR: BRANCH is not set!" >&2; exit 1; fi
 ENV BRANCH=$BRANCH
 
-# Copy contents of the project to /a0
+# Copy contents of the project to /
 COPY ./fs/ /
 
-# pre installation steps
+# Pre-installation steps
 RUN bash /ins/pre_install.sh $BRANCH
 
-# install additional software
+# Install additional software
 RUN bash /ins/install_additional.sh $BRANCH
 
-# install A0
-RUN bash /ins/install_A0.sh $BRANCH
+# Install A0
+RUN bash /ins/install_A0.sh $GIT_REPOSITORY $BRANCH
 
-# cleanup repo and install A0 without caching, this speeds up builds
+# Install desktop sharing components
+RUN bash /ins/install_desktop.sh
+
+# Cleanup repo and install A02 without caching, this speeds up builds
 ARG CACHE_DATE=none
-RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $BRANCH
+RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $GIT_REPOSITORY $BRANCH
 
-# post installation steps
-RUN bash /ins/post_install.sh $BRANCH
+# Post-installation steps
+RUN bash /ins/post_install.sh
 
-# Expose ports
+# Set environment variables for the virtual X server
+ENV DISPLAY=:99
+
+# Expose necessary ports
 EXPOSE 22 80
 
-# initialize runtime
-CMD ["/bin/bash", "-c", "/bin/bash /exe/initialize.sh $BRANCH"]
+# Initialize runtime with Xvfb, Openbox, VNC server, and your existing initialization script
+CMD ["/bin/bash", "-c", "/bin/bash /exe/initialize.sh"]

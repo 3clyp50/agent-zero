@@ -8,7 +8,6 @@ from werkzeug.utils import secure_filename
 from python.helpers.defer import DeferredTask
 from python.helpers.print_style import PrintStyle
 
-
 class Message(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
         task, context = await self.communicate(input=input, request=request)
@@ -86,3 +85,58 @@ class Message(ApiHandler):
         )
 
         return context.communicate(UserMessage(message, attachment_paths)), context
+
+    def get_docstring(self) -> str:
+        return """
+        Message API
+        ---
+        tags:
+            - message
+        parameters:
+            - in: body
+              name: body
+              required: true
+              schema:
+                id: MessageRequest
+                required:
+                    - text
+                properties:
+                    text:
+                        type: string
+                        description: The text of the user message.
+                    context:
+                        type: string
+                        description: The context ID for the message.
+                    message_id:
+                        type: string
+                        description: The unique identifier for the message.
+                    attachments:
+                        type: array
+                        items:
+                            type: string
+                            format: binary
+                        description: List of attachments.
+        responses:
+            200:
+                description: Message processed successfully.
+                schema:
+                    type: object
+                    properties:
+                        message:
+                            type: string
+                            description: The response message.
+                        context:
+                            type: string
+                            description: The context ID for the response.
+            400:
+                description: Bad request, missing required fields.
+                schema:
+                    type: object
+                    properties:
+                        error:
+                            type: string
+                            description: Error message indicating the issue.
+        """
+
+    def get_supported_http_method(self) -> str:
+        return "POST"

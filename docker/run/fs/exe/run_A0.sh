@@ -6,7 +6,7 @@ TARGET_DIR="/a0"
 
 
 function setup_venv() {
-    . "/ins/setup_venv.sh" "$@"
+    . "/ins/setup_venv.sh"
 }
 
 function clone_and_install() {
