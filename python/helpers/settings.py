@@ -813,6 +813,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             agent_section,
             chat_model_section,
             util_model_section,
+            vision_model_section,
             embed_model_section,
             browser_model_section,
             memory_section,
@@ -879,42 +880,6 @@ def normalize_settings(settings: Settings) -> Settings:
             except (ValueError, TypeError):
                 copy[key] = value  # make default instead
     return copy
-
-
-# def get_chat_model(settings: Settings | None = None) -> BaseChatModel:
-#     if not settings:
-#         settings = get_settings()
-#     return get_model(
-#         type=ModelType.CHAT,
-#         provider=ModelProvider[settings["chat_model_provider"]],
-#         name=settings["chat_model_name"],
-#         temperature=settings["chat_model_temperature"],
-#         **settings["chat_model_kwargs"],
-#     )
-
-
-# def get_utility_model(settings: Settings | None = None) -> BaseChatModel:
-#     if not settings:
-#         settings = get_settings()
-#     return get_model(
-#         type=ModelType.CHAT,
-#         provider=ModelProvider[settings["util_model_provider"]],
-#         name=settings["util_model_name"],
-#         temperature=settings["util_model_temperature"],
-#         **settings["util_model_kwargs"],
-#     )
-
-
-# def get_embedding_model(settings: Settings | None = None) -> Embeddings:
-#     if not settings:
-#         settings = get_settings()
-#     return get_model(
-#         type=ModelType.EMBEDDING,
-#         provider=ModelProvider[settings["embed_model_provider"]],
-#         name=settings["embed_model_name"],
-#         **settings["embed_model_kwargs"],
-#     )
-
 
 def _read_settings_file() -> Settings | None:
     if os.path.exists(SETTINGS_FILE):
