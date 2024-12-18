@@ -14,28 +14,34 @@ class Settings(TypedDict):
     chat_model_provider: str
     chat_model_name: str
     chat_model_temperature: float
-    chat_model_kwargs: dict[str, str]
     chat_model_ctx_length: int
     chat_model_ctx_history: float
     chat_model_rl_requests: int
     chat_model_rl_input: int
     chat_model_rl_output: int
+    chat_model_kwargs: dict[str, str]
 
     util_model_provider: str
     util_model_name: str
     util_model_temperature: float
-    util_model_kwargs: dict[str, str]
-    util_model_ctx_length: int
-    util_model_ctx_input: float
     util_model_rl_requests: int
     util_model_rl_input: int
     util_model_rl_output: int
+    util_model_kwargs: dict[str, str]
+
+    vision_model_provider: str
+    vision_model_name: str
+    vision_model_temperature: float
+    vision_model_rl_requests: int
+    vision_model_rl_input: int
+    vision_model_rl_output: int
+    vision_model_kwargs: dict[str, str]
 
     embed_model_provider: str
     embed_model_name: str
-    embed_model_kwargs: dict[str, str]
     embed_model_rl_requests: int
     embed_model_rl_input: int
+    embed_model_kwargs: dict[str, str]
 
     browser_model_provider: str
     browser_model_name: str
@@ -314,6 +320,87 @@ def convert_out(settings: Settings) -> SettingsOutput:
         "title": "Utility model",
         "description": "Smaller, cheaper, faster model for handling utility tasks like organizing memory, preparing prompts, summarizing.",
         "fields": util_model_fields,
+    }
+
+    # vision model section
+    vision_model_fields: list[SettingsField] = []
+    vision_model_fields.append(
+        {
+            "id": "vision_model_provider",
+            "title": "Vision model provider",
+            "description": "Select provider for the vision model used by Agent Zero",
+            "type": "select",
+            "value": settings["vision_model_provider"],
+            "options": [{"value": p.name, "label": p.value} for p in ModelProvider],
+        }
+    )
+    vision_model_fields.append(
+        {
+            "id": "vision_model_name",
+            "title": "Vision model name",
+            "description": "Exact name of model from selected provider",
+            "type": "text",
+            "value": settings["vision_model_name"],
+        }
+    )
+
+    vision_model_fields.append(
+        {
+            "id": "vision_model_temperature",
+            "title": "Vision model temperature",
+            "description": "Determines the randomness of generated responses. 0 is deterministic, 1 is random",
+            "type": "range",
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "value": settings["vision_model_temperature"],
+        }
+    )
+
+    vision_model_fields.append(
+        {
+            "id": "vision_model_rl_requests",
+            "title": "Requests per minute limit",
+            "description": "Limits the number of requests per minute to the vision model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.",
+            "type": "number",
+            "value": settings["vision_model_rl_requests"],
+        }
+    )
+
+    vision_model_fields.append(
+        {
+            "id": "vision_model_rl_input",
+            "title": "Input tokens per minute limit",
+            "description": "Limits the number of input tokens per minute to the vision model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.",
+            "type": "number",
+            "value": settings["vision_model_rl_input"],
+        }
+    )
+
+    vision_model_fields.append(
+        {
+            "id": "vision_model_rl_output",
+            "title": "Output tokens per minute limit",
+            "description": "Limits the number of output tokens per minute to the vision model. Waits if the limit is exceeded. Set to 0 to disable rate limiting.",
+            "type": "number",
+            "value": settings["vision_model_rl_output"],
+        }
+    )
+
+    vision_model_fields.append(
+        {
+            "id": "vision_model_kwargs",
+            "title": "Vision model additional parameters",
+            "description": "Any other parameters supported by the model. Format is KEY=VALUE on individual lines, just like .env file.",
+            "type": "textarea",
+            "value": _dict_to_env(settings["vision_model_kwargs"]),
+        }
+    )
+
+    vision_model_section: SettingsSection = {
+        "title": "Vision Model",
+        "description": "Selection and settings for vision model used by Agent Zero",
+        "fields": vision_model_fields,
     }
 
     # embedding model section
@@ -876,31 +963,36 @@ def get_default_settings() -> Settings:
         chat_model_provider=ModelProvider.OPENAI.name,
         chat_model_name="gpt-4o-mini",
         chat_model_temperature=0.0,
-        chat_model_kwargs={},
         chat_model_ctx_length=120000,
         chat_model_ctx_history=0.7,
         chat_model_rl_requests=0,
         chat_model_rl_input=0,
         chat_model_rl_output=0,
+        chat_model_kwargs={},
         util_model_provider=ModelProvider.OPENAI.name,
         util_model_name="gpt-4o-mini",
         util_model_temperature=0.0,
-        util_model_ctx_length=120000,
-        util_model_ctx_input=0.7,
-        util_model_kwargs={},
         util_model_rl_requests=60,
         util_model_rl_input=0,
         util_model_rl_output=0,
-        embed_model_provider=ModelProvider.OPENAI.name,
-        embed_model_name="text-embedding-3-small",
-        embed_model_kwargs={},
-        embed_model_rl_requests=0,
-        embed_model_rl_input=0,
+        util_model_kwargs={},
         browser_model_provider=ModelProvider.OPENAI.name,
         browser_model_name="gpt-4o-mini",
         browser_model_vision=False,
         browser_model_temperature=0.0,
         browser_model_kwargs={},
+        vision_model_provider=ModelProvider.OPENAI.name,
+        vision_model_name="gpt-4o-mini",
+        vision_model_temperature=0.0,
+        vision_model_rl_requests=0,
+        vision_model_rl_input=0,
+        vision_model_rl_output=0,
+        vision_model_kwargs={},
+        embed_model_provider=ModelProvider.OPENAI.name,
+        embed_model_name="text-embedding-3-small",
+        embed_model_rl_requests=0,
+        embed_model_rl_input=0,
+        embed_model_kwargs={},
         api_keys={},
         auth_login="",
         auth_password="",

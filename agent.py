@@ -144,7 +144,7 @@ class AgentContext:
 
 
 @dataclass
-class ModelConfig:
+class ChatModelConfig:
     provider: models.ModelProvider
     name: str
     ctx_length: int = 0
@@ -156,11 +156,42 @@ class ModelConfig:
 
 
 @dataclass
+class UtilityModelConfig:
+    provider: models.ModelProvider
+    name: str
+    temperature: float
+    limit_requests: int
+    limit_input: int
+    limit_output: int
+    kwargs: dict
+
+
+@dataclass
+class VisionModelConfig:
+    provider: models.ModelProvider
+    name: str
+    temperature: float
+    limit_requests: int
+    limit_input: int
+    limit_output: int
+    kwargs: dict
+
+
+@dataclass
+class EmbeddingsModelConfig:
+    provider: models.ModelProvider
+    name: str
+    limit_requests: int
+    kwargs: dict
+
+
+@dataclass
 class AgentConfig:
     chat_model: ModelConfig
     utility_model: ModelConfig
     embeddings_model: ModelConfig
     browser_model: ModelConfig
+    vision_model: ModelConfig
     prompts_subdir: str = ""
     memory_subdir: str = ""
     knowledge_subdirs: list[str] = field(default_factory=lambda: ["default", "custom"])
@@ -521,6 +552,7 @@ class Agent:
         callback: Callable[[str], Awaitable[None]] | None = None,
         background: bool = False,
     ):
+
         prompt = ChatPromptTemplate.from_messages(
             [SystemMessage(content=system), HumanMessage(content=message)]
         )
@@ -572,8 +604,63 @@ class Agent:
 
         return response
 
+    async def call_vision_model(
+        self,
+        message: str,
+        image_url: str,
+        system: str | None = None,
+        callback: Callable[[str, str], Awaitable[None]] | None = None,
+    ):
+
+        message_content = [
+            {"type": "text", "text": message},
+            {"type": "image_url", "image_url": {"url": image_url}},
+        ]
+
+        messages = []
+
+        if system:
+            messages.append(SystemMessage(content=system))
+
+        messages.append(HumanMessage(content=message_content))
+
+        prompt = ChatPromptTemplate.from_messages(messages)
+
+        response = ""
+
+        # model class
+        model = models.get_model(
+            models.ModelType.CHAT,
+            self.config.vision_model.provider,
+            self.config.vision_model.name,
+            **self.config.vision_model.kwargs,
+        )
+
+        # rate limiter
+        limiter = await self.rate_limiter(self.config.vision_model, prompt.format())
+
+        async for chunk in (prompt | model).astream({}):
+            await self.handle_intervention()  # wait for intervention and handle it, if paused
+
+            content = models.parse_chunk(chunk)
+            limiter.add(output=tokens.approximate_tokens(content))
+            response += content
+
+            if callback:
+                await callback(content, response)
+
+        return response
+
     async def rate_limiter(
-        self, model_config: ModelConfig, input: str, background: bool = False
+        self,
+        model_config: (
+            ChatModelConfig
+            | UtilityModelConfig
+            | VisionModelConfig
+            | EmbeddingsModelConfig
+        ),
+        input: str,
+        background: bool = False,
     ):
         # rate limiter log
         wait_log = None
@@ -596,9 +683,10 @@ class Agent:
             model_config.provider,
             model_config.name,
             model_config.limit_requests,
-            model_config.limit_input,
-            model_config.limit_output,
+            getattr(model_config, "limit_input", 0),
+            getattr(model_config, "limit_output", 0),
         )
+
         limiter.add(input=tokens.approximate_tokens(input))
         limiter.add(requests=1)
         await limiter.wait(callback=wait_callback)
