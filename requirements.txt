@@ -28,3 +28,6 @@ unstructured==0.15.13
 unstructured-client==0.25.9
 webcolors==24.6.0
 flasgger==0.9.7.1
+torch==2.5.1
+torchaudio==2.5.1
+torchvision==0.20.1
