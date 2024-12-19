@@ -7,6 +7,8 @@ IMPORTANT: Never use implicit print or implicit output; it does not work! If you
 
 IMPORTANT!: Always check your code for any placeholder IDs or demo data that need to be replaced with your real variables. Do not simply reuse code snippets from tutorials.
 
+IMPORTANT: Use the "background" runtime over the "terminal" runtime for long-running and non-blocking processes like GUI applications.
+
 Do not use in combination with other tools except for thoughts. Wait for the response before using other tools.
 
 **Example usages:**

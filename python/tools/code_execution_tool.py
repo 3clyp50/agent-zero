@@ -173,6 +173,7 @@ class CodeExecution(Tool):
         """
         local_shell = await self._setup_local_shell()
         await local_shell.connect()
+
         pid = await local_shell.start_background_command(command)
         if pid:
             response = f"Process started in background with PID: {pid}"
