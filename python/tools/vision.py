@@ -5,12 +5,12 @@ from python.helpers.tool import Tool, Response
 class VisionTool(Tool):
     async def execute(self, **kwargs):
 
-        query = self.args.get("query", "")
+        instruction = self.args.get("instruction", "")
 
         screenshot = get_screenshot()
 
         description = await self.agent.call_vision_model(
-            message=query,
+            message=instruction,
             image= encode_screenshot(screenshot)
         )
 
