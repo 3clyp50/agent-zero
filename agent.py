@@ -607,24 +607,21 @@ class Agent:
     async def call_vision_model(
         self,
         message: str,
-        image_url: str,
-        system: str | None = None,
+        image: str,
         callback: Callable[[str, str], Awaitable[None]] | None = None,
     ):
+        text_part = {"type": "text", "text": message}
+        image_part = {
+            "type": "image_url",
+            "image_url": f"data:image/jpeg;base64,{image}",
+        }
 
-        message_content = [
-            {"type": "text", "text": message},
-            {"type": "image_url", "image_url": {"url": image_url}},
-        ]
+        content_parts = []
 
-        messages = []
+        content_parts.append(image_part)
+        content_parts.append(text_part)
 
-        if system:
-            messages.append(SystemMessage(content=system))
-
-        messages.append(HumanMessage(content=message_content))
-
-        prompt = ChatPromptTemplate.from_messages(messages)
+        prompt = ChatPromptTemplate.from_messages([HumanMessage(content=content_parts)])
 
         response = ""
 

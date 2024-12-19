@@ -11,7 +11,7 @@ class VisionTool(Tool):
 
         description = await self.agent.call_vision_model(
             message=query,
-            image_url= encode_screenshot(screenshot)
+            image= encode_screenshot(screenshot)
         )
 
         return Response(message=description, break_loop=False)
