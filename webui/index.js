@@ -509,6 +509,11 @@ window.toggleUtils = async function (showUtils) {
     // toggleCssProperty('.message-util .msg-content', 'display', showUtils ? undefined : 'none');
 }
 
+window.toggleDebug = async function (showDebug) {
+    // add display:none to .msg-json class definition
+    toggleCssProperty('.message-debug', 'display', showDebug ? undefined : 'none');
+}
+
 window.toggleDarkMode = function (isDark) {
     if (isDark) {
         document.body.classList.remove('light-mode');

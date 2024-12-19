@@ -557,6 +557,17 @@ class Agent:
             [SystemMessage(content=system), HumanMessage(content=message)]
         )
 
+        # Log the LLM call with "debug" type
+        self.context.log.log(
+            type="debug",
+            heading="Calling Utility Model",
+            content="",
+            kvps={
+                "model": self.config.utility_model.name,
+                "request": prompt.format()
+            }
+        )
+
         response = ""
 
         # model class
@@ -577,6 +588,17 @@ class Agent:
             if callback:
                 await callback(content)
 
+        # Log the LLM response with "debug" type
+        self.context.log.log(
+            type="debug",
+            heading="Utility Model Response",
+            content="",
+            kvps={
+                "model": self.config.utility_model.name,
+                "response": response
+            }
+        )
+
         return response
 
     async def call_chat_model(
@@ -584,6 +606,18 @@ class Agent:
         prompt: ChatPromptTemplate,
         callback: Callable[[str, str], Awaitable[None]] | None = None,
     ):
+
+        # Log the LLM call with "debug" type
+        self.context.log.log(
+            type="debug",
+            heading="Calling Chat Model",
+            content="",
+            kvps={
+                "model": self.config.chat_model.name,
+                "request": prompt.format()
+            }
+        )
+
         response = ""
 
         # model class
@@ -601,6 +635,17 @@ class Agent:
 
             if callback:
                 await callback(content, response)
+
+        # Log the LLM response with "debug" type
+        self.context.log.log(
+            type="debug",
+            heading="Chat Model Response",
+            content="",
+            kvps={
+                "model": self.config.chat_model.name,
+                "response": response
+            }
+        )
 
         return response
 
@@ -622,6 +667,17 @@ class Agent:
         content_parts.append(text_part)
 
         prompt = ChatPromptTemplate.from_messages([HumanMessage(content=content_parts)])
+
+        # Log the LLM call with "debug" type
+        self.context.log.log(
+            type="debug",
+            heading="Calling Vision Model",
+            content="",
+            kvps={
+                "model": self.config.vision_model.name,
+                "request": prompt.format()
+            }
+        )
 
         response = ""
 
@@ -645,6 +701,17 @@ class Agent:
 
             if callback:
                 await callback(content, response)
+
+        # Log the LLM response with "debug" type
+        self.context.log.log(
+            type="debug",
+            heading="Vision Model Response",
+            content="",
+            kvps={
+                "model": self.config.vision_model.name,
+                "response": response
+            }
+        )
 
         return response
 
