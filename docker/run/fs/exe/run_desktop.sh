@@ -2,8 +2,15 @@
 
 # Start Xvfb (for virtual display)
 echo "Starting Xvfb..."
-Xvfb :99 -screen 0 1024x768x24 &
+Xvfb :99 -screen 0 1024x768x24 +extension RANDR &
 sleep 2  # Wait for Xvfb to initialize
+
+# Set the DISPLAY environment variable
+export DISPLAY=:99
+
+# Ensure a visible cursor
+echo "Setting visible cursor..."
+xsetroot -cursor_name left_ptr
 
 # Start Openbox window manager
 echo "Starting Openbox..."
@@ -18,8 +25,10 @@ x11vnc -display :99 -forever -nopw &
 while true; do
     if ! pgrep -x "Xvfb" > /dev/null; then
         echo "Xvfb stopped. Restarting..."
-        Xvfb :99 -screen 0 1024x768x24 &
+        Xvfb :99 -screen 0 1024x768x24 +extension RANDR &
         sleep 2
+        export DISPLAY=:99
+        xsetroot -cursor_name left_ptr
     fi
 
     if ! pgrep -x "openbox" > /dev/null; then
