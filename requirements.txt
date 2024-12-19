@@ -28,3 +28,4 @@ unstructured==0.15.13
 unstructured-client==0.25.9
 webcolors==24.6.0
 flasgger==0.9.7.1
+pyautogui==0.9.54
