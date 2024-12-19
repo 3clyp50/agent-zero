@@ -2,13 +2,15 @@ from python.helpers.screen_utils import encode_screenshot, get_screenshot
 from python.helpers.tool import Tool, Response
 
 
-class DescribeScreenTool(Tool):
+class VisionTool(Tool):
     async def execute(self, **kwargs):
+
+        query = self.args.get("query", "")
 
         screenshot = get_screenshot()
 
         description = await self.agent.call_vision_model(
-            message=self.agent.read_prompt("vision.describe_screen.md"),
+            message=query,
             image_url= encode_screenshot(screenshot)
         )
 
