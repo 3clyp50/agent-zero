@@ -175,6 +175,11 @@ function toastFetchError(text, error) {
 }
 window.toastFetchError = toastFetchError
 
+function toastMessage(text) {
+    toast(`${text}`, "success");
+}
+window.toastMessage = toastMessage
+
 chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
