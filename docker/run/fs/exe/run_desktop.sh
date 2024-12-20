@@ -1,8 +1,16 @@
 #!/bin/bash
 
-# Start Xvfb (for virtual display)
+echo "Setting up Xauthority..."
+export DISPLAY=:99
+export XAUTHORITY=/root/.Xauthority
+
+# Create the Xauthority file and generate a key
+touch /root/.Xauthority
+xauth generate $DISPLAY . trusted
+xauth list
+
 echo "Starting Xvfb..."
-Xvfb :99 -screen 0 1024x768x24 +extension RANDR &
+Xvfb $DISPLAY -screen 0 1024x768x24 +extension RANDR &
 sleep 2  # Wait for Xvfb to initialize
 
 # Set the DISPLAY environment variable
@@ -17,17 +25,13 @@ echo "Starting Openbox..."
 openbox &
 sleep 1  # Ensure Openbox has started
 
-# Start x11vnc server for VNC access
-echo "Starting x11vnc server..."
-x11vnc -display :99 -forever -nopw &
-
 # Monitor for failures and restart services if necessary
 while true; do
     if ! pgrep -x "Xvfb" > /dev/null; then
         echo "Xvfb stopped. Restarting..."
-        Xvfb :99 -screen 0 1024x768x24 +extension RANDR &
+        Xvfb $DISPLAY -screen 0 1024x768x24 +extension RANDR &
         sleep 2
-        export DISPLAY=:99
+        xauth generate $DISPLAY . trusted
         xsetroot -cursor_name left_ptr
     fi
 
@@ -35,11 +39,6 @@ while true; do
         echo "Openbox stopped. Restarting..."
         openbox &
         sleep 1
-    fi
-
-    if ! pgrep -x "x11vnc" > /dev/null; then
-        echo "x11vnc stopped. Restarting..."
-        x11vnc -display :99 -forever -nopw &
     fi
 
     sleep 5  # Check services every 5 seconds
