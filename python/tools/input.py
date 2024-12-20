@@ -43,7 +43,7 @@ class Input(Tool):
         press_key(key)
         return Response(message=f"Pressed key: '{key}'.", break_loop=False)
 
-    def hotkey(self, *keys):
+    def hotkey(self, keys):
         hotkey(*keys)
         return Response(message=f"Pressed hotkey: {', '.join(keys)}.", break_loop=False)
 
