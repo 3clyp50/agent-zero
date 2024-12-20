@@ -1,45 +1,27 @@
 #!/bin/bash
 
-echo "Setting up Xauthority..."
-export DISPLAY=:99
-export XAUTHORITY=/root/.Xauthority
+echo "Cleaning up any existing Xvfb and Xauthority instances..."
+pkill Xvfb || true
+pkill openbox || true
 
-# Create the Xauthority file and generate a key
+if [ -f /root/.Xauthority ]; then
+    rm /root/.Xauthority
+    echo "Removed existing /root/.Xauthority file."
+fi
+
+rm -f /tmp/.X*lock
 touch /root/.Xauthority
-xauth generate $DISPLAY . trusted
-xauth list
 
 echo "Starting Xvfb..."
-Xvfb $DISPLAY -screen 0 1024x768x24 +extension RANDR &
-sleep 2  # Wait for Xvfb to initialize
+Xvfb :99 -screen 0 1024x768x24 &
+sleep 2
 
-# Set the DISPLAY environment variable
-export DISPLAY=:99
+echo "Generating xauth..."
+xauth generate :99 . trusted
+xauth list
 
-# Ensure a visible cursor
-echo "Setting visible cursor..."
-xsetroot -cursor_name left_ptr
-
-# Start Openbox window manager
-echo "Starting Openbox..."
+echo "Starting openbox..."
 openbox &
-sleep 1  # Ensure Openbox has started
+sleep 2
 
-# Monitor for failures and restart services if necessary
-while true; do
-    if ! pgrep -x "Xvfb" > /dev/null; then
-        echo "Xvfb stopped. Restarting..."
-        Xvfb $DISPLAY -screen 0 1024x768x24 +extension RANDR &
-        sleep 2
-        xauth generate $DISPLAY . trusted
-        xsetroot -cursor_name left_ptr
-    fi
-
-    if ! pgrep -x "openbox" > /dev/null; then
-        echo "Openbox stopped. Restarting..."
-        openbox &
-        sleep 1
-    fi
-
-    sleep 5  # Check services every 5 seconds
-done
+echo "Xvfb and openbox are up and running."

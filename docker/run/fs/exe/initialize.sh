@@ -16,8 +16,8 @@ apt-get update > /dev/null 2>&1 &
 # Start searxng server in background
 su - searxng -c "bash /exe/run_searxng.sh" &
 
-# Start desktop sharing services
-bash /exe/run_desktop.sh &
+# Run the desktop environment startup script
+bash /exe/run_desktop.sh
 
 # Start A0 and handle restart on exit
 bash /exe/run_A0.sh 

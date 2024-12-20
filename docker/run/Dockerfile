@@ -22,10 +22,9 @@ RUN bash /ins/install_additional.sh $BRANCH
 # Install A0
 RUN bash /ins/install_A0.sh $GIT_REPOSITORY $BRANCH
 
-# Install desktop sharing components
+# Install the desktop environment
 RUN bash /ins/install_desktop.sh
-
-# Cleanup repo and install A02 without caching, this speeds up builds
+# Cleanup repo and install A02 without caching
 ARG CACHE_DATE=none
 RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $GIT_REPOSITORY $BRANCH
 
@@ -34,9 +33,10 @@ RUN bash /ins/post_install.sh
 
 # Set environment variables for the virtual X server
 ENV DISPLAY=:99
+ENV XAUTHORITY=/root/.Xauthority
 
 # Expose necessary ports
 EXPOSE 22 80
 
-# Initialize runtime with Xvfb, Openbox, VNC server, and your existing initialization script
+# Initialize runtime
 CMD ["/bin/bash", "-c", "/bin/bash /exe/initialize.sh"]
