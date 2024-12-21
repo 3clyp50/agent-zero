@@ -16,13 +16,12 @@ const screenShareModalProxy = {
 
     async openModal() {
         const modalEl = document.getElementById('screenShareModal');
-        const modalAD = Alpine.$data(modalEl);
-
         if (!modalEl) {
             console.error('Modal element with ID "screenShareModal" not found.');
             return;
         }
 
+        const modalAD = Alpine.$data(modalEl);
         modalAD.isOpen = true;
         modalAD.isLoading = true;
 
@@ -77,13 +76,12 @@ const screenShareModalProxy = {
 
     closeModal() {
         const modalEl = document.getElementById('screenShareModal');
-        const modalAD = Alpine.$data(modalEl);
-
         if (!modalEl) {
             console.error('Modal element with ID "screenShareModal" not found.');
             return;
         }
 
+        const modalAD = Alpine.$data(modalEl);
         modalAD.isOpen = false;
 
         this.stopFetchingFrames();
@@ -137,8 +135,38 @@ const screenShareModalProxy = {
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
 
-            containerEl.style.left = (initialLeft + dx) + 'px';
-            containerEl.style.top = (initialTop + dy) + 'px';
+            let newLeft = initialLeft + dx;
+            let newTop = initialTop + dy;
+
+            // Get window dimensions
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+
+            // Get modal dimensions
+            const rect = containerEl.getBoundingClientRect();
+            const modalWidth = rect.width;
+            const modalHeight = rect.height;
+
+            // Constrain newLeft and newTop to keep modal within viewport
+            // Left boundary
+            if (newLeft < 0) {
+                newLeft = 0;
+            }
+            // Right boundary
+            if (newLeft + modalWidth > windowWidth) {
+                newLeft = windowWidth - modalWidth;
+            }
+            // Top boundary
+            if (newTop < 0) {
+                newTop = 0;
+            }
+            // Bottom boundary
+            if (newTop + modalHeight > windowHeight) {
+                newTop = windowHeight - modalHeight;
+            }
+
+            containerEl.style.left = `${newLeft}px`;
+            containerEl.style.top = `${newTop}px`;
         };
 
         const onMouseUp = () => {
@@ -159,6 +187,11 @@ const screenShareModalProxy = {
 
     initResizable() {
         const containerEl = document.getElementById('screen-share-window');
+        if (!containerEl) {
+            console.error('Screen share window element not found');
+            return;
+        }
+
         const resizer = containerEl.querySelector('.resize-handle');
         if (!resizer) {
             console.error('Resize handle not found');
@@ -191,15 +224,20 @@ const screenShareModalProxy = {
             if (!isResizing) return;
 
             const dx = e.clientX - lastX;
-            const dy = e.clientY - lastY;
+            // const dy = e.clientY - lastY; // Not used since aspect ratio is fixed
 
             // Determine whether to use dx or dy based on aspect ratio
             // Calculate potential new width and height
             let newWidth = startWidth + dx;
             let newHeight = newWidth / this.aspectRatio;
 
-            if (newWidth < 500 || newWidth > 1350) {
-                return
+            // Set minimum and maximum width constraints
+            if (newWidth < 500) {
+                newWidth = 500;
+                newHeight = newWidth / this.aspectRatio;
+            } else if (newWidth > 1350) {
+                newWidth = 1350;
+                newHeight = newWidth / this.aspectRatio;
             }
 
             containerEl.style.width = `${newWidth}px`;
