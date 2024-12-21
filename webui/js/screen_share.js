@@ -1,16 +1,33 @@
+// screen_share.js
+
 const screenShareModalProxy = {
     isOpen: false,
     isLoading: false,
     streamInterval: null,
 
+    async toggleModal() {
+        if (this.isOpen) {
+            this.handleClose();
+        } else {
+            await this.openModal();
+        }
+    },
+
     async openModal() {
         const modalEl = document.getElementById('screenShareModal');
         const modalAD = Alpine.$data(modalEl);
 
+        if (!modalEl) {
+            console.error('Modal element with ID "screenShareModal" not found.');
+            return;
+        }
+
         modalAD.isOpen = true;
         modalAD.isLoading = true;
 
-        await modalAD.startFetchingFrames();
+        this.initDraggable();
+
+        await this.startFetchingFrames();
     },
 
     async startFetchingFrames() {
@@ -59,22 +76,76 @@ const screenShareModalProxy = {
     handleClose() {
         this.isOpen = false;
         this.stopFetchingFrames();
-    }
+    },
+
+    initDraggable() {
+        const modalEl = document.getElementById('screenShareModal');
+        if (!modalEl) {
+            console.error('Modal element with ID "screenShareModal" not found.');
+            return;
+        }
+
+        // Query the .modal-header within the modal
+        const headerEl = document.getElementById('screen-share-header');
+        const containerEl = document.getElementById('screen-share-window');
+
+        if (!headerEl) {
+            console.error("Could not find .modal-header element");
+            return;
+        }
+
+        if (!containerEl) {
+            console.error("Could not find .screen-share-window element");
+            return;
+        }
+
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let initialLeft = 0, initialTop = 0;
+
+        headerEl.addEventListener('mousedown', (e) => {
+            // Only respond to left mouse button (button=0)
+            if (e.button !== 0) return;
+
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+
+            const rect = containerEl.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+
+            // Prevent text selection
+            e.preventDefault();
+        });
+
+        // Listen on document for mousemove and mouseup
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            containerEl.style.left = (initialLeft + dx) + 'px';
+            containerEl.style.top = (initialTop + dy) + 'px';
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+
+        // Cleanup if modal closes or Alpine unmounts
+        Alpine.effect(() => {
+            if (!this.isOpen) {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        });
+    },
 };
 
-document.addEventListener('alpine:init', () => {
-    Alpine.data('screenShareModalProxy', () => ({
-        init() {
-            Object.assign(this, screenShareModalProxy);
-            // Ensure immediate frame fetch when modal opens
-            this.$watch('isOpen', async (value) => {
-                if (value) {
-                    await this.startFetchingFrames();
-                }
-            });
-        }
-    }));
-});
-
-// Assign the proxy to the window object for global access
+// Attach to the global window object
 window.screenShareModalProxy = screenShareModalProxy;

@@ -3,12 +3,10 @@ import { speech } from "./js/speech.js";
 
 const leftPanel = document.getElementById('left-panel');
 const rightPanel = document.getElementById('right-panel');
-const container = document.querySelector('.container');
 const chatInput = document.getElementById('chat-input');
 const chatHistory = document.getElementById('chat-history');
 const sendButton = document.getElementById('send-button');
 const inputSection = document.getElementById('input-section');
-const statusSection = document.getElementById('status-section');
 const chatsSection = document.getElementById('chats-section');
 const progressBar = document.getElementById('progress-bar');
 const autoScrollSwitch = document.getElementById('auto-scroll-switch');
@@ -66,8 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupSidebarToggle() {
-    const leftPanel = document.getElementById('left-panel');
-    const rightPanel = document.getElementById('right-panel');
     const toggleSidebarButton = document.getElementById('toggle-sidebar');
     if (toggleSidebarButton) {
         toggleSidebarButton.addEventListener('click', toggleSidebar);

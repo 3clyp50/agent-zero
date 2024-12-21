@@ -1,0 +1,45 @@
+/* The full-screen container that doesn't block clicks. */
+#floating-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 2001;
+    /* or higher, if needed */
+}
+
+/* The actual "window" we can drag around and resize */
+#screen-share-window {
+    display: flex;
+    flex-direction: column;
+    /* Existing styles */
+    pointer-events: auto;
+    position: absolute; /* or fixed */
+    top: 100px;
+    left: 100px;
+    width: 600px;
+    height: 400px;
+    resize: both;
+    overflow: auto;
+}
+
+/* Ensure the modal-content uses flex layout to allow the image to expand */
+#screen-share-window .modal-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    /* Remove padding to allow the image to occupy full space */
+    height: calc(100% - 2rem);
+    /* Adjust based on header and footer height */
+}
+
+/* Style the image to fill the parent container */
+#screen-share-window .modal-content img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Use 'cover' if you prefer the image to fill without maintaining aspect ratio */
+}

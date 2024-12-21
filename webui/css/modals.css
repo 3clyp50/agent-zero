@@ -365,16 +365,6 @@ h2 {
     text-wrap: wrap;
     font-size: var(--font-size-small);
   }
-
-  .btn-upload {
-    margin: 0 auto;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .btn-upload > svg {
-    width: 20px;
-  }
 }
 
 /* Editor Toolbar */
