@@ -418,7 +418,7 @@
                         <p>Nudge</p>
                     </button>
 
-                    <button class="text-button" @click="screenShareModalProxy.openModal()">
+                    <button class="text-button" @click="screenShareModalProxy.toggleModal()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24"
                             height="24">
                             <path d="M5 8h14v8H5V8zm2 2v4h10v-4H7z" />
@@ -426,7 +426,6 @@
                         </svg>
                         <p>Screen Share</p>
                     </button>
-
                 </div>
             </div>
         </div>
@@ -681,21 +680,24 @@
     <!-- Screen Share Modal -->
     <div id="screenShareModal" x-data="screenShareModalProxy">
         <template x-teleport="body">
-            <div x-show="isOpen" class="floating-modal" x-transition>
+            <div x-show="isOpen" class="floating-modal" @keydown.escape.window="closeModal()" x-transition>
                 <!-- The actual "window" container has pointer-events: auto -->
                 <div id="screen-share-window" class="modal-container">
                     <!-- Header for dragging and closing -->
                     <div id="screen-share-header" class=" modal-header">
                         <span>Screen Share</span>
-                        <button @click="handleClose" class="modal-close">&times;</button>
+                        <button @click="closeModal" class="modal-close">&times;</button>
                     </div>
                     <div id="screen-share-content" class="modal-content">
                         <img id="screen-share-stream" alt="Screen Share Stream">
                     </div>
+                    <!-- Custom Resize Handle -->
+                    <div class="resize-handle"></div>
                 </div>
             </div>
         </template>
     </div>
+
     <!-- generic modal -->
 
     <div id="genericModal" x-data="genericModalProxy">

@@ -19,7 +19,7 @@
   background-color: var(--color-panel);
   border-radius: 12px;
   width: 90%;
-  max-width: 800px;
+  max-width: 90%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
