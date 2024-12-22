@@ -24,6 +24,10 @@ RUN bash /ins/install_A0.sh $GIT_REPOSITORY $BRANCH
 
 # Install the desktop environment
 RUN bash /ins/install_desktop.sh
+
+# Install the vnc server
+RUN bash /ins/install_vnc.sh
+
 # Cleanup repo and install A02 without caching
 ARG CACHE_DATE=none
 RUN echo "cache buster $CACHE_DATE" && bash /ins/install_A02.sh $GIT_REPOSITORY $BRANCH
@@ -36,7 +40,7 @@ ENV DISPLAY=:99
 ENV XAUTHORITY=/root/.Xauthority
 
 # Expose necessary ports
-EXPOSE 22 80
+EXPOSE 22 80 6666
 
 # Initialize runtime
 CMD ["/bin/bash", "-c", "/bin/bash /exe/initialize.sh"]

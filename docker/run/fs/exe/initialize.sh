@@ -19,6 +19,9 @@ su - searxng -c "bash /exe/run_searxng.sh" &
 # Run the desktop environment startup script
 bash /exe/run_desktop.sh
 
+# Run the vnc server startup script
+bash /exe/run_vnc.sh
+
 # Start A0 and handle restart on exit
 bash /exe/run_A0.sh 
 if [ $? -ne 0 ]; then
