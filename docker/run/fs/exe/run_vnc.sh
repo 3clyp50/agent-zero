@@ -31,12 +31,3 @@ else
     echo "Failed to start x11vnc server. Check /var/log/x11vnc.log for details."
     exit 1
 fi
-
-echo "=== VNC Server Initialization Completed ==="
-
-# Keep the script running to prevent the Docker container from exiting
-# The script will terminate when it receives a SIGINT or SIGTERM signal
-echo "VNC server is running. Press Ctrl+C to stop."
-while true; do
-    sleep 60
-done
