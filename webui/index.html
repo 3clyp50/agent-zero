@@ -681,13 +681,20 @@
     <div id="screenShareModal" x-data="screenShareModalProxy">
         <template x-teleport="body">
             <div x-show="isOpen" class="floating-modal" @keydown.escape.window="closeModal()" x-transition>
-                <!-- The actual "window" container has pointer-events: auto -->
                 <div id="screen-share-window" class="modal-container">
                     <!-- Header for dragging and closing -->
-                    <div id="screen-share-header" class=" modal-header">
+                    <div id="screen-share-header" class="modal-header">
                         <span>Screen Share</span>
-                        <button @click="closeModal" class="modal-close">&times;</button>
+                        <span class="screen-share-row">
+                            <!-- New: Take/Stop Control button -->
+                            <button class="screen-share-ctrl-btn" @click="toggleControl"
+                                x-text="isControlActive ? 'Stop Control' : 'Take Control'">
+                            </button>
+                            <!-- Close button -->
+                            <button @click="closeModal" class="modal-close">&times;</button>
+                        </span>
                     </div>
+
                     <div id="screen-share-content" class="modal-content">
                         <img id="screen-share-stream" alt="Screen Share Stream">
                     </div>
@@ -697,6 +704,7 @@
             </div>
         </template>
     </div>
+
 
     <!-- generic modal -->
 

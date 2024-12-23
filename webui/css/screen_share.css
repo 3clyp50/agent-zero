@@ -20,14 +20,16 @@
     display: flex;
     flex-direction: column;
     pointer-events: auto;
-    position: absolute; /* or fixed */
+    position: absolute;
+    /* or fixed */
     top: 100px;
     left: 100px;
     width: 600px;
     height: 400px;
     resize: none;
     overflow: auto;
-    z-index: 2000;/* or higher, if needed */
+    z-index: 2000;
+    /* or higher, if needed */
 }
 
 /* Ensure the modal-content uses flex layout to allow the image to expand */
@@ -35,8 +37,10 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 0; /* Remove padding to allow the image to occupy full space */
-    height: calc(100% - 2rem); /* Adjust based on header and footer height */
+    padding: 0;
+    /* Remove padding to allow the image to occupy full space */
+    height: calc(100% - 2rem);
+    /* Adjust based on header and footer height */
     width: 100%;
 }
 
@@ -44,18 +48,21 @@
 #screen-share-window .modal-content img {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Use 'cover' if you prefer the image to fill without maintaining aspect ratio */
+    object-fit: contain;
+    /* Use 'cover' if you prefer the image to fill without maintaining aspect ratio */
 }
 
 /* Style the resize handle */
 #screen-share-window .resize-handle {
     width: 16px;
     height: 16px;
-    background: transparent; /* Make it invisible or style as needed */
+    background: transparent;
+    /* Make it invisible or style as needed */
     position: absolute;
     right: 0;
     bottom: 0;
-    cursor: se-resize; /* Southeast resize cursor */
+    cursor: se-resize;
+    /* Southeast resize cursor */
 }
 
 /* Optional: Add a visible indicator for the resize handle */
@@ -68,4 +75,28 @@
     height: 8px;
     border-right: 2px solid #ccc;
     border-bottom: 2px solid #ccc;
+}
+
+.screen-share-row {
+    display: flex;
+    justify-items: center;
+    gap: 12px;
+}
+
+.screen-share-ctrl-btn {
+    font-weight: 500;
+    padding: 0.1rem 0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    border: none;
+    font-size: 0.875rem;
+    font-family: "Rubik", Arial, Helvetica, sans-serif;
+    white-space: nowrap;
+    background-color: transparent;
+    color: var(--color-primary);
+}
+
+.screen-share-ctrl-btn:hover {
+    background-color: #fff9;
+    color: black;
 }
