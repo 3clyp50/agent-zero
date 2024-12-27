@@ -321,7 +321,7 @@ const screenShareModalProxy = {
         }
 
         // Create throttled versions of the event handlers
-        this.throttledHandleMouseMove = this.throttle(this.handleMouseMove.bind(this), 500); // Throttle to 100ms
+        this.throttledHandleMouseMove = this.throttle(this.handleMouseMove.bind(this), 100); // Throttle to 100ms
         this.throttledHandleMouseDown = this.handleMouseDown.bind(this);
         this.throttledHandleMouseUp = this.handleMouseUp.bind(this);
         this.throttledHandleKeyDown = this.handleKeyDown.bind(this);
