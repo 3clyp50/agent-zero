@@ -332,10 +332,17 @@ const screenShareModalProxy = {
         screenShareStreamEl.addEventListener('mousedown', this.throttledHandleMouseDown);
         screenShareStreamEl.addEventListener('mouseup', this.throttledHandleMouseUp);
 
+        // Prevent context menu from appearing on right-click within the screen-share-stream
+        screenShareStreamEl.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Optionally, send context menu event to backend if needed
+        });
+
         // Attach keyboard event handlers to the document if needed
-        // Uncomment the following lines if you want keyboard events to remain global
-        // document.addEventListener('keydown', this.throttledHandleKeyDown);
-        // document.addEventListener('keyup', this.throttledHandleKeyUp);
+        // These are uncommented to ensure they are active when control is active
+        document.addEventListener('keydown', this.throttledHandleKeyDown);
+        document.addEventListener('keyup', this.throttledHandleKeyUp);
     },
 
     removeControlListeners() {
@@ -359,16 +366,21 @@ const screenShareModalProxy = {
             this.throttledHandleMouseUp = null;
         }
 
-        // Remove keyboard event handlers from the document if they were attached
-        // Uncomment the following lines if you attached keyboard events globally
-        // if (this.throttledHandleKeyDown) {
-        //     document.removeEventListener('keydown', this.throttledHandleKeyDown);
-        //     this.throttledHandleKeyDown = null;
-        // }
-        // if (this.throttledHandleKeyUp) {
-        //     document.removeEventListener('keyup', this.throttledHandleKeyUp);
-        //     this.throttledHandleKeyUp = null;
-        // }
+        // Remove context menu listener if added
+        screenShareStreamEl.removeEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        // Remove keyboard event handlers from the document
+        if (this.throttledHandleKeyDown) {
+            document.removeEventListener('keydown', this.throttledHandleKeyDown);
+            this.throttledHandleKeyDown = null;
+        }
+        if (this.throttledHandleKeyUp) {
+            document.removeEventListener('keyup', this.throttledHandleKeyUp);
+            this.throttledHandleKeyUp = null;
+        }
     },
 
     /* ------------------------------------------------------------------
@@ -398,6 +410,10 @@ const screenShareModalProxy = {
      * EXAMPLE EVENT HANDLERS WITH Normalized Coordinates
      * ------------------------------------------------------------------ */
     handleMouseMove(e) {
+        // Prevent default actions and stop propagation
+        e.preventDefault();
+        e.stopPropagation();
+
         const { x, y } = this.getNormalizedCoordinates(e);
 
         // Example: send "mouse move" events to the backend
@@ -413,6 +429,10 @@ const screenShareModalProxy = {
     },
 
     handleMouseDown(e) {
+        // Prevent default actions and stop propagation
+        e.preventDefault();
+        e.stopPropagation();
+
         const { x, y } = this.getNormalizedCoordinates(e);
 
         // Example: send "mouse down" with button info
@@ -433,6 +453,10 @@ const screenShareModalProxy = {
     },
 
     handleMouseUp(e) {
+        // Prevent default actions and stop propagation
+        e.preventDefault();
+        e.stopPropagation();
+
         const { x, y } = this.getNormalizedCoordinates(e);
 
         // Example: send "mouse up" with button info
@@ -453,6 +477,10 @@ const screenShareModalProxy = {
     },
 
     handleKeyDown(e) {
+        // Prevent default actions and stop propagation
+        e.preventDefault();
+        e.stopPropagation();
+
         // Example: send "key down"
         fetch('/share_keyboard_event', {
             method: 'POST',
@@ -465,6 +493,10 @@ const screenShareModalProxy = {
     },
 
     handleKeyUp(e) {
+        // Prevent default actions and stop propagation
+        e.preventDefault();
+        e.stopPropagation();
+
         // Example: send "key up"
         fetch('/share_keyboard_event', {
             method: 'POST',
