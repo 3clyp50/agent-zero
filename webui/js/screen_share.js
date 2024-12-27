@@ -7,6 +7,13 @@ const screenShareModalProxy = {
     // New state for controlling the session
     isControlActive: false,
 
+    // Throttled event handlers
+    throttledHandleMouseMove: null,
+    throttledHandleMouseDown: null,
+    throttledHandleMouseUp: null,
+    throttledHandleKeyDown: null,
+    throttledHandleKeyUp: null,
+
     async toggleModal() {
         if (this.isOpen) {
             this.closeModal();
@@ -281,43 +288,133 @@ const screenShareModalProxy = {
     },
 
     /* ------------------------------------------------------------------
-     * EVENT LISTENER ATTACHMENT AND REMOVAL
+     * THROTTLE UTILITY FUNCTION
      * ------------------------------------------------------------------ */
-    addControlListeners() {
-        // We attach listeners to the document so we catch all events in fullscreen
-        // but you could attach to containerEl if you only want inside the modal
-        document.addEventListener('mousemove', this.handleMouseMove);
-        document.addEventListener('mousedown', this.handleMouseDown);
-        document.addEventListener('mouseup', this.handleMouseUp);
-        document.addEventListener('keydown', this.handleKeyDown);
-        document.addEventListener('keyup', this.handleKeyUp);
-    },
-
-    removeControlListeners() {
-        document.removeEventListener('mousemove', this.handleMouseMove);
-        document.removeEventListener('mousedown', this.handleMouseDown);
-        document.removeEventListener('mouseup', this.handleMouseUp);
-        document.removeEventListener('keydown', this.handleKeyDown);
-        document.removeEventListener('keyup', this.handleKeyUp);
+    throttle(func, limit) {
+        let lastFunc;
+        let lastRan;
+        return function(...args) {
+            const context = this;
+            if (!lastRan) {
+                func.apply(context, args);
+                lastRan = Date.now();
+            } else {
+                clearTimeout(lastFunc);
+                lastFunc = setTimeout(function() {
+                    if ((Date.now() - lastRan) >= limit) {
+                        func.apply(context, args);
+                        lastRan = Date.now();
+                    }
+                }, limit - (Date.now() - lastRan));
+            }
+        };
     },
 
     /* ------------------------------------------------------------------
-     * EXAMPLE EVENT HANDLERS
+     * EVENT LISTENER ATTACHMENT AND REMOVAL
+     * ------------------------------------------------------------------ */
+    addControlListeners() {
+        const screenShareStreamEl = document.getElementById('screen-share-stream');
+        if (!screenShareStreamEl) {
+            console.error('Screen share stream element not found');
+            return;
+        }
+
+        // Create throttled versions of the event handlers
+        this.throttledHandleMouseMove = this.throttle(this.handleMouseMove.bind(this), 500); // Throttle to 100ms
+        this.throttledHandleMouseDown = this.handleMouseDown.bind(this);
+        this.throttledHandleMouseUp = this.handleMouseUp.bind(this);
+        this.throttledHandleKeyDown = this.handleKeyDown.bind(this);
+        this.throttledHandleKeyUp = this.handleKeyUp.bind(this);
+
+        // Attach the throttled mouse event handlers to the screen-share-stream element
+        screenShareStreamEl.addEventListener('mousemove', this.throttledHandleMouseMove);
+        screenShareStreamEl.addEventListener('mousedown', this.throttledHandleMouseDown);
+        screenShareStreamEl.addEventListener('mouseup', this.throttledHandleMouseUp);
+
+        // Attach keyboard event handlers to the document if needed
+        // Uncomment the following lines if you want keyboard events to remain global
+        // document.addEventListener('keydown', this.throttledHandleKeyDown);
+        // document.addEventListener('keyup', this.throttledHandleKeyUp);
+    },
+
+    removeControlListeners() {
+        const screenShareStreamEl = document.getElementById('screen-share-stream');
+        if (!screenShareStreamEl) {
+            console.error('Screen share stream element not found');
+            return;
+        }
+
+        // Remove the throttled mouse event handlers from the screen-share-stream element
+        if (this.throttledHandleMouseMove) {
+            screenShareStreamEl.removeEventListener('mousemove', this.throttledHandleMouseMove);
+            this.throttledHandleMouseMove = null;
+        }
+        if (this.throttledHandleMouseDown) {
+            screenShareStreamEl.removeEventListener('mousedown', this.throttledHandleMouseDown);
+            this.throttledHandleMouseDown = null;
+        }
+        if (this.throttledHandleMouseUp) {
+            screenShareStreamEl.removeEventListener('mouseup', this.throttledHandleMouseUp);
+            this.throttledHandleMouseUp = null;
+        }
+
+        // Remove keyboard event handlers from the document if they were attached
+        // Uncomment the following lines if you attached keyboard events globally
+        // if (this.throttledHandleKeyDown) {
+        //     document.removeEventListener('keydown', this.throttledHandleKeyDown);
+        //     this.throttledHandleKeyDown = null;
+        // }
+        // if (this.throttledHandleKeyUp) {
+        //     document.removeEventListener('keyup', this.throttledHandleKeyUp);
+        //     this.throttledHandleKeyUp = null;
+        // }
+    },
+
+    /* ------------------------------------------------------------------
+     * HELPER FUNCTION TO NORMALIZE Coordinates
+     * ------------------------------------------------------------------ */
+    getNormalizedCoordinates(e) {
+        const img = document.getElementById('screen-share-stream');
+        if (!img) {
+            console.error('Screen share image element not found');
+            return { x: 0, y: 0 };
+        }
+
+        const rect = img.getBoundingClientRect();
+
+        // Calculate relative position
+        let x = (e.clientX - rect.left) / rect.width;
+        let y = (e.clientY - rect.top) / rect.height;
+
+        // Clamp values between 0 and 1
+        x = Math.max(0, Math.min(1, x));
+        y = Math.max(0, Math.min(1, y));
+
+        return { x, y };
+    },
+
+    /* ------------------------------------------------------------------
+     * EXAMPLE EVENT HANDLERS WITH Normalized Coordinates
      * ------------------------------------------------------------------ */
     handleMouseMove(e) {
+        const { x, y } = this.getNormalizedCoordinates(e);
+
         // Example: send "mouse move" events to the backend
         fetch('/share_mouse_event', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 type: 'move',
-                x: e.clientX,
-                y: e.clientY
+                x: x,
+                y: y
             })
         }).catch((err) => console.error(err));
     },
 
     handleMouseDown(e) {
+        const { x, y } = this.getNormalizedCoordinates(e);
+
         // Example: send "mouse down" with button info
         let button = 'left';
         if (e.button === 1) button = 'middle';
@@ -329,13 +426,15 @@ const screenShareModalProxy = {
             body: JSON.stringify({
                 type: 'down',
                 button: button,
-                x: e.clientX,
-                y: e.clientY
+                x: x,
+                y: y
             })
         }).catch((err) => console.error(err));
     },
 
     handleMouseUp(e) {
+        const { x, y } = this.getNormalizedCoordinates(e);
+
         // Example: send "mouse up" with button info
         let button = 'left';
         if (e.button === 1) button = 'middle';
@@ -347,8 +446,8 @@ const screenShareModalProxy = {
             body: JSON.stringify({
                 type: 'up',
                 button: button,
-                x: e.clientX,
-                y: e.clientY
+                x: x,
+                y: y
             })
         }).catch((err) => console.error(err));
     },
