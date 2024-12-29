@@ -562,10 +562,7 @@ class Agent:
             type="debug",
             heading="Calling Utility Model",
             content="",
-            kvps={
-                "model": self.config.utility_model.name,
-                "request": prompt.format()
-            }
+            kvps={"model": self.config.utility_model.name, "request": prompt.format()},
         )
 
         response = ""
@@ -593,10 +590,7 @@ class Agent:
             type="debug",
             heading="Utility Model Response",
             content="",
-            kvps={
-                "model": self.config.utility_model.name,
-                "response": response
-            }
+            kvps={"model": self.config.utility_model.name, "response": response},
         )
 
         return response
@@ -612,10 +606,7 @@ class Agent:
             type="debug",
             heading="Calling Chat Model",
             content="",
-            kvps={
-                "model": self.config.chat_model.name,
-                "request": prompt.format()
-            }
+            kvps={"model": self.config.chat_model.name, "request": prompt.format()},
         )
 
         response = ""
@@ -641,10 +632,7 @@ class Agent:
             type="debug",
             heading="Chat Model Response",
             content="",
-            kvps={
-                "model": self.config.chat_model.name,
-                "response": response
-            }
+            kvps={"model": self.config.chat_model.name, "response": response},
         )
 
         return response
@@ -656,10 +644,31 @@ class Agent:
         callback: Callable[[str, str], Awaitable[None]] | None = None,
     ):
         text_part = {"type": "text", "text": message}
-        image_part = {
-            "type": "image_url",
-            "image_url": f"data:image/jpeg;base64,{image}",
-        }
+
+        if self.config.vision_model.provider == models.ModelProvider.ANTHROPIC:
+            image_part = {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/jpeg",
+                    "data": image,
+                },
+            }
+        elif self.config.vision_model.provider == models.ModelProvider.MISTRALAI:
+            image_part = {
+                "type": "image_url",
+                "image_url": f"data:image/jpeg;base64,{image}",
+            }
+        elif self.config.vision_model.provider == models.ModelProvider.OLLAMA:
+            image_part = {
+                "type": "image_url",
+                "image_url": f"data:image/jpeg;base64,{image}",
+            }
+        else:
+            image_part = {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{image}"},
+            }
 
         content_parts = []
 
@@ -673,10 +682,7 @@ class Agent:
             type="debug",
             heading="Calling Vision Model",
             content="",
-            kvps={
-                "model": self.config.vision_model.name,
-                "request": prompt.format()
-            }
+            kvps={"model": self.config.vision_model.name, "request": prompt.format()},
         )
 
         response = ""
@@ -707,10 +713,7 @@ class Agent:
             type="debug",
             heading="Vision Model Response",
             content="",
-            kvps={
-                "model": self.config.vision_model.name,
-                "response": response
-            }
+            kvps={"model": self.config.vision_model.name, "response": response},
         )
 
         return response
