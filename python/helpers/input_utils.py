@@ -1,5 +1,5 @@
 from typing import Optional
-from desktop_utils import pyautogui_handler
+from python.helpers.desktop_utils import pyautogui_handler
 
 
 def move_mouse(x: int, y: int, duration: float = 0.25):

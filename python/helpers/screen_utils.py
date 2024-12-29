@@ -5,7 +5,7 @@ import base64
 from io import BytesIO
 
 import pyautogui
-from desktop_utils import pyautogui_handler
+from python.helpers.desktop_utils import pyautogui_handler
 
 # Initialize logging
 logging.basicConfig(
