@@ -1,11 +1,13 @@
-from python.helpers.api import ApiHandler
-from flask import Request, Response
-import pyautogui
+import atexit
 import logging
-import threading
 import queue
-from typing import Any, Dict, Optional, Tuple
+import threading
 from enum import Enum
+from typing import Any, Dict, Optional, Tuple
+
+import pyautogui
+from flask import Request, Response
+from python.helpers.api import ApiHandler
 
 
 # Define Enums for Mouse Event Types and Buttons
@@ -41,9 +43,15 @@ class MouseEventHandler:
         while not self.shutdown_event.is_set():
             try:
                 event = self.event_queue.get(timeout=0.1)  # Timeout to allow graceful shutdown
+            except queue.Empty:
+                continue  # Check for shutdown_event periodically
+
+            try:
                 if event is None:
                     logger.info("Received shutdown signal.")
+                    self.event_queue.task_done()  # Mark the sentinel as done
                     break
+
                 event_type, x, y, button = event
                 logger.info(f"Processing event: {event_type.value} at ({x}, {y}) with button '{button.value}'")
                 if event_type == MouseEventType.MOVE:
@@ -53,12 +61,10 @@ class MouseEventHandler:
                 elif event_type == MouseEventType.UP:
                     pyautogui.mouseUp(x=x, y=y, button=button.value)
                 logger.info(f"Event '{event_type.value}' executed successfully.")
-            except queue.Empty:
-                continue  # Check for shutdown_event periodically
             except Exception as e:
                 logger.exception(f"Error executing mouse event: {e}")
             finally:
-                self.event_queue.task_done()
+                self.event_queue.task_done()  # Ensure task_done is called only once per get()
 
     def enqueue_event(self, event_type: MouseEventType, x: int, y: int, button: MouseButton) -> None:
         self.event_queue.put((event_type, x, y, button))
@@ -66,7 +72,7 @@ class MouseEventHandler:
 
     def shutdown(self) -> None:
         self.shutdown_event.set()
-        self.event_queue.put(None)  # Sentinel to unblock the queue
+        self.event_queue.put(None)  # Sentinel to unblock the queue and signal shutdown
         self.worker_thread.join()
         logger.info("MouseEventHandler worker thread has been shut down.")
 
@@ -88,29 +94,29 @@ class ShareMouseEvent(ApiHandler):
             button_str: str = input.get("button", "left")
         except KeyError as e:
             logger.error(f"Missing required field: {e}")
-            return Response({"error": f"Missing required field: {e}"}, 400)
+            return Response({"error": f"Missing required field: {e}"}, status=400, mimetype='application/json')
         except (TypeError, ValueError) as e:
             logger.error(f"Invalid input data: {e}")
-            return Response({"error": "Invalid input data."}, 400)
+            return Response({"error": "Invalid input data."}, status=400, mimetype='application/json')
 
         # Validate event type
         try:
             event_type = MouseEventType(event_type_str)
         except ValueError:
             logger.error(f"Invalid event type: {event_type_str}")
-            return Response({"error": "Invalid mouse event type."}, 400)
+            return Response({"error": "Invalid mouse event type."}, status=400, mimetype='application/json')
 
         # Validate normalized coordinates
         if not (0.0 <= norm_x <= 1.0) or not (0.0 <= norm_y <= 1.0):
             logger.error(f"Normalized coordinates out of bounds: x={norm_x}, y={norm_y}")
-            return Response({"error": "Normalized coordinates must be between 0.0 and 1.0."}, 400)
+            return Response({"error": "Normalized coordinates must be between 0.0 and 1.0."}, status=400, mimetype='application/json')
 
         # Validate button
         try:
             button = MouseButton(button_str)
         except ValueError:
             logger.error(f"Invalid button type: {button_str}")
-            return Response({"error": "Invalid mouse button type."}, 400)
+            return Response({"error": "Invalid mouse button type."}, status=400, mimetype='application/json')
 
         # Get actual screen size
         screen_width, screen_height = pyautogui.size()
@@ -124,12 +130,12 @@ class ShareMouseEvent(ApiHandler):
         # Validate screen boundaries after conversion
         if not (0 <= x < screen_width) or not (0 <= y < screen_height):
             logger.error(f"Converted coordinates out of screen bounds: ({x}, {y})")
-            return Response({"error": "Converted coordinates out of screen bounds."}, 400)
+            return Response({"error": "Converted coordinates out of screen bounds."}, status=400, mimetype='application/json')
 
         # Enqueue the mouse event
         mouse_event_handler.enqueue_event(event_type, x, y, button)
 
-        return Response({"message": "Mouse event enqueued successfully."}, 200)
+        return Response({"message": "Mouse event enqueued successfully."}, status=200, mimetype='application/json')
 
     def get_docstring(self) -> str:
         return """
@@ -198,9 +204,7 @@ class ShareMouseEvent(ApiHandler):
         return "POST"
 
 
-# Optional: Ensure graceful shutdown on application exit
-import atexit
-
+# Ensure graceful shutdown on application exit
 @atexit.register
 def shutdown_mouse_event_handler():
     mouse_event_handler.shutdown()
