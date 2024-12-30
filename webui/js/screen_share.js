@@ -130,8 +130,6 @@ const screenShareModalProxy = {
                 await document.msExitFullscreen();
             }
         }
-
-        this.isFullscreen = false;
     },
 
     async enterFullscreen() {
@@ -150,7 +148,6 @@ const screenShareModalProxy = {
             // IE/Edge
             await containerEl.msRequestFullscreen();
         }
-        this.isFullscreen = true;
     },
 
     async toggleFullscreen() {

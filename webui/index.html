@@ -678,7 +678,7 @@
     </div>
 
     <!-- Screen Share Modal -->
-    <div id="screenShareModal" x-data="screenShareModalProxy" tabindex="-1">
+    <div id="screenShareModal" x-data="screenShareModalProxy" tabindex="-1" x-on:fullscreenchange.document="isFullscreen = !!document.fullscreenElement">
         <template x-teleport="body">
             <div x-show="isOpen" class="floating-modal" @keydown.escape.window="closeModal()" x-transition>
                 <div id="screen-share-window" class="modal-container">
