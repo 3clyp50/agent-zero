@@ -1,6 +1,7 @@
 const screenShareModalProxy = {
     isOpen: false,
     isLoading: false,
+    isFullscreen: false,
     streamInterval: null,
     aspectRatio: 3 / 2, // Define your desired aspect ratio (width / height)
 
@@ -20,6 +21,9 @@ const screenShareModalProxy = {
 
     // Store the context menu listener
     contextMenuListener: null,
+
+    // Store the dynamically created overlay element
+    overlayElement: null,
 
     async toggleModal() {
         if (this.isOpen) {
@@ -42,17 +46,8 @@ const screenShareModalProxy = {
 
         this.initDraggable();
         this.initResizable();
+        this.focusModal();
         await this.startFetchingFrames();
-
-        // Show the keyboard overlay
-        const overlay = document.getElementById('screen-share-overlay');
-        if (overlay) {
-            overlay.style.display = 'block';
-        }
-
-        // Focus the modal
-        modalEl.setAttribute('tabindex', '-1'); // Ensure it's focusable
-        modalEl.focus();
     },
 
     async startFetchingFrames() {
@@ -114,11 +109,71 @@ const screenShareModalProxy = {
 
         this.stopFetchingFrames();
 
-        // Hide the keyboard overlay
-        const overlay = document.getElementById('screen-share-overlay');
-        if (overlay) {
-            overlay.style.display = 'none';
+        this.removeOverlay();
+
+        // Remove the overlay element if it's still in the DOM
+        this.removeOverlayElement();
+
+        this.exitFullscreen();
+    },
+
+    async exitFullscreen() {
+        if (document.fullscreenElement) {
+            // Exit fullscreen
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                // Safari
+                await document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                // IE/Edge
+                await document.msExitFullscreen();
+            }
         }
+
+        this.isFullscreen = false;
+    },
+
+    async enterFullscreen() {
+        const containerEl = document.getElementById('screen-share-window');
+        if (!containerEl) {
+            throw new Error("No modal element.");
+        };
+
+        // Request fullscreen
+        if (containerEl.requestFullscreen) {
+            await containerEl.requestFullscreen();
+        } else if (containerEl.webkitRequestFullscreen) {
+            // Safari
+            await containerEl.webkitRequestFullscreen();
+        } else if (containerEl.msRequestFullscreen) {
+            // IE/Edge
+            await containerEl.msRequestFullscreen();
+        }
+        this.isFullscreen = true;
+    },
+
+    async toggleFullscreen() {
+        try {
+            if (this.isFullscreen) {
+                this.exitFullscreen();
+            } else {
+                this.enterFullscreen();
+            }
+        } catch (err) {
+            console.error("Fullscreen toggle failed:", err);
+        }
+    },
+
+    focusModal() {
+        const modalEl = document.getElementById('screenShareModal');
+        if (!modalEl) {
+            console.error('Modal element with ID "screenShareModal" not found.');
+            return;
+        }
+        // Focus the modal
+        modalEl.setAttribute('tabindex', '-1'); // Ensure it's focusable
+        modalEl.focus();
     },
 
     initDraggable() {
@@ -273,42 +328,20 @@ const screenShareModalProxy = {
     },
 
     async startControl() {
-        // 1) Attempt to make the modal fullscreen
-        const containerEl = document.getElementById('screen-share-window');
-        if (!containerEl) return;
-
-        // Some browsers require calling .requestFullscreen() on the element
-        try {
-            if (containerEl.requestFullscreen) {
-                await containerEl.requestFullscreen();
-            } else if (containerEl.webkitRequestFullscreen) {
-                // Safari
-                await containerEl.webkitRequestFullscreen();
-            } else if (containerEl.msRequestFullscreen) {
-                // IE/Edge
-                await containerEl.msRequestFullscreen();
-            }
-        } catch (err) {
-            console.error("Failed to request fullscreen:", err);
-        }
-
-        // 2) Start sending mouse & keyboard events to the backend
+        await this.toggleFullscreen();
+        // Start sending mouse & keyboard events to the backend
         this.addControlListeners();
-        this.initOverlay(); // Initialize overlay
+        this.createOverlay(); // Dynamically create and initialize overlay
         this.isControlActive = true;
+        this.focusModal();
     },
 
     stopControl() {
-        // 1) Exit fullscreen if needed
-        if (document.fullscreenElement) {
-            document.exitFullscreen().catch(err =>
-                console.error("Failed to exit fullscreen:", err)
-            );
-        }
-
-        // 2) Stop sending events to backend
+        this.exitFullscreen();
+        // Stop sending events to backend
         this.removeControlListeners();
-        this.removeOverlayListeners(); // Remove overlay listeners
+        this.removeOverlay(); // Remove overlay listeners
+        this.removeOverlayElement(); // Remove the overlay element from the DOM
         this.isControlActive = false;
     },
 
@@ -414,10 +447,28 @@ const screenShareModalProxy = {
     /* ------------------------------------------------------------------
      * OVERLAY EVENT LISTENER ATTACHMENT AND REMOVAL
      * ------------------------------------------------------------------ */
+    createOverlay() {
+        // Create the overlay element
+        if (!this.overlayElement) {
+            this.overlayElement = document.createElement('div');
+            this.overlayElement.id = 'screen-share-overlay';
+            document.body.appendChild(this.overlayElement);
+        }
+
+        // Initialize overlay event listeners
+        this.initOverlay();
+    },
+
+    removeOverlayElement() {
+        if (this.overlayElement) {
+            this.overlayElement.remove(); // Remove from DOM
+            this.overlayElement = null;
+        }
+    },
+
     initOverlay() {
-        const overlay = document.getElementById('screen-share-overlay');
-        if (!overlay) {
-            console.error('Overlay element with ID "screen-share-overlay" not found.');
+        if (!this.overlayElement) {
+            console.error('Overlay element not found.');
             return;
         }
 
@@ -429,29 +480,28 @@ const screenShareModalProxy = {
             this.throttledHandleKeyUpOverlay = this.throttle(this.handleKeyUp.bind(this), 0);
         }
 
-        overlay.addEventListener('keydown', this.throttledHandleKeyDownOverlay, true); // Use capture
-        overlay.addEventListener('keyup', this.throttledHandleKeyUpOverlay, true); // Use capture
+        this.overlayElement.addEventListener('keydown', this.throttledHandleKeyDownOverlay, true); // Use capture
+        this.overlayElement.addEventListener('keyup', this.throttledHandleKeyUpOverlay, true); // Use capture
 
         // Prevent focus from moving to underlying elements
-        overlay.setAttribute('tabindex', '0');
-        overlay.focus();
+        this.overlayElement.setAttribute('tabindex', '0');
+        this.overlayElement.focus();
     },
 
-    removeOverlayListeners() {
-        const overlay = document.getElementById('screen-share-overlay');
-        if (!overlay) {
-            console.error('Overlay element with ID "screen-share-overlay" not found.');
-            return;
-        }
+    removeOverlay() {
+        if (!this.overlayElement) return;
 
         if (this.throttledHandleKeyDownOverlay) {
-            overlay.removeEventListener('keydown', this.throttledHandleKeyDownOverlay, true);
+            this.overlayElement.removeEventListener('keydown', this.throttledHandleKeyDownOverlay, true);
             this.throttledHandleKeyDownOverlay = null;
         }
         if (this.throttledHandleKeyUpOverlay) {
-            overlay.removeEventListener('keyup', this.throttledHandleKeyUpOverlay, true);
+            this.overlayElement.removeEventListener('keyup', this.throttledHandleKeyUpOverlay, true);
             this.throttledHandleKeyUpOverlay = null;
         }
+
+        // Optionally, you can hide the overlay instead of removing it
+        // this.overlayElement.style.display = 'none';
     },
 
     /* ------------------------------------------------------------------
