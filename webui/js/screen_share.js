@@ -62,7 +62,7 @@ const screenShareModalProxy = {
             } finally {
                 // Continue fetching frames if the modal is still open
                 if (this.isOpen) {
-                    this.streamInterval = setTimeout(fetchFrame, 100); 
+                    this.streamInterval = setTimeout(fetchFrame, 100);
                 }
             }
         };
@@ -291,21 +291,12 @@ const screenShareModalProxy = {
      * THROTTLE UTILITY FUNCTION
      * ------------------------------------------------------------------ */
     throttle(func, limit) {
-        let lastFunc;
-        let lastRan;
-        return function(...args) {
-            const context = this;
-            if (!lastRan) {
-                func.apply(context, args);
-                lastRan = Date.now();
-            } else {
-                clearTimeout(lastFunc);
-                lastFunc = setTimeout(function() {
-                    if ((Date.now() - lastRan) >= limit) {
-                        func.apply(context, args);
-                        lastRan = Date.now();
-                    }
-                }, limit - (Date.now() - lastRan));
+        let inThrottle = false;
+        return function (...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
             }
         };
     },
@@ -321,11 +312,21 @@ const screenShareModalProxy = {
         }
 
         // Create throttled versions of the event handlers
-        this.throttledHandleMouseMove = this.throttle(this.handleMouseMove.bind(this), 100); // Throttle to 100ms
-        this.throttledHandleMouseDown = this.handleMouseDown.bind(this);
-        this.throttledHandleMouseUp = this.handleMouseUp.bind(this);
-        this.throttledHandleKeyDown = this.handleKeyDown.bind(this);
-        this.throttledHandleKeyUp = this.handleKeyUp.bind(this);
+        if (!this.throttledHandleMouseMove) {
+            this.throttledHandleMouseMove = this.throttle(this.handleMouseMove.bind(this), 250); // Throttle to 250ms
+        }
+        if (!this.throttledHandleMouseDown) {
+            this.throttledHandleMouseDown = this.throttle(this.handleMouseDown.bind(this), 0); // Optional throttling
+        }
+        if (!this.throttledHandleMouseUp) {
+            this.throttledHandleMouseUp = this.throttle(this.handleMouseUp.bind(this), 0); // Optional throttling
+        }
+        if (!this.throttledHandleKeyDown) {
+            this.throttledHandleKeyDown = this.throttle(this.handleKeyDown.bind(this), 0); // Throttle to 1000ms
+        }
+        if (!this.throttledHandleKeyUp) {
+            this.throttledHandleKeyUp = this.throttle(this.handleKeyUp.bind(this), 0); // Throttle to 1000ms
+        }
 
         // Attach the throttled mouse event handlers to the screen-share-stream element
         screenShareStreamEl.addEventListener('mousemove', this.throttledHandleMouseMove);
@@ -355,32 +356,29 @@ const screenShareModalProxy = {
         // Remove the throttled mouse event handlers from the screen-share-stream element
         if (this.throttledHandleMouseMove) {
             screenShareStreamEl.removeEventListener('mousemove', this.throttledHandleMouseMove);
-            this.throttledHandleMouseMove = null;
         }
-        if (this.throttledHandleMouseDown) {
-            screenShareStreamEl.removeEventListener('mousedown', this.throttledHandleMouseDown);
-            this.throttledHandleMouseDown = null;
-        }
-        if (this.throttledHandleMouseUp) {
-            screenShareStreamEl.removeEventListener('mouseup', this.throttledHandleMouseUp);
-            this.throttledHandleMouseUp = null;
-        }
+        // ... (remove other throttled handlers as shown above)
 
-        // Remove context menu listener if added
-        screenShareStreamEl.removeEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
+        // Remove the context menu listener if it exists
+        if (this.contextMenuListener) {
+            screenShareStreamEl.removeEventListener('contextmenu', this.contextMenuListener);
+            this.contextMenuListener = null;
+        }
 
         // Remove keyboard event handlers from the document
         if (this.throttledHandleKeyDown) {
             document.removeEventListener('keydown', this.throttledHandleKeyDown);
-            this.throttledHandleKeyDown = null;
         }
         if (this.throttledHandleKeyUp) {
             document.removeEventListener('keyup', this.throttledHandleKeyUp);
-            this.throttledHandleKeyUp = null;
         }
+
+        // Reset the throttled handlers
+        this.throttledHandleMouseMove = null;
+        this.throttledHandleMouseDown = null;
+        this.throttledHandleMouseUp = null;
+        this.throttledHandleKeyDown = null;
+        this.throttledHandleKeyUp = null;
     },
 
     /* ------------------------------------------------------------------

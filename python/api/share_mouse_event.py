@@ -37,19 +37,15 @@ class MouseEventHandler:
         self, event_type: MouseEventType, x: int, y: int, button: MouseButton
     ) -> None:
         if event_type == MouseEventType.MOVE:
-            pyautogui_handler.move_mouse(x, y, duration=0.1)
+            pyautogui_handler.move_mouse(x, y, duration=0.0)
         elif event_type == MouseEventType.DOWN:
-            pyautogui_handler.click(
-                x=x, y=y, button=button.value, clicks=1, interval=0.0
+            pyautogui_handler.mouse_down(
+                x=x, y=y, button=button.value
             )
-            # Alternatively, use mouseDown if needed
-            # pyautogui_handler.enqueue_task(lambda: pyautogui.mouseDown(x=x, y=y, button=button.value))
         elif event_type == MouseEventType.UP:
-            pyautogui_handler.click(
-                x=x, y=y, button=button.value, clicks=1, interval=0.0
+            pyautogui_handler.mouse_up(
+                x=x, y=y, button=button.value
             )
-            # Alternatively, use mouseUp if needed
-            # pyautogui_handler.enqueue_task(lambda: pyautogui.mouseUp(x=x, y=y, button=button.value))
         logger.info(
             f"Enqueued mouse event '{event_type.value}' at ({x}, {y}) with button '{button.value}'."
         )

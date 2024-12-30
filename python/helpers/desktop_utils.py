@@ -6,6 +6,8 @@ from typing import Callable, Optional, Tuple
 
 import pyautogui
 
+pyautogui.FAILSAFE = False
+
 # Initialize logging
 logging.basicConfig(
     level=logging.INFO,
@@ -61,6 +63,16 @@ class PyAutoGUIHandler:
               button: str = "left", clicks: int = 1, interval: float = 0.0):
         self.enqueue_task(lambda: pyautogui.click(x=x, y=y, button=button, clicks=clicks, interval=interval))
         logger.info(f"Enqueued click: button={button}, clicks={clicks}, interval={interval}, at ({x}, {y}).")
+
+    def mouse_down(self, x: Optional[int] = None, y: Optional[int] = None,
+              button: str = "left"):
+        self.enqueue_task(lambda: pyautogui.mouseDown(x=x, y=y, button=button))
+        logger.info(f"Enqueued mouseDown: button={button}, at ({x}, {y}).")
+
+    def mouse_up(self, x: Optional[int] = None, y: Optional[int] = None,
+              button: str = "left"):
+        self.enqueue_task(lambda: pyautogui.mouseUp(x=x, y=y, button=button))
+        logger.info(f"Enqueued mouseUp: button={button}, at ({x}, {y}).")
 
     def type_text(self, text: str, interval: float = 0.1):
         self.enqueue_task(lambda: pyautogui.typewrite(text, interval=interval))
