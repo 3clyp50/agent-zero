@@ -678,7 +678,7 @@
     </div>
 
     <!-- Screen Share Modal -->
-    <div id="screenShareModal" x-data="screenShareModalProxy">
+    <div id="screenShareModal" x-data="screenShareModalProxy" tabindex="-1">
         <template x-teleport="body">
             <div x-show="isOpen" class="floating-modal" @keydown.escape.window="closeModal()" x-transition>
                 <div id="screen-share-window" class="modal-container">
@@ -704,7 +704,7 @@
             </div>
         </template>
     </div>
-
+    <div id="screen-share-overlay"></div>
 
     <!-- generic modal -->
 

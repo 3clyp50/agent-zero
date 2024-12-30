@@ -14,6 +14,13 @@ const screenShareModalProxy = {
     throttledHandleKeyDown: null,
     throttledHandleKeyUp: null,
 
+    // Throttled overlay event handlers
+    throttledHandleKeyDownOverlay: null,
+    throttledHandleKeyUpOverlay: null,
+
+    // Store the context menu listener
+    contextMenuListener: null,
+
     async toggleModal() {
         if (this.isOpen) {
             this.closeModal();
@@ -36,6 +43,16 @@ const screenShareModalProxy = {
         this.initDraggable();
         this.initResizable();
         await this.startFetchingFrames();
+
+        // Show the keyboard overlay
+        const overlay = document.getElementById('screen-share-overlay');
+        if (overlay) {
+            overlay.style.display = 'block';
+        }
+
+        // Focus the modal
+        modalEl.setAttribute('tabindex', '-1'); // Ensure it's focusable
+        modalEl.focus();
     },
 
     async startFetchingFrames() {
@@ -96,6 +113,12 @@ const screenShareModalProxy = {
         modalAD.isOpen = false;
 
         this.stopFetchingFrames();
+
+        // Hide the keyboard overlay
+        const overlay = document.getElementById('screen-share-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
     },
 
     initDraggable() {
@@ -271,6 +294,7 @@ const screenShareModalProxy = {
 
         // 2) Start sending mouse & keyboard events to the backend
         this.addControlListeners();
+        this.initOverlay(); // Initialize overlay
         this.isControlActive = true;
     },
 
@@ -284,6 +308,7 @@ const screenShareModalProxy = {
 
         // 2) Stop sending events to backend
         this.removeControlListeners();
+        this.removeOverlayListeners(); // Remove overlay listeners
         this.isControlActive = false;
     },
 
@@ -313,7 +338,7 @@ const screenShareModalProxy = {
 
         // Create throttled versions of the event handlers
         if (!this.throttledHandleMouseMove) {
-            this.throttledHandleMouseMove = this.throttle(this.handleMouseMove.bind(this), 250); // Throttle to 250ms
+            this.throttledHandleMouseMove = this.throttle(this.handleMouseMove.bind(this), 100); // Throttle to 100ms
         }
         if (!this.throttledHandleMouseDown) {
             this.throttledHandleMouseDown = this.throttle(this.handleMouseDown.bind(this), 0); // Optional throttling
@@ -322,28 +347,28 @@ const screenShareModalProxy = {
             this.throttledHandleMouseUp = this.throttle(this.handleMouseUp.bind(this), 0); // Optional throttling
         }
         if (!this.throttledHandleKeyDown) {
-            this.throttledHandleKeyDown = this.throttle(this.handleKeyDown.bind(this), 0); // Throttle to 1000ms
+            this.throttledHandleKeyDown = this.throttle(this.handleKeyDown.bind(this), 0); // Optional throttling
         }
         if (!this.throttledHandleKeyUp) {
-            this.throttledHandleKeyUp = this.throttle(this.handleKeyUp.bind(this), 0); // Throttle to 1000ms
+            this.throttledHandleKeyUp = this.throttle(this.handleKeyUp.bind(this), 0); // Optional throttling
         }
 
-        // Attach the throttled mouse event handlers to the screen-share-stream element
-        screenShareStreamEl.addEventListener('mousemove', this.throttledHandleMouseMove);
-        screenShareStreamEl.addEventListener('mousedown', this.throttledHandleMouseDown);
-        screenShareStreamEl.addEventListener('mouseup', this.throttledHandleMouseUp);
+        // Attach the throttled mouse event handlers to the screen-share-stream element in capture phase
+        screenShareStreamEl.addEventListener('mousemove', this.throttledHandleMouseMove, true); // Use capture
+        screenShareStreamEl.addEventListener('mousedown', this.throttledHandleMouseDown, true);
+        screenShareStreamEl.addEventListener('mouseup', this.throttledHandleMouseUp, true);
 
-        // Prevent context menu from appearing on right-click within the screen-share-stream
-        screenShareStreamEl.addEventListener('contextmenu', (e) => {
+        // Define and store the context menu listener
+        this.contextMenuListener = (e) => {
             e.preventDefault();
             e.stopPropagation();
             // Optionally, send context menu event to backend if needed
-        });
+        };
+        screenShareStreamEl.addEventListener('contextmenu', this.contextMenuListener, true);
 
-        // Attach keyboard event handlers to the document if needed
-        // These are uncommented to ensure they are active when control is active
-        document.addEventListener('keydown', this.throttledHandleKeyDown);
-        document.addEventListener('keyup', this.throttledHandleKeyUp);
+        // Attach keyboard event handlers to the document using capture phase
+        document.addEventListener('keydown', this.throttledHandleKeyDown, true); // Use capture
+        document.addEventListener('keyup', this.throttledHandleKeyUp, true); // Use capture
     },
 
     removeControlListeners() {
@@ -355,22 +380,27 @@ const screenShareModalProxy = {
 
         // Remove the throttled mouse event handlers from the screen-share-stream element
         if (this.throttledHandleMouseMove) {
-            screenShareStreamEl.removeEventListener('mousemove', this.throttledHandleMouseMove);
+            screenShareStreamEl.removeEventListener('mousemove', this.throttledHandleMouseMove, true);
         }
-        // ... (remove other throttled handlers as shown above)
+        if (this.throttledHandleMouseDown) {
+            screenShareStreamEl.removeEventListener('mousedown', this.throttledHandleMouseDown, true);
+        }
+        if (this.throttledHandleMouseUp) {
+            screenShareStreamEl.removeEventListener('mouseup', this.throttledHandleMouseUp, true);
+        }
 
         // Remove the context menu listener if it exists
         if (this.contextMenuListener) {
-            screenShareStreamEl.removeEventListener('contextmenu', this.contextMenuListener);
+            screenShareStreamEl.removeEventListener('contextmenu', this.contextMenuListener, true);
             this.contextMenuListener = null;
         }
 
         // Remove keyboard event handlers from the document
         if (this.throttledHandleKeyDown) {
-            document.removeEventListener('keydown', this.throttledHandleKeyDown);
+            document.removeEventListener('keydown', this.throttledHandleKeyDown, true);
         }
         if (this.throttledHandleKeyUp) {
-            document.removeEventListener('keyup', this.throttledHandleKeyUp);
+            document.removeEventListener('keyup', this.throttledHandleKeyUp, true);
         }
 
         // Reset the throttled handlers
@@ -379,6 +409,49 @@ const screenShareModalProxy = {
         this.throttledHandleMouseUp = null;
         this.throttledHandleKeyDown = null;
         this.throttledHandleKeyUp = null;
+    },
+
+    /* ------------------------------------------------------------------
+     * OVERLAY EVENT LISTENER ATTACHMENT AND REMOVAL
+     * ------------------------------------------------------------------ */
+    initOverlay() {
+        const overlay = document.getElementById('screen-share-overlay');
+        if (!overlay) {
+            console.error('Overlay element with ID "screen-share-overlay" not found.');
+            return;
+        }
+
+        // Create throttled versions of the event handlers
+        if (!this.throttledHandleKeyDownOverlay) {
+            this.throttledHandleKeyDownOverlay = this.throttle(this.handleKeyDown.bind(this), 0);
+        }
+        if (!this.throttledHandleKeyUpOverlay) {
+            this.throttledHandleKeyUpOverlay = this.throttle(this.handleKeyUp.bind(this), 0);
+        }
+
+        overlay.addEventListener('keydown', this.throttledHandleKeyDownOverlay, true); // Use capture
+        overlay.addEventListener('keyup', this.throttledHandleKeyUpOverlay, true); // Use capture
+
+        // Prevent focus from moving to underlying elements
+        overlay.setAttribute('tabindex', '0');
+        overlay.focus();
+    },
+
+    removeOverlayListeners() {
+        const overlay = document.getElementById('screen-share-overlay');
+        if (!overlay) {
+            console.error('Overlay element with ID "screen-share-overlay" not found.');
+            return;
+        }
+
+        if (this.throttledHandleKeyDownOverlay) {
+            overlay.removeEventListener('keydown', this.throttledHandleKeyDownOverlay, true);
+            this.throttledHandleKeyDownOverlay = null;
+        }
+        if (this.throttledHandleKeyUpOverlay) {
+            overlay.removeEventListener('keyup', this.throttledHandleKeyUpOverlay, true);
+            this.throttledHandleKeyUpOverlay = null;
+        }
     },
 
     /* ------------------------------------------------------------------
@@ -478,6 +551,12 @@ const screenShareModalProxy = {
         // Prevent default actions and stop propagation
         e.preventDefault();
         e.stopPropagation();
+
+        // Optionally, handle specific keys
+        if (e.key === 'Escape') {
+            // Do nothing or handle differently
+            return;
+        }
 
         // Example: send "key down"
         fetch('/share_keyboard_event', {
