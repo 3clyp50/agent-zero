@@ -36,14 +36,14 @@ Mention any symbols, icons, text, or other significant details.
 ~~~json
 {
     "thoughts": [
-        "The user wants me to close the current window...",
-        "I already know that I'm currently looking at a window of a text editor window, with a black X in the top right corner...",
-        "The X in the top right corner generally indicates a close button...",
-        "I need to get the bounding box of this element to further interact with it...",
+        "The user wants me to click on a specific UI element...",
+        "I need to use Atlas to get precise coordinates of the element...",
+        "I'll enable coordinate detection to get the exact location...",
     ],
     "tool_name": "vision",
     "tool_args": {
-        "instruction": "Return a bounding box of the blakc X in the top right corner, which indicates a close button. Use a tuple like [x_start, y_start, x_end, y_end] to represent the bounding box."
+        "instruction": "Find the Settings button, which is typically represented by a gear icon.",
+        "require_coordinates": true
     }
 }
 ~~~

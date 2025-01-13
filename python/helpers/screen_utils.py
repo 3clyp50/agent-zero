@@ -1,6 +1,6 @@
 import logging
 import queue
-from PIL import ImageDraw
+from PIL import ImageDraw, Image
 import base64
 from io import BytesIO
 
@@ -23,7 +23,10 @@ def get_screenshot() -> bytes:
     screenshot_queue = queue.Queue()
 
     def task():
+        # Get screen dimensions
+        screen_width, screen_height = pyautogui.size()
         screenshot = pyautogui.screenshot()
+
         mouse_x, mouse_y = pyautogui.position()
         draw = ImageDraw.Draw(screenshot)
 
@@ -56,13 +59,9 @@ def get_screenshot() -> bytes:
         # Draw the polygon
         draw.polygon(translated_points, fill="white", outline="black")
 
-        # Convert the screenshot to RGB mode
-        screenshot = screenshot.convert("RGB")
-
-        # Save the screenshot to a bytes buffer
+        # Save the screenshot to a bytes buffer using PNG format
         buffer = BytesIO()
-        screenshot.save(buffer, format="JPEG", quality=75)
-
+        screenshot.save(buffer, format="PNG")
         screenshot_queue.put(buffer.getvalue())
         logger.debug("Screenshot captured and processed.")
 
@@ -79,3 +78,22 @@ def get_screenshot() -> bytes:
 
 def encode_screenshot(screenshot: bytes) -> str:
     return base64.b64encode(screenshot).decode("utf-8")
+
+
+def save_screenshot(image_path: str) -> bool:
+    """
+    Capture the screenshot and save it to the specified path.
+
+    :param image_path: Path where the screenshot will be saved.
+    :return: True if successful, False otherwise.
+    """
+    try:
+        screenshot = pyautogui.screenshot()
+        
+        # Save using PNG format for best quality
+        screenshot.save(image_path, format="PNG")
+        logger.info(f"Screenshot saved to {image_path}.")
+        return True
+    except Exception as e:
+        logger.exception(f"Failed to save screenshot: {e}")
+        return False

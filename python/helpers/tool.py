@@ -3,11 +3,14 @@ from dataclasses import dataclass
 from agent import Agent
 from python.helpers.print_style import PrintStyle
 from python.helpers import messages
+from typing import Optional, Dict, Any
 
 @dataclass
 class Response:
-    message:str
-    break_loop:bool
+    def __init__(self, message: str, break_loop: bool = False, data: Optional[Dict[str, Any]] = None):
+        self.message = message
+        self.break_loop = break_loop
+        self.data = data if data is not None else {}
     
 class Tool:
 

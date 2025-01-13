@@ -1,12 +1,14 @@
 import logging
 import queue
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 from flask import Request, Response
 import pyautogui
 from python.helpers.api import ApiHandler
 from python.helpers.desktop_utils import pyautogui_handler
+from python.tools.vision import analyze_screen  # Import the vision analysis function
+from python.helpers.screen_utils import save_screenshot
 
 
 # Define Enums for Mouse Event Types and Buttons
@@ -34,18 +36,15 @@ class MouseEventHandler:
         logger.info("MouseEventHandler initialized.")
 
     def enqueue_event(
-        self, event_type: MouseEventType, x: int, y: int, button: MouseButton
+        self, event_type: MouseEventType, coordinates: Tuple[int, int], button: MouseButton
     ) -> None:
+        x, y = coordinates
         if event_type == MouseEventType.MOVE:
             pyautogui_handler.move_mouse(x, y, duration=0.0)
         elif event_type == MouseEventType.DOWN:
-            pyautogui_handler.mouse_down(
-                x=x, y=y, button=button.value
-            )
+            pyautogui_handler.mouse_down(x=x, y=y, button=button.value)
         elif event_type == MouseEventType.UP:
-            pyautogui_handler.mouse_up(
-                x=x, y=y, button=button.value
-            )
+            pyautogui_handler.mouse_up(x=x, y=y, button=button.value)
         logger.info(
             f"Enqueued mouse event '{event_type.value}' at ({x}, {y}) with button '{button.value}'."
         )
@@ -58,14 +57,15 @@ mouse_event_handler = MouseEventHandler()
 class ShareMouseEvent(ApiHandler):
     async def process(self, input: Dict[str, Any], request: Request) -> Response:
         """
-        Processes mouse events and uses PyAutoGUI to replicate them.
+        Processes mouse events by first analyzing the screen to get exact coordinates using Atlas,
+        then enqueues the mouse event with those coordinates.
         """
         # Extract and validate input
         try:
             event_type_str: str = input["type"]
-            norm_x: float = input["x"]
-            norm_y: float = input["y"]
             button_str: str = input.get("button", "left")
+            element_description: str = input["element_description"]
+            logger.info(f"Processing mouse event: type={event_type_str}, button={button_str}, description='{element_description}'")
         except KeyError as e:
             logger.error(f"Missing required field: {e}")
             return Response(
@@ -92,18 +92,20 @@ class ShareMouseEvent(ApiHandler):
                 mimetype="application/json",
             )
 
-        # Validate normalized coordinates
-        if not (0.0 <= norm_x <= 1.0) or not (0.0 <= norm_y <= 1.0):
-            logger.error(
-                f"Normalized coordinates out of bounds: x={norm_x}, y={norm_y}"
-            )
+        # Analyze screen to get exact coordinates
+        logger.info("Getting coordinates from Atlas...")
+        coordinates = analyze_screen(None, element_description)  # Pass None to let vision tool handle screenshot
+        if not coordinates:
+            logger.error("Atlas failed to provide coordinates")
             return Response(
-                {"error": "Normalized coordinates must be between 0.0 and 1.0."},
+                {"error": "Failed to locate the UI element."},
                 status=400,
                 mimetype="application/json",
             )
+        
+        logger.info(f"Received coordinates from Atlas: {coordinates}")
 
-        # Validate button
+        # Retrieve button enum
         try:
             button = MouseButton(button_str)
         except ValueError:
@@ -114,44 +116,14 @@ class ShareMouseEvent(ApiHandler):
                 mimetype="application/json",
             )
 
-        # Get actual screen size
-        screen_width, screen_height = (
-            pyautogui_handler.get_mouse_position()
-        )
-
-        screen_size_queue = queue.Queue()
-        pyautogui_handler.enqueue_task(lambda: screen_size_queue.put(pyautogui.size()))
-        try:
-            screen_width, screen_height = screen_size_queue.get(timeout=2)
-        except queue.Empty:
-            logger.error("Failed to get screen size within timeout.")
-            return Response(
-                {"error": "Internal server error."},
-                status=500,
-                mimetype="application/json",
-            )
-
-        logger.debug(f"Screen size: width={screen_width}, height={screen_height}")
-
-        # Convert normalized coordinates to actual screen coordinates
-        x = int(norm_x * screen_width)
-        y = int(norm_y * screen_height)
-        logger.debug(f"Converted coordinates: x={x}, y={y}")
-
-        # Validate screen boundaries after conversion
-        if not (0 <= x < screen_width) or not (0 <= y < screen_height):
-            logger.error(f"Converted coordinates out of screen bounds: ({x}, {y})")
-            return Response(
-                {"error": "Converted coordinates out of screen bounds."},
-                status=400,
-                mimetype="application/json",
-            )
-
-        # Enqueue the mouse event
-        mouse_event_handler.enqueue_event(event_type, x, y, button)
+        # Log the final event details
+        logger.info(f"Enqueueing mouse event: type={event_type.value}, coordinates={coordinates}, button={button.value}")
+        
+        # Enqueue the mouse event with exact coordinates
+        mouse_event_handler.enqueue_event(event_type, coordinates, button)
 
         return Response(
-            {"message": "Mouse event enqueued successfully."},
+            {"message": f"Mouse event enqueued successfully at coordinates {coordinates}"},
             status=200,
             mimetype="application/json",
         )

@@ -122,6 +122,16 @@ class PyAutoGUIHandler:
             logger.error("Failed to get mouse position within timeout.")
             return (0, 0)  # Default fallback
 
+    def get_screen_size(self) -> Tuple[int, int]:
+        """
+        Retrieve the current screen size.
+
+        :return: A tuple containing (width, height) of the screen.
+        """
+        width, height = pyautogui.size()
+        logger.debug(f"Screen size retrieved: width={width}, height={height}")
+        return width, height
+
 # Instantiate the handler
 pyautogui_handler = PyAutoGUIHandler()
 
