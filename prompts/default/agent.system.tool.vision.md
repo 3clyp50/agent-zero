@@ -1,6 +1,7 @@
 ### vision:
 Receive info about the current desktop screen, including visible elements, their position, their styling and more.
 Get bounding boxes of specific elements to interact with them.
+Never rely on memory for click coordinates
 
 **Example usages**:
 ~~~json

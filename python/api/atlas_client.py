@@ -102,9 +102,6 @@ class AtlasClient:
                 logger.info(f"Successfully parsed coordinates from Atlas: {coordinates}")
                 
                 # Validate coordinate format
-                if len(coordinates) != 4:
-                    logger.error(f"Invalid coordinate format. Expected 4 values, got {len(coordinates)}")
-                    return None, None
                 
                 if not all(isinstance(coord, (int, float)) for coord in coordinates):
                     logger.error(f"Invalid coordinate types. All coordinates must be numbers. Got: {coordinates}")
