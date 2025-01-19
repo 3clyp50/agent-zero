@@ -1,12 +1,11 @@
 import logging
 import requests
 import base64
-from typing import Optional, Tuple, Dict, Union
+from typing import Optional, Tuple
 import json
 from PIL import Image
 import os
 from dotenv import load_dotenv
-import re
 
 # Initialize logging
 logging.basicConfig(
@@ -33,29 +32,22 @@ class AtlasClient:
         image_path: str,
         prompt: str,
         return_annotated_image: bool = False
-    ) -> Tuple[Optional[Tuple[int, int]], Optional[str]]:
+    ) -> Tuple[Optional[Tuple[int, int, int, int]], Optional[str]]:
         """
         Call the Atlas API to locate an element on the screen based on a textual description.
 
-        Args:
-            image_path: Path to the screenshot image.
-            prompt: Description of the UI element to locate.
-            return_annotated_image: Whether to return the annotated image (unused in framework).
-
-        Returns:
-            Tuple containing:
-            - Click coordinates as (x, y)
-            - Annotated image (always None in framework context)
+        :param image_path: Path to the screenshot image.
+        :param prompt: Description of the UI element to locate.
+        :param return_annotated_image: Whether to return the annotated image.
+        :return: A tuple containing the bounding box coordinates and the annotated image (if requested).
         """
         try:
-            # Get image dimensions for validation and scaling
+            # Log image dimensions before sending
             with Image.open(image_path) as img:
-                img_width, img_height = img.size
-                logger.info(f"Image dimensions before sending to Atlas: {img_width}x{img_height}")
+                logger.info(f"Image dimensions before sending to Atlas: {img.size}")
             
             with open(image_path, "rb") as image_file:
                 encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-            
             payload = {
                 "messages": [{
                     "role": "user",
@@ -71,11 +63,15 @@ class AtlasClient:
                 self.endpoint,
                 headers=self.headers,
                 json=payload,
-                timeout=30
+                timeout=30  # Increased timeout to 30 seconds
             )
             response.raise_for_status()
             data = response.json()
             
+            # Log the full response for debugging
+            logger.debug(f"Atlas API Response: {json.dumps(data, indent=2)}")
+
+            # Extract coordinates from the message content
             try:
                 choices = data.get("choices", [])
                 if not choices:
@@ -84,37 +80,53 @@ class AtlasClient:
 
                 message = choices[0].get("message", {})
                 content = message.get("content", [])
-                
-                response_text = next(
-                    (item.get("text") for item in content if item.get("type") == "text"),
-                    None
-                )
+                if not content:
+                    logger.error("No content found in Atlas message")
+                    return None, None
 
-                if not response_text:
+                # Find the text content containing coordinates
+                coordinate_text = None
+                for item in content:
+                    if item.get("type") == "text":
+                        coordinate_text = item.get("text")
+                        break
+
+                if not coordinate_text:
                     logger.error("No text content found in Atlas message")
                     return None, None
 
-                logger.debug(f"Raw response text: {response_text}")
+                logger.info(f"Raw coordinate text from Atlas: {coordinate_text}")
 
-                # Parse OS-Atlas-Pro-7B format: CLICK <point>[[x,y]]</point>
-                click_pattern = r'CLICK <point>\[\[(\d+(?:\.\d+)?),\s*(\d+(?:\.\d+)?)\]\]</point>'
-                click_match = re.search(click_pattern, response_text)
+                # Parse the coordinate string
+                coordinates = eval(coordinate_text)[0]  # Format: [[x1, y1, x2, y2]]
+                logger.info(f"Successfully parsed coordinates from Atlas: {coordinates}")
                 
-                if click_match:
-                    x, y = map(float, click_match.groups())
-                    logger.info(f"Found coordinates: ({x}, {y})")
-                    
-                    # Validate coordinates are within image bounds
-                    if not (0 <= x <= img_width and 0 <= y <= img_height):
-                        logger.error(f"Coordinates ({x}, {y}) out of bounds for image size {img_width}x{img_height}")
-                        return None, None
-                    
-                    return (int(x), int(y)), None
+                # Validate coordinate format
+                if len(coordinates) != 4:
+                    logger.error(f"Invalid coordinate format. Expected 4 values, got {len(coordinates)}")
+                    return None, None
+                
+                if not all(isinstance(coord, (int, float)) for coord in coordinates):
+                    logger.error(f"Invalid coordinate types. All coordinates must be numbers. Got: {coordinates}")
+                    return None, None
 
-                logger.warning("No valid coordinates found in response")
-                return None, None
+                # Convert float coordinates to integers and ensure proper tuple type
+                coords = tuple(int(coord) for coord in coordinates)
+                if len(coords) != 4:
+                    logger.error(f"Invalid number of coordinates: {len(coords)}")
+                    return None, None
+                final_coordinates = (coords[0], coords[1], coords[2], coords[3])
+                logger.info(f"Final coordinates (converted to integers): {final_coordinates}")
 
-            except Exception as e:
+                annotated_image = data.get("annotated_image")
+                if annotated_image:
+                    logger.info("Received annotated image from Atlas")
+                else:
+                    logger.debug("No annotated image in response")
+
+                return final_coordinates, annotated_image
+
+            except (ValueError, IndexError, SyntaxError, AttributeError) as e:
                 logger.exception(f"Error parsing Atlas response: {e}")
                 return None, None
 

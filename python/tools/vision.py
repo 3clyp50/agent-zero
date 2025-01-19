@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 def analyze_screen(image_path: Optional[str], element_description: str) -> Optional[Tuple[int, int]]:
     """
     Analyze the screen using the Atlas model to find the coordinates of a UI element.
-    Returns the coordinates returned by Atlas.
+    Returns the center point of the bounding box returned by Atlas.
 
     :param image_path: Path to the screenshot image. If None, a new screenshot will be captured.
     :param element_description: Description of the UI element to locate.
-    :return: A tuple of (x, y) coordinates for clicking the element, or None if not found.
+    :return: A tuple of (x, y) coordinates for the center of the element, or None if not found.
     """
     temp_file = None
     temp_path = None
@@ -39,7 +39,7 @@ def analyze_screen(image_path: Optional[str], element_description: str) -> Optio
             temp_file.close()  # Close the file handle immediately
             logger.debug(f"Temporary screenshot saved to: {image_path}")
 
-        coordinates, _ = atlas_client.locate_element(
+        coordinates, annotated_image = atlas_client.locate_element(
             image_path=image_path,
             prompt=element_description
         )
@@ -48,8 +48,13 @@ def analyze_screen(image_path: Optional[str], element_description: str) -> Optio
             logger.error("Failed to locate element using Atlas.")
             return None
 
-        logger.info(f"Atlas returned coordinates: {coordinates}")
-        return coordinates
+        # Calculate the center of the bounding box
+        x1, y1, x2, y2 = coordinates
+        center_x = (x1 + x2) // 2
+        center_y = (y1 + y2) // 2
+        logger.info(f"Calculated center coordinates: ({center_x}, {center_y})")
+
+        return center_x, center_y
 
     finally:
         # Only clean up if we created the temp file and Atlas is done with it
