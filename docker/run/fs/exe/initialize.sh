@@ -14,7 +14,7 @@ apt-get update > /dev/null 2>&1 &
 /usr/sbin/sshd -D &
 
 # Start searxng server in background
-su - searxng -c "bash /exe/run_searxng.sh" &
+su - searxng -c "bash /exe/run_searxng.sh \"$@\"" &
 
 # Run the desktop environment startup script
 bash /exe/run_desktop.sh

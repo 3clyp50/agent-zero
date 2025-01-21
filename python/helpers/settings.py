@@ -468,7 +468,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
         {
             "id": "browser_model_provider",
             "title": "Web Browser model provider",
-            "description": "Select provider for web browser model used by browser-use framework",
+            "description": "Select provider for web browser model used by <a href='https://github.com/browser-use/browser-use' target='_blank'>browser-use</a> framework",
             "type": "select",
             "value": settings["browser_model_provider"],
             "options": [{"value": p.name, "label": p.value} for p in ModelProvider],
@@ -520,28 +520,28 @@ def convert_out(settings: Settings) -> SettingsOutput:
     browser_model_section: SettingsSection = {
         "id": "browser_model",
         "title": "Web Browser Model",
-        "description": "Settings for the web browser model used by browser-use framework.",
+        "description": "Settings for the web browser model. Agent Zero uses <a href='https://github.com/browser-use/browser-use' target='_blank'>browser-use</a> agentic framework to handle web interactions.",
         "fields": browser_model_fields,
     }
 
-    # Memory settings section
-    memory_fields: list[SettingsField] = []
-    memory_fields.append(
-        {
-            "id": "memory_settings",
-            "title": "Memory Settings",
-            "description": "<settings for memory>",
-            "type": "text",
-            "value": "",
-        }
-    )
+    # # Memory settings section
+    # memory_fields: list[SettingsField] = []
+    # memory_fields.append(
+    #     {
+    #         "id": "memory_settings",
+    #         "title": "Memory Settings",
+    #         "description": "<settings for memory>",
+    #         "type": "text",
+    #         "value": "",
+    #     }
+    # )
 
-    memory_section: SettingsSection = {
-        "id": "memory",
-        "title": "Memory Settings",
-        "description": "<settings for memory management here>",
-        "fields": memory_fields,
-    }
+    # memory_section: SettingsSection = {
+    #     "id": "memory",
+    #     "title": "Memory Settings",
+    #     "description": "<settings for memory management here>",
+    #     "fields": memory_fields,
+    # }
 
     # basic auth section
     auth_fields: list[SettingsField] = []
@@ -816,7 +816,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             vision_model_section,
             embed_model_section,
             browser_model_section,
-            memory_section,
+            # memory_section,
             stt_section,
             api_keys_section,
             auth_section,
@@ -926,7 +926,7 @@ def get_default_settings() -> Settings:
 
     return Settings(
         chat_model_provider=ModelProvider.OPENAI.name,
-        chat_model_name="gpt-4o-mini",
+        chat_model_name="gpt-4o",
         chat_model_temperature=0.0,
         chat_model_ctx_length=120000,
         chat_model_ctx_history=0.7,
@@ -942,7 +942,7 @@ def get_default_settings() -> Settings:
         util_model_rl_output=0,
         util_model_kwargs={},
         browser_model_provider=ModelProvider.OPENAI.name,
-        browser_model_name="gpt-4o-mini",
+        browser_model_name="gpt-4o",
         browser_model_vision=False,
         browser_model_temperature=0.0,
         browser_model_kwargs={},

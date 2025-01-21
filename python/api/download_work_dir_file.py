@@ -1,67 +1,64 @@
-from python.helpers.api import ApiHandler
-from flask import Request, Response, send_file
-from python.helpers.file_browser import FileBrowser
-from python.helpers import files
+import base64
+from io import BytesIO
+
+from python.helpers.api import ApiHandler, Input, Output, Request, Response
+from flask import send_file
+
+from python.helpers import files, runtime
+from python.api import file_info
 import os
 
-class DownloadWorkDirFile(ApiHandler):
-    async def process(self, input: dict, request: Request) -> dict | Response:
-        file_path = request.args.get("path", "")
+
+class DownloadFile(ApiHandler):
+    async def process(self, input: Input, request: Request) -> Output:
+        file_path = request.args.get("path", input.get("path", ""))
         if not file_path:
             raise ValueError("No file path provided")
+        if not file_path.startswith("/"):
+            file_path = f"/{file_path}"
 
-        browser = FileBrowser()
+        file = await runtime.call_development_function(
+            file_info.get_file_info, file_path
+        )
 
-        full_path = browser.get_full_path(file_path, True)
-        if os.path.isdir(full_path):
-            zip_file = browser.zip_dir(full_path)
-            return send_file(
-                zip_file,
-                as_attachment=True,
-                download_name=f"{os.path.basename(file_path)}.zip",
-            )
-        if full_path:
-            return send_file(
-                full_path, as_attachment=True, download_name=os.path.basename(file_path)
-            )
-        raise Exception("File not found")
+        if not file["exists"]:
+            raise Exception(f"File {file_path} not found")
 
-    def get_docstring(self) -> str:
-        return """
-        Download Work Directory File API
-        Download a file or directory from the work directory.
-        ---
-        tags:
-            -   file
-        parameters:
-            -   in: query
-                name: path
-                required: true
-                description: The path to the file or directory to download.
-                schema:
-                    type: string
-        responses:
-            200:
-                description: File or directory downloaded successfully.
-                schema:
-                    type: file
-            400:
-                description: No file path provided.
-                schema:
-                    type: object
-                    properties:
-                        error:
-                            type: string
-                            description: Error message indicating no file path was provided.
-            404:
-                description: File not found.
-                schema:
-                    type: object
-                    properties:
-                        error:
-                            type: string
-                            description: Error message indicating the file was not found.
-        """
+        if file["is_dir"]:
+            zip_file = await runtime.call_development_function(files.zip_dir, file["abs_path"])
+            if runtime.is_development():
+                b64 = await runtime.call_development_function(fetch_file, zip_file)
+                file_data = BytesIO(base64.b64decode(b64))
+                return send_file(
+                    file_data,
+                    as_attachment=True,
+                    download_name=os.path.basename(zip_file),
+                )
+            else:
+                return send_file(
+                    zip_file,
+                    as_attachment=True,
+                    download_name=f"{os.path.basename(file_path)}.zip",
+                )
+        elif file["is_file"]:
+            if runtime.is_development():
+                b64 = await runtime.call_development_function(fetch_file, file["abs_path"])
+                file_data = BytesIO(base64.b64decode(b64))
+                return send_file(
+                    file_data,
+                    as_attachment=True,
+                    download_name=os.path.basename(file_path),
+                )
+            else:
+                return send_file(
+                    file["abs_path"],
+                    as_attachment=True,
+                    download_name=os.path.basename(file["file_name"]),
+                )
+        raise Exception(f"File {file_path} not found")
 
-    def get_supported_http_method(self) -> str:
-        return "GET"
+
+async def fetch_file(path):
+    with open(path, "rb") as file:
+        file_content = file.read()
+        return base64.b64encode(file_content).decode("utf-8")

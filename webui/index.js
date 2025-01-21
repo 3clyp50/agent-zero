@@ -808,6 +808,7 @@ function toast(text, type = 'info', timeout = 5000) {
         updateAndShowToast();
     }
 }
+window.toast = toast
 
 function hideToast() {
     const toast = document.getElementById('toast');
@@ -921,10 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleFiles(files, inputAD) {
     Array.from(files).forEach(file => {
         const ext = file.name.split('.').pop().toLowerCase();
-        const allowedExts = new Set(['jpg', 'jpeg', 'png', 'bmp', 'md', 'py', 'js', 'sh', 
-                                'html', 'css', 'pdf', 'txt', 'csv', 'json']);
-        
-        if (allowedExts.has(ext)) {
+       
             const isImage = ['jpg', 'jpeg', 'png', 'bmp'].includes(ext);
             
             if (isImage) {
@@ -949,7 +947,7 @@ function handleFiles(files, inputAD) {
                 });
                 inputAD.hasAttachments = true;
             }
-        }
+        
     });
 }
 

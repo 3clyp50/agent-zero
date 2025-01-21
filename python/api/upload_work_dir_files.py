@@ -1,12 +1,15 @@
+import base64
+from werkzeug.datastructures import FileStorage
 from python.helpers.api import ApiHandler
 from flask import Request, Response, send_file
 
 from python.helpers.file_browser import FileBrowser
-from python.helpers import files
+from python.helpers import files, runtime
+from python.api import get_work_dir_files
 import os
 
-class UploadWorkDirFiles(ApiHandler):
 
+class UploadWorkDirFiles(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
         if "files[]" not in request.files:
             raise Exception("No files uploaded")
@@ -14,14 +17,16 @@ class UploadWorkDirFiles(ApiHandler):
         current_path = request.form.get("path", "")
         uploaded_files = request.files.getlist("files[]")
 
-        browser = FileBrowser()
+        # browser = FileBrowser()
+        # successful, failed = browser.save_files(uploaded_files, current_path)
 
-        successful, failed = browser.save_files(uploaded_files, current_path)
+        successful, failed = await upload_files(uploaded_files, current_path)
 
         if not successful and failed:
             raise Exception("All uploads failed")
 
-        result = browser.get_files(current_path)
+        # result = browser.get_files(current_path)
+        result = await runtime.call_development_function(get_work_dir_files.get_files, current_path)
 
         return {
             "message": (
@@ -34,57 +39,28 @@ class UploadWorkDirFiles(ApiHandler):
             "failed": failed,
         }
 
-    def get_docstring(self) -> str:
-        return """
-        Upload Work Directory Files API
-        Upload files to the working directory.
-        ---
-        tags:
-            -   file
-        parameters:
-            -   in: formData
-                name: files[]
-                type: file
-                description: List of files to be uploaded.
-                required: true
-            -   in: formData
-                name: path
-                type: string
-                description: The path where the files will be uploaded.
-                required: false
-        responses:
-            200:
-                description: Files uploaded successfully.
-                schema:
-                    type: object
-                    properties:
-                        message:
-                            type: string
-                            description: Message indicating the result of the upload.
-                        data:
-                            type: array
-                            items:
-                                type: object
-                                description: Information about the uploaded files.
-                        successful:
-                            type: array
-                            items:
-                                type: string
-                            description: List of successfully uploaded files.
-                        failed:
-                            type: array
-                            items:
-                                type: string
-                            description: List of files that failed to upload.
-            400:
-                description: No files uploaded or all uploads failed.
-                schema:
-                    type: object
-                    properties:
-                        error:
-                            type: string
-                            description: Error message indicating the issue.
-        """
 
-    def get_supported_http_method(self) -> str:
-        return "POST"
+async def upload_files(uploaded_files: list[FileStorage], current_path: str):
+    if runtime.is_development():
+        successful = []
+        failed = []
+        for file in uploaded_files:
+            file_content = file.stream.read()
+            base64_content = base64.b64encode(file_content).decode("utf-8")
+            if await runtime.call_development_function(
+                upload_file, current_path, file.filename, base64_content
+            ):
+                successful.append(file.filename)
+            else:
+                failed.append(file.filename)
+    else:
+        browser = FileBrowser()
+        successful, failed = browser.save_files(uploaded_files, current_path)
+
+    return successful, failed
+
+
+async def upload_file(current_path: str, filename: str, base64_content: str):
+    browser = FileBrowser()
+    return browser.save_file_b64(current_path, filename, base64_content)
+

@@ -13,8 +13,8 @@ const settingsModalProxy = {
             const data = await response.json();
 
             const settings = {
-                title: "Settings page",
-                buttons: [
+                "title": "Settings",
+                "buttons": [
                     {
                         id: "export",
                         title: "Export Settings",

@@ -1,11 +1,18 @@
 from abc import abstractmethod
 import json
 import threading
-from flask import Request, Response, Flask
+from typing import Union, TypedDict, Dict, Any
+from attr import dataclass
+from flask import Request, Response, jsonify, Flask
 from agent import AgentContext
 from initialize import initialize
 from python.helpers.print_style import PrintStyle
 from python.helpers.errors import format_error
+from werkzeug.serving import make_server
+
+
+Input = dict
+Output = Union[Dict[str, Any], Response, TypedDict]
 
 
 class ApiHandler:
@@ -14,17 +21,7 @@ class ApiHandler:
         self.thread_lock = thread_lock
 
     @abstractmethod
-    async def process(self, input: dict, request: Request) -> dict | Response:
-        pass
-
-    @abstractmethod
-    def get_docstring(self) -> str:
-        """Return the Swagger YAML docstring for the route."""
-        pass
-
-    @abstractmethod
-    def get_supported_http_method(self) -> str:
-        """Return the HTTP method that the handler supports."""
+    async def process(self, input: Input, request: Request) -> Output:
         pass
 
     async def handle_request(self, request: Request) -> Response:
@@ -47,11 +44,11 @@ class ApiHandler:
                     response=response_json, status=200, mimetype="application/json"
                 )
 
+            # return exceptions with 500
         except Exception as e:
             error = format_error(e)
             PrintStyle.error(error)
             return Response(response=error, status=500, mimetype="text/plain")
-
 
     # get context to run agent zero in
     def get_context(self, ctxid: str):

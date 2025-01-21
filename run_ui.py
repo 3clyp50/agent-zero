@@ -45,51 +45,19 @@ def requires_auth(f):
 @app.route("/", methods=["GET"])
 @requires_auth
 async def serve_index():
-    """
-    Serve the Index Page
-    ---
-    get:
-      description: Serve the main index page of the web UI.
-      responses:
-        200:
-          description: Returns the index HTML page.
-          content:
-            text/html:
-              schema:
-                type: string
-    """
-    gitinfo = git.get_git_info()
+    gitinfo = None
+    try:
+        gitinfo = git.get_git_info()
+    except Exception as e:
+        gitinfo = {
+            "version": "unknown",
+            "commit_time": "unknown",
+        }
     return files.read_file(
         "./webui/index.html",
         version_no=gitinfo["version"],
         version_time=gitinfo["commit_time"],
     )
-
-
-def register_api_handler(app, handler: type[ApiHandler]):
-    name = handler.__module__.split(".")[-1]
-    instance = handler(app, lock)
-
-    docstring = instance.get_docstring()
-    http_method = instance.get_supported_http_method()  # Get HTTP methods from handler
-
-    async def handle_request():
-        """
-        Attach the handler's docstring here.
-        """
-        return await instance.handle_request(request=request)
-
-    # Assign the docstring to the handle_request function
-    handle_request.__doc__ = docstring
-
-    app.add_url_rule(
-        f"/{name}",
-        f"/{name}",
-        handle_request,
-        methods=[http_method],  # Use dynamic methods
-    )
-
-    PrintStyle().print(f"Registered dynamic route: /{name} with methods {http_method}")
 
 
 def run():
@@ -163,6 +131,26 @@ def run():
 
     server = None
 
+    def register_api_handler(app, handler: type[ApiHandler]):
+        name = handler.__module__.split(".")[-1]
+        instance = handler(app, lock)
+
+        @requires_auth
+        async def handle_request():
+            return await instance.handle_request(request=request)
+
+        app.add_url_rule(
+            f"/{name}",
+            f"/{name}",
+            handle_request,
+            methods=["POST", "GET"],
+        )
+
+    # initialize and register API handlers
+    handlers = load_classes_from_folder("python/api", "*.py", ApiHandler)
+    for handler in handlers:
+        register_api_handler(app, handler)
+
     try:
         server = make_server(
             host=host,
@@ -174,6 +162,10 @@ def run():
         process.set_server(server)
         server.log_startup()
         server.serve_forever()
+        # Run Flask app
+        # app.run(
+        #     request_handler=NoRequestLoggingWSGIRequestHandler, port=port, host=host
+        # )
     finally:
         # Clean up tunnel if it was started
         if tunnel:
