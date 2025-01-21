@@ -25,7 +25,7 @@ class AtlasClient:
             "Content-Type": "application/json",
             "X-API-Key": self.api_key
         }
-        logger.info("AtlasClient initialized.")
+        logger.debug("AtlasClient initialized.")
 
     def locate_element(
         self,

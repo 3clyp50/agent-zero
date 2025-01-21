@@ -21,7 +21,7 @@ class PyAutoGUIHandler:
         self.shutdown_event = threading.Event()
         self.worker_thread = threading.Thread(target=self._worker, daemon=True)
         self.worker_thread.start()
-        logger.info("PyAutoGUIHandler initialized and worker thread started.")
+        logger.debug("PyAutoGUIHandler initialized and worker thread started.")
 
     def _worker(self):
         while not self.shutdown_event.is_set():

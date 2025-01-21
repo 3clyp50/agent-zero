@@ -13,7 +13,7 @@ class ScreenSharer:
         self.running = True
         self.lock = threading.Lock()
         threading.Thread(target=self._capture_frames, daemon=True).start()
-        logger.info("ScreenSharer initialized and capture thread started.")
+        logger.debug("ScreenSharer initialized and capture thread started.")
 
     def _capture_frames(self):
         while self.running:

@@ -18,7 +18,6 @@ Type = Literal[
     "user",
     "util",
     "warning",
-    "debug",
 ]
 
 ProgressUpdate = Literal["persistent", "temporary", "none"]

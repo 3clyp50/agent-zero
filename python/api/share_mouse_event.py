@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class MouseEventHandler:
     def __init__(self) -> None:
-        logger.info("MouseEventHandler initialized.")
+        logger.debug("MouseEventHandler initialized.")
 
     def enqueue_event(
         self, event_type: MouseEventType, coordinates: Tuple[int, int], button: MouseButton

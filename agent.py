@@ -144,7 +144,7 @@ class AgentContext:
 
 
 @dataclass
-class ChatModelConfig:
+class ModelConfig:
     provider: models.ModelProvider
     name: str
     ctx_length: int = 0
@@ -153,36 +153,6 @@ class ChatModelConfig:
     limit_output: int = 0
     vision: bool = False
     kwargs: dict = field(default_factory=dict)
-
-
-@dataclass
-class UtilityModelConfig:
-    provider: models.ModelProvider
-    name: str
-    temperature: float
-    limit_requests: int
-    limit_input: int
-    limit_output: int
-    kwargs: dict
-
-
-@dataclass
-class VisionModelConfig:
-    provider: models.ModelProvider
-    name: str
-    temperature: float
-    limit_requests: int
-    limit_input: int
-    limit_output: int
-    kwargs: dict
-
-
-@dataclass
-class EmbeddingsModelConfig:
-    provider: models.ModelProvider
-    name: str
-    limit_requests: int
-    kwargs: dict
 
 
 @dataclass
@@ -545,6 +515,14 @@ class Agent:
             **self.config.embeddings_model.kwargs,
         )
 
+    def get_vision_model(self):
+        return models.get_model(
+            models.ModelType.VISION,
+            self.config.vision_model.provider,
+            self.config.vision_model.name,
+            **self.config.vision_model.kwargs,
+        )
+
     async def call_utility_model(
         self,
         system: str,
@@ -555,14 +533,6 @@ class Agent:
 
         prompt = ChatPromptTemplate.from_messages(
             [SystemMessage(content=system), HumanMessage(content=message)]
-        )
-
-        # Log the LLM call with "debug" type
-        self.context.log.log(
-            type="debug",
-            heading="Calling Utility Model",
-            content="",
-            kvps={"model": self.config.utility_model.name, "request": prompt.format()},
         )
 
         response = ""
@@ -585,14 +555,6 @@ class Agent:
             if callback:
                 await callback(content)
 
-        # Log the LLM response with "debug" type
-        self.context.log.log(
-            type="debug",
-            heading="Utility Model Response",
-            content="",
-            kvps={"model": self.config.utility_model.name, "response": response},
-        )
-
         return response
 
     async def call_chat_model(
@@ -600,15 +562,6 @@ class Agent:
         prompt: ChatPromptTemplate,
         callback: Callable[[str, str], Awaitable[None]] | None = None,
     ):
-
-        # Log the LLM call with "debug" type
-        self.context.log.log(
-            type="debug",
-            heading="Calling Chat Model",
-            content="",
-            kvps={"model": self.config.chat_model.name, "request": prompt.format()},
-        )
-
         response = ""
 
         # model class
@@ -626,14 +579,6 @@ class Agent:
 
             if callback:
                 await callback(content, response)
-
-        # Log the LLM response with "debug" type
-        self.context.log.log(
-            type="debug",
-            heading="Chat Model Response",
-            content="",
-            kvps={"model": self.config.chat_model.name, "response": response},
-        )
 
         return response
 
@@ -677,23 +622,10 @@ class Agent:
 
         prompt = ChatPromptTemplate.from_messages([HumanMessage(content=content_parts)])
 
-        # Log the LLM call with "debug" type
-        self.context.log.log(
-            type="debug",
-            heading="Calling Vision Model",
-            content="",
-            kvps={"model": self.config.vision_model.name, "request": prompt.format()},
-        )
-
         response = ""
 
         # model class
-        model = models.get_model(
-            models.ModelType.CHAT,
-            self.config.vision_model.provider,
-            self.config.vision_model.name,
-            **self.config.vision_model.kwargs,
-        )
+        model = self.get_vision_model()
 
         # rate limiter
         limiter = await self.rate_limiter(self.config.vision_model, prompt.format())
@@ -708,26 +640,10 @@ class Agent:
             if callback:
                 await callback(content, response)
 
-        # Log the LLM response with "debug" type
-        self.context.log.log(
-            type="debug",
-            heading="Vision Model Response",
-            content="",
-            kvps={"model": self.config.vision_model.name, "response": response},
-        )
-
         return response
 
     async def rate_limiter(
-        self,
-        model_config: (
-            ChatModelConfig
-            | UtilityModelConfig
-            | VisionModelConfig
-            | EmbeddingsModelConfig
-        ),
-        input: str,
-        background: bool = False,
+        self, model_config: ModelConfig, input: str, background: bool = False
     ):
         # rate limiter log
         wait_log = None
@@ -750,10 +666,9 @@ class Agent:
             model_config.provider,
             model_config.name,
             model_config.limit_requests,
-            getattr(model_config, "limit_input", 0),
-            getattr(model_config, "limit_output", 0),
+            model_config.limit_input,
+            model_config.limit_output,
         )
-
         limiter.add(input=tokens.approximate_tokens(input))
         limiter.add(requests=1)
         await limiter.wait(callback=wait_callback)

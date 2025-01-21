@@ -20,6 +20,21 @@ lock = threading.Lock()
 # Set up basic authentication
 basic_auth = BasicAuth(app)
 
+def register_api_handler(app, handler: type[ApiHandler]):
+    """Register an API handler with the Flask application."""
+    name = handler.__module__.split(".")[-1]
+    instance = handler(app, lock)
+
+    @requires_auth
+    async def handle_request():
+        return await instance.handle_request(request=request)
+
+    app.add_url_rule(
+        f"/{name}",
+        f"/{name}",
+        handle_request,
+        methods=["POST", "GET"],
+    )
 
 # Require authentication for handlers
 def requires_auth(f):
@@ -37,9 +52,7 @@ def requires_auth(f):
                     {"WWW-Authenticate": 'Basic realm="Login Required"'},
                 )
         return await f(*args, **kwargs)
-
     return decorated
-
 
 # Handle default address, load index
 @app.route("/", methods=["GET"])
@@ -48,7 +61,7 @@ async def serve_index():
     gitinfo = None
     try:
         gitinfo = git.get_git_info()
-    except Exception as e:
+    except Exception:
         gitinfo = {
             "version": "unknown",
             "commit_time": "unknown",
@@ -58,7 +71,6 @@ async def serve_index():
         version_no=gitinfo["version"],
         version_time=gitinfo["commit_time"],
     )
-
 
 def run():
     PrintStyle().print("Initializing framework...")
@@ -104,54 +116,28 @@ def run():
         for handler in handlers:
             register_api_handler(app, handler)
 
-    except Exception as e:
-        PrintStyle().error(errors.format_error(e))
+        # Initialize Flasgger after all routes have been registered
+        swagger_config = {
+            "headers": [],
+            "specs": [
+                {
+                    "endpoint": "apispec",
+                    "route": "/apispec.json",
+                    "rule_filter": lambda rule: not rule.rule.startswith(
+                        "/static"
+                    ),  # Exclude static routes
+                    "model_filter": lambda tag: True,  # all in
+                }
+            ],
+            "swagger_ui": True,
+            "specs_route": "/docs",
+            "title": "My Flask API",
+            "description": "This is the API documentation for my Flask server.",
+            "version": "1.0.0",
+        }
 
-    # Initialize Flasgger after all routes have been registered
-    swagger_config = {
-        "headers": [],
-        "specs": [
-            {
-                "endpoint": "apispec",
-                "route": "/apispec.json",
-                "rule_filter": lambda rule: not rule.rule.startswith(
-                    "/static"
-                ),  # Exclude static routes
-                "model_filter": lambda tag: True,  # all in
-            }
-        ],
-        "swagger_ui": True,
-        "specs_route": "/docs",
-        "title": "My Flask API",
-        "description": "This is the API documentation for my Flask server.",
-        "version": "1.0.0",
-    }
+        Swagger(app, config=swagger_config)
 
-    Swagger(app, config=swagger_config)
-
-    server = None
-
-    def register_api_handler(app, handler: type[ApiHandler]):
-        name = handler.__module__.split(".")[-1]
-        instance = handler(app, lock)
-
-        @requires_auth
-        async def handle_request():
-            return await instance.handle_request(request=request)
-
-        app.add_url_rule(
-            f"/{name}",
-            f"/{name}",
-            handle_request,
-            methods=["POST", "GET"],
-        )
-
-    # initialize and register API handlers
-    handlers = load_classes_from_folder("python/api", "*.py", ApiHandler)
-    for handler in handlers:
-        register_api_handler(app, handler)
-
-    try:
         server = make_server(
             host=host,
             port=port,
@@ -162,15 +148,13 @@ def run():
         process.set_server(server)
         server.log_startup()
         server.serve_forever()
-        # Run Flask app
-        # app.run(
-        #     request_handler=NoRequestLoggingWSGIRequestHandler, port=port, host=host
-        # )
+
+    except Exception as e:
+        PrintStyle().error(errors.format_error(e))
     finally:
         # Clean up tunnel if it was started
         if tunnel:
             tunnel.stop()
-
 
 # Run the internal server
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import asyncio
 import models
-from agent import AgentConfig, ChatModelConfig, EmbeddingsModelConfig, UtilityModelConfig, VisionModelConfig
+from agent import AgentConfig, ModelConfig
 from python.helpers import dotenv, files, rfc_exchange, runtime, settings, docker, log
 
 
@@ -9,12 +9,10 @@ def initialize():
     current_settings = settings.get_settings()
 
     # chat model from user settings
-    chat_llm = ChatModelConfig(
+    chat_llm = ModelConfig(
         provider=models.ModelProvider[current_settings["chat_model_provider"]],
         name=current_settings["chat_model_name"],
-        temperature=current_settings["chat_model_temperature"],
         ctx_length=current_settings["chat_model_ctx_length"],
-        ctx_history=current_settings["chat_model_ctx_history"],
         limit_requests=current_settings["chat_model_rl_requests"],
         limit_input=current_settings["chat_model_rl_input"],
         limit_output=current_settings["chat_model_rl_output"],
@@ -25,10 +23,10 @@ def initialize():
     )
 
     # utility model from user settings
-    utility_llm = UtilityModelConfig(
+    utility_llm = ModelConfig(
         provider=models.ModelProvider[current_settings["util_model_provider"]],
         name=current_settings["util_model_name"],
-        temperature=current_settings["util_model_temperature"],
+        ctx_length=current_settings["util_model_ctx_length"],
         limit_requests=current_settings["util_model_rl_requests"],
         limit_input=current_settings["util_model_rl_input"],
         limit_output=current_settings["util_model_rl_output"],
@@ -37,23 +35,8 @@ def initialize():
             **current_settings["util_model_kwargs"],
         },
     )
-
-    # vision model from user settings
-    vision_llm = VisionModelConfig(
-        provider=models.ModelProvider[current_settings["vision_model_provider"]],
-        name=current_settings["vision_model_name"],
-        temperature=current_settings["vision_model_temperature"],
-        limit_requests=current_settings["vision_model_rl_requests"],
-        limit_input=current_settings["vision_model_rl_input"],
-        limit_output=current_settings["vision_model_rl_output"],
-        kwargs={
-            "temperature": current_settings["vision_model_temperature"],
-            **current_settings["vision_model_kwargs"],
-        },
-    )
-
     # embedding model from user settings
-    embedding_llm = EmbeddingsModelConfig(
+    embedding_llm = ModelConfig(
         provider=models.ModelProvider[current_settings["embed_model_provider"]],
         name=current_settings["embed_model_name"],
         limit_requests=current_settings["embed_model_rl_requests"],
@@ -71,13 +54,28 @@ def initialize():
             **current_settings["browser_model_kwargs"],
         },
     )
+    
+    # vision model from user settings
+    vision_llm = ModelConfig(
+        provider=models.ModelProvider[current_settings["vision_model_provider"]],
+        name=current_settings["vision_model_name"],
+        limit_requests=current_settings["vision_model_rl_requests"],
+        limit_input=current_settings["vision_model_rl_input"],
+        limit_output=current_settings["vision_model_rl_output"],
+       
+        kwargs={
+            "temperature": current_settings["vision_model_temperature"],
+            **current_settings["vision_model_kwargs"],
+        },
+    )
+
     # agent configuration
     config = AgentConfig(
         chat_model=chat_llm,
         utility_model=utility_llm,
-        vision_model=vision_llm,
         embeddings_model=embedding_llm,
         browser_model=browser_llm,
+        vision_model=vision_llm,
         prompts_subdir=current_settings["agent_prompts_subdir"],
         memory_subdir=current_settings["agent_memory_subdir"],
         knowledge_subdirs=["default", current_settings["agent_knowledge_subdir"]],
