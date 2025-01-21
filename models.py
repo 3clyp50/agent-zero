@@ -1,13 +1,13 @@
 from enum import Enum
 import os
 from typing import Any, Callable, Awaitable
+from openai import OpenAI
 from langchain_openai import (
     OpenAI,
     ChatOpenAI,
     OpenAIEmbeddings,
     AzureChatOpenAI,
     AzureOpenAIEmbeddings,
-    AzureOpenAI,
 )
 from langchain_ollama import ChatOllama
 from langchain_community.embeddings import OllamaEmbeddings
@@ -28,8 +28,12 @@ from langchain_mistralai import ChatMistralAI
 from python.helpers import dotenv, runtime
 from python.helpers.dotenv import load_dotenv
 from python.helpers.rate_limiter import RateLimiter
-from langchain_core.messages import HumanMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import (
+    BaseMessage,
+    HumanMessage,
+    AIMessage,
+    SystemMessage )
 
 # Environment variables
 load_dotenv()
@@ -55,6 +59,7 @@ class ModelProvider(Enum):
     OPENAI_AZURE = "OpenAI Azure"
     OPENROUTER = "OpenRouter"
     SAMBANOVA = "Sambanova"
+    OVH = "OVH"  # temporary: just for me to test OVH
     OTHER = "Other"
 
 rate_limiters: dict[str, RateLimiter] = {}
@@ -96,9 +101,29 @@ def parse_chunk(chunk: Any) -> str:
         content = str(chunk)
     return content
 
-# ----------------------------
-# Provider-Specific Getter Functions
-# ----------------------------
+# --- OVH Models ---
+
+def get_ovh_vision(
+    model_name: str,
+    temperature: float = DEFAULT_TEMPERATURE,
+    api_key: str = None,
+    base_url: str = None,
+    **kwargs,
+):
+    if not api_key:
+        api_key = os.getenv("OVH_AI_ENDPOINTS_ACCESS_TOKEN")
+    if not base_url:
+        base_url = (
+            dotenv.get_dotenv_value("OVH_BASE_URL")
+            or "https://llava-next-mistral-7b.endpoints.kepler.ai.cloud.ovh.net/api/openai_compat/v1"
+        )
+    
+    return ChatOpenAI(
+        model=model_name,
+        base_url=base_url,
+        api_key=api_key,
+        temperature=temperature,
+    )  # type: ignore
 
 # --- Ollama Models ---
 def get_ollama_base_url() -> str:
