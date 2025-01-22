@@ -609,6 +609,11 @@ class Agent:
                 "type": "image_url",
                 "image_url": f"data:image/jpeg;base64,{image}",
             }
+        elif self.config.vision_model.provider == models.ModelProvider.HYPERBOLIC:
+            image_part = {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{image}"},
+            }
         else:
             image_part = {
                 "type": "image_url",
