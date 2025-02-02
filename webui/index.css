@@ -155,8 +155,7 @@ body,
   -ms-overflow-style: none;
 }
 
-#status-section,
-.config-section:not(#chats-section) {
+#status-section {
   flex-shrink: 0;
 }
 
@@ -881,35 +880,57 @@ pre {
 
 .config-button {
   background-color: var(--color-background);
-  border: 0.1rem solid var(--color-border);
-  border-radius: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
   cursor: pointer;
-  display: inline;
-  font-family: "Rubik", Arial, Helvetica, sans-serif;
-  font-size: var(--font-size-small);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.8;
   text-wrap: nowrap;
-  width: calc(50% - var(--spacing-xs));
-  float:left;
-  margin: 0 var(--spacing-xs) var(--spacing-xs) 0;
-  padding: var(--spacing-sm) 0.75rem;
-  max-height: 2.3rem;
+  float: left;
+  width: 24px;
+  height: 24px;
+  padding: 0.85rem 1.05rem;
+  margin: 0;
   -webkit-transition: all var(--transition-speed), transform 0.1s ease-in-out;
   transition: all var(--transition-speed), transform 0.1s ease-in-out;
+}
+
+.config-button:not(:last-child) {
+  margin-right: -1px;
+  border-right: 1px solid var(--color-border);
+}
+
+.config-button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.config-button:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.config-button:not(:first-child):not(:last-child) {
+  border-radius: 0;
 }
 
 .config-button:hover {
   background-color: var(--color-secondary);
   opacity: 1;
+  z-index: 1;
+  position: relative;
 }
 
 .config-button:active {
   opacity: 0.5;
+  transform: scale(0.95);
 }
 
-#settings {
-  display: flex;
-  align-items: center;
+.config-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .edit-button {
