@@ -141,9 +141,10 @@ body,
   display: flex;
   flex-direction: column;
   min-height: 0;
+  width: 100%;
   overflow: hidden;
   margin-top: 3.5rem;
-  padding: var(--spacing-md) var(--spacing-md) 0 var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-md) 0;
 }
 
 .left-panel-top::-webkit-scrollbar {
@@ -155,6 +156,15 @@ body,
   -ms-overflow-style: none;
 }
 
+#quick-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0;
+}
+
 #status-section {
   flex-shrink: 0;
 }
@@ -162,6 +172,14 @@ body,
 .left-panel-bottom {
   position: relative;
   flex-shrink: 0;
+}
+
+/* Top icons section container */
+.icons-section {
+  position: fixed;
+  display: flex;
+  z-index: 1004;
+  transition: transform var(--transition-speed) ease-in-out;
 }
 
 /* Sidebar Toggle Button */
@@ -435,8 +453,35 @@ pre {
   border-radius: var(--spacing-xs);
   width: auto;
   height: 2.6rem;
-  -webkit-transition: filter 0.3s ease;
-  transition: filter 0.3s ease;
+  -webkit-transition: filter 0.1s ease;
+  transition: filter 0.1s ease;
+}
+
+#newChat {
+  display: -webkit-flex;
+  display: flex;
+  flex-wrap: nowrap;
+  background-color: transparent;
+  border: none;
+  align-items: center;
+  justify-content: space-between;
+  position: fixed;
+  margin-left: 12rem;
+  margin-top: var(--spacing-md);
+  z-index: 1004;
+  opacity: 0.7;
+  cursor: pointer;
+  -webkit-transition: all 0.1s ease-in-out;
+  transition: all 0.1s ease-in-out;
+}
+
+#newChat:hover {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+#left-panel.hidden #newChat {
+  margin-left: 7.4rem;
 }
 
 #progress-bar-box {
@@ -888,13 +933,11 @@ pre {
   justify-content: center;
   opacity: 0.8;
   text-wrap: nowrap;
-  float: left;
-  width: 24px;
-  height: 24px;
-  padding: 0.85rem 1.05rem;
-  margin: 0;
+  padding: var(--spacing-xs);
   -webkit-transition: all var(--transition-speed), transform 0.1s ease-in-out;
   transition: all var(--transition-speed), transform 0.1s ease-in-out;
+  flex: 1;
+  min-width: 0;
 }
 
 .config-button:not(:last-child) {
@@ -1703,10 +1746,6 @@ input:checked + .slider:before {
     z-index: 1003;
     -webkit-transition: all var(--transition-speed) ease-in-out;
     transition: all var(--transition-speed) ease-in-out;
-  }
-
-  #left-panel.hidden {
-    margin-left: -250px;
   }
 
   .toggle-sidebar-button {

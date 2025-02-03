@@ -46,9 +46,7 @@
 <body>
     <div class="container">
         <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
-        <div class="icons-section" id="hide-button" x-data="{ connected: true }">
-            <!--Sidebar-->
-            <!-- Sidebar Toggle Button -->
+        <div class="icons-section">
             <button id="toggle-sidebar" class="toggle-sidebar-button" aria-label="Toggle Sidebar" aria-expanded="false">
                 <span aria-hidden="true">
                     <!-- Hamburger Icon -->
@@ -64,29 +62,32 @@
                     <img src="./public/splash.jpg" alt="a0" width="22" height="22">
                 </a>
             </div>
+
+            <button id="newChat" @click="newChat()">
+                <img src="public/chatnew.svg" alt="new" width="36" height="36">
+            </button>
+
         </div>
 
         <div id="left-panel" class="panel">
             <!--Sidebar upper elements-->
             <div class="left-panel-top">
-                <div class="config-section" x-data="{ showQuickActions: true }">
+                <div class="config-section" x-data="{ showQuickActions: true }" id="quick-actions">
                     <button class="config-button" id="resetChat" @click="resetChat()">
-                        <img src="public/chatdel.svg" alt="reset" width="24" height="24">
+                        <img src="public/chatdel.svg" alt="reset" width="26" height="26">
                     </button>
-                    <button class="config-button" id="newChat" @click="newChat()">
-                        <img src="public/chatnew.svg" alt="new" width="24" height="24">
-                    </button>
+                    
                     <button class="config-button" id="loadChats" @click="loadChats()">
-                        <img src="public/chatload.svg" alt="load" width="24" height="24">
+                        <img src="public/chatload.svg" alt="load" width="26" height="26">
                     </button>
                     <button class="config-button" id="saveChat" @click="saveChat()">
-                        <img src="public/chatsave.svg" alt="save" width="24" height="24">
+                        <img src="public/chatsave.svg" alt="save" width="26" height="26">
                     </button>
                     <button class="config-button" id="restart" @click="restart()">
-                        <img src="public/chatrestart.svg" alt="restart" width="24" height="24">
+                        <img src="public/chatrestart.svg" alt="restart" width="26" height="26">
                     </button>
                     <button class="config-button" id="settings" @click="settingsModalProxy.openModal()">
-                        <img src="public/settings.svg" alt="settings" width="24" height="24">
+                        <img src="public/settings.svg" alt="settings" width="26" height="26">
                     </button>
 
                 </div>
