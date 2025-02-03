@@ -156,6 +156,12 @@ body,
   -ms-overflow-style: none;
 }
 
+.wrapper {
+  padding: 0.4rem;
+  border-radius: 4px;
+  background-color: var(--color-background) ;
+}
+
 #quick-actions {
   display: flex;
   flex-direction: row;
@@ -176,7 +182,7 @@ body,
 
 /* Top icons section container */
 .icons-section {
-  position: fixed;
+  position: absolute;
   display: flex;
   z-index: 1004;
   transition: transform var(--transition-speed) ease-in-out;
@@ -436,7 +442,6 @@ pre {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: fixed;
   margin-left: 4.6rem;
   margin-top: var(--spacing-md);
   z-index: 1004;
@@ -464,23 +469,32 @@ pre {
   background-color: transparent;
   border: none;
   align-items: center;
-  justify-content: space-between;
-  position: fixed;
+  position: absolute;
   margin-left: 12rem;
   margin-top: var(--spacing-md);
   z-index: 1004;
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: pointer;
   -webkit-transition: all 0.1s ease-in-out;
   transition: all 0.1s ease-in-out;
 }
 
 #newChat:hover {
-  opacity: 1;
+  opacity: 0.8;
   transform: scale(1.04);
 }
 
-#left-panel.hidden #newChat {
+#newChat:active {
+  opacity: 0.5;
+  transform: scale(0.98);
+}
+
+#newChat svg {
+  color: var(--color-text);
+}
+
+/* When sidebar is collapsed/hidden */
+body.sidebar-collapsed #newChat {
   margin-left: 7.4rem;
 }
 
@@ -817,7 +831,7 @@ pre {
   -webkit-font-optical-sizing: auto;
   font-size: 0.90rem;
   max-height: 7rem;
-  min-height: 3.05rem;
+  min-height: 3.07rem;
   width: 100%;
   padding: 0.48rem 40px var(--spacing-sm) var(--spacing-sm);
   margin-right: var(--spacing-xs);
@@ -924,8 +938,8 @@ pre {
 }
 
 .config-button {
-  background-color: var(--color-background);
-  border: 1px solid var(--color-border);
+  background-color: var(--color-panel);
+  border: 0.1rem solid var(--color-border);
   border-radius: 3px;
   cursor: pointer;
   display: flex;
@@ -938,6 +952,11 @@ pre {
   transition: all var(--transition-speed), transform 0.1s ease-in-out;
   flex: 1;
   min-width: 0;
+}
+
+.config-button svg {
+  width: 26px;
+  height: 26px;
 }
 
 .config-button:not(:last-child) {
@@ -969,11 +988,6 @@ pre {
 .config-button:active {
   opacity: 0.5;
   transform: scale(0.95);
-}
-
-.config-button svg {
-  width: 14px;
-  height: 14px;
 }
 
 .edit-button {
@@ -1973,19 +1987,6 @@ a:active {
 
 .light-mode #left-panel {
   box-shadow: 1px 0 25px rgba(0, 0, 0, 0.05);
-}
-
-.light-mode .config-button {
-  background-color: var(--color-background);
-  color: #333333;
-}
-
-.light-mode .config-button:hover {
-  background-color: #d6dae8;
-}
-
-.light-mode .config-button:active {
-  background-color: #bdc0cb;
 }
 
 .light-mode .edit-button {

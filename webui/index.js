@@ -38,6 +38,12 @@ function toggleSidebar(show) {
         rightPanel.classList.toggle('expanded');
         overlay.classList.toggle('visible', !leftPanel.classList.contains('hidden'));
     }
+    
+    if (leftPanel.classList.contains('hidden')) {
+        document.body.classList.add('sidebar-collapsed');
+    } else {
+        document.body.classList.remove('sidebar-collapsed');
+    }
 }
 
 function handleResize() {
@@ -50,6 +56,12 @@ function handleResize() {
         leftPanel.classList.remove('hidden');
         rightPanel.classList.remove('expanded');
         overlay.classList.remove('visible');
+    }
+    // Add or remove the sidebar-collapsed class on the body
+    if (leftPanel.classList.contains('hidden')) {
+        document.body.classList.add('sidebar-collapsed');
+    } else {
+        document.body.classList.remove('sidebar-collapsed');
     }
 }
 
