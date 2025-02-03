@@ -20,7 +20,7 @@ class AtlasClient:
         if not self.api_key:
             raise ValueError("ATLAS_API_KEY environment variable is not set")
             
-        self.endpoint = endpoint or os.getenv("ATLAS_ENDPOINT", "https://computeragent.pro/api/chat")
+        self.endpoint = endpoint or os.getenv("ATLAS_ENDPOINT", "https://api.computeragent.pro/v1/chat/completions")
         self.headers = {
             "Content-Type": "application/json",
             "X-API-Key": self.api_key
