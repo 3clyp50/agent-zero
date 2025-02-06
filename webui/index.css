@@ -48,6 +48,7 @@
   /* Spacing variables */
   --spacing-xs: 0.3125rem;
   --spacing-sm: 0.625rem;
+  --spacing-smm: 0.925rem;
   --spacing-md: 1.25rem;
   --spacing-lg: 2rem;
 
@@ -157,9 +158,9 @@ body,
 }
 
 .wrapper {
-  padding: 0.4rem;
-  border-radius: 4px;
-  background-color: var(--color-background) ;
+  padding: 0.2rem;
+  border-radius: 0.6rem;
+  background-color: var(--color-background);
 }
 
 #quick-actions {
@@ -190,25 +191,27 @@ body,
 
 /* Sidebar Toggle Button */
 .toggle-sidebar-button {
-  height: 2.6rem;
-  width: 2.6rem;
-  background-color: var(--color-background);
-  border: 0.1rem solid var(--color-border);
-  border-radius: var(--spacing-xs);
-  color: var(--color-text);
+  height: 2.9rem;
+  width: 2.9rem;
+  background-color: transparent;
+  border: 0;
+  color: var(
+  --color-text);
   opacity: 0.8;
   cursor: pointer;
-  left: var(--spacing-md);
-  padding: 0.47rem 0.56rem;
+  left: var(
+  --spacing-smm);
+  padding: 0;
   position: absolute;
-  top: var(--spacing-md);
+  top: var(
+  --spacing-md);
   z-index: 1004;
   -webkit-transition: all var(--transition-speed) ease-in-out;
-  transition: all var(--transition-speed) ease-in-out;
+  transition: all var(
+  --transition-speed) ease-in-out;
 }
 
 .toggle-sidebar-button:hover {
-  background-color: var(--color-secondary);
   opacity: 1;
 }
 
@@ -217,13 +220,13 @@ body,
 }
 
 #sidebar-hamburger-svg {
-  -webkit-transition: all var(--transition-speed) ease;
-  transition: all var(--transition-speed) ease;
+  -webkit-transition: all 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .toggle-sidebar-button:active #sidebar-hamburger-svg {
-  -webkit-transform: scaleY(0.8);
-  transform: scaleY(0.8);
+  -webkit-transform: scaleY(0.7);
+  transform: scaleY(0.7);
 }
 
 .switch-label {
@@ -261,16 +264,6 @@ body,
 
 .chats-list-container::-webkit-scrollbar {
   width: 0px;
-}
-
-/* Chats Section */
-#chats-section {
-  display: -webkit-flex;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
-  margin-top: 1.5rem;
 }
 
 /* Preferences */
@@ -442,7 +435,7 @@ pre {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-left: 4.6rem;
+  margin-left: 4rem;
   margin-top: var(--spacing-md);
   z-index: 1004;
   -webkit-transition: margin-left var(--transition-speed) ease-in-out;
@@ -470,13 +463,13 @@ pre {
   border: none;
   align-items: center;
   position: absolute;
-  margin-left: 12rem;
+  margin-left: 11.9rem;
   margin-top: var(--spacing-md);
   z-index: 1004;
   opacity: 0.6;
   cursor: pointer;
   -webkit-transition: all 0.1s ease-in-out;
-  transition: all 0.1s ease-in-out;
+  transition: all 0.1s ease-in-out, margin-left var(--transition-speed) ease-in-out;
 }
 
 #newChat:hover {
@@ -495,7 +488,7 @@ pre {
 
 /* When sidebar is collapsed/hidden */
 body.sidebar-collapsed #newChat {
-  margin-left: 7.4rem;
+  margin-left: 6.85rem;
 }
 
 #progress-bar-box {
@@ -925,6 +918,7 @@ body.sidebar-collapsed #newChat {
   border-top: 1px solid var(--color-border);
   display: -webkit-flex;
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
   padding: 0.35rem 0;
 }
@@ -939,8 +933,8 @@ body.sidebar-collapsed #newChat {
 
 .config-button {
   background-color: var(--color-panel);
-  border: 0.1rem solid var(--color-border);
-  border-radius: 3px;
+  border: 0.05rem solid var(--color-border);
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1123,6 +1117,209 @@ body.sidebar-collapsed #newChat {
   text-transform: uppercase;
   white-space: nowrap;
 }
+
+/* Chats and Files containers */
+.chat-list-button {
+  cursor: pointer;
+  font-weight: 300;
+}
+
+.chat-list-button .font-bold {
+  opacity: 1 !important;
+}
+
+.chats-list-container,
+.files-list-container {
+  flex: 1;
+  min-height: 130px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  /* Mask */
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - 20px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - 20px),
+    transparent 100%
+  );
+  /* Fallback for browsers that do not support mask-image */
+  background: linear-gradient(to bottom, calc(100% - 20px), transparent 100%);
+  /* Add padding to account for fade */
+  padding-bottom: 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chats-list-container::-webkit-scrollbar,
+.files-list-container::-webkit-scrollbar {
+  width: 0px;
+}
+
+#files-section {
+  position: relative;
+  top: -40px;
+}
+
+/* Chats and Files Sections */
+#chats-section,
+#files-section {
+  display: -webkit-flex;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  margin-top: var(--spacing-xs);
+}
+
+#files-section .path-navigator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.6rem;
+  padding: var(--spacing-xs);
+}
+
+#files-section .back-button {
+  font-size: 0.5rem;
+  padding: 2px 4px;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+#files-section .back-button svg {
+  padding: 2px;
+}
+
+#files-section #current-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+#files-section .file-actions {
+  display: flex;
+  gap: 4px;
+}
+
+#files-section .button-row {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+#files-section .upload-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: 0.15rem;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.65rem;
+  transition: all 0.2s ease;
+}
+
+#files-section .upload-button:hover {
+  background: var(--color-secondary);
+}
+
+#files-section .upload-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+#files-section .file-icon {
+  width: 16px;
+  height: 16px;
+}
+
+#files-section .file-name {
+  font-size: 0.7rem;
+  font-weight: 300;
+}
+
+#files-section .file-item {
+  padding: 0.1rem;
+}
+
+#files-section .file-info {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+#files-section .full-browser-button {
+  flex: 1;
+  margin-top: 0;
+}
+
+#files-section .delete-button {
+  background: none;
+  width: 22px;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  color: var(--color-text);
+}
+
+#files-section .delete-button:hover {
+  opacity: 1;
+}
+
+#files-section .delete-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.download-button {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  color: var(--color-text);
+}
+
+.download-button:hover {
+  opacity: 1;
+}
+
+.download-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.full-browser-button {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.15rem;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: "Rubik", Arial, Helvetica, sans-serif;
+  font-size: 0.65rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.full-browser-button:hover {
+  background: var(--color-secondary);
+}
+
 
 /* Preview section styles */
 .preview-section {
@@ -1764,7 +1961,6 @@ input:checked + .slider:before {
 
   .toggle-sidebar-button {
     position: fixed;
-    left: var(--spacing-md);
     z-index: 1004;
   }
 

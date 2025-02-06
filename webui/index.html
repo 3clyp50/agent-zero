@@ -50,7 +50,7 @@
             <button id="toggle-sidebar" class="toggle-sidebar-button" aria-label="Toggle Sidebar" aria-expanded="false">
                 <span aria-hidden="true">
                     <!-- Hamburger Icon -->
-                    <svg id="sidebar-hamburger-svg" xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+                    <svg id="sidebar-hamburger-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                         viewBox="0 0 24 24" fill="CurrentColor">
                         <path d="M3 13h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V7H3v2z"></path>
                     </svg>
@@ -78,15 +78,17 @@
                         <button class="config-button" id="resetChat" @click="resetChat()">
                             <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M26.6 31h17.3c.5-2.2 1.5-4.2 3.1-5.7 2-2 4.9-3.3 8-3.3s5.9 1.3 8 3.3c1.5 1.5 2.6 3.5 3.1 5.7h17.3c2.1 0 4 .8 5.5 2.2l.1.1.1.1c1.3 1.4 2.2 3.3 2.2 5.3 0 2.1-.8 4-2.2 5.5-.9.8-1.9 1.4-3.1 1.8v52.1c0 4.1-1.7 7.9-4.4 10.6l-.1.1c-2.7 2.6-6.4 4.3-10.6 4.3H39.2c-4.1 0-7.9-1.7-10.6-4.4-2.6-2.7-4.4-6.5-4.4-10.6V46c-1.2-.4-2.2-1.1-3.1-1.8-1.4-1.4-2.2-3.3-2.2-5.5 0-2.1.8-4 2.2-5.5 1.4-1.4 3.4-2.2 5.5-2.2m22.2 0h12.6c-.3-.8-.8-1.7-1.5-2.4-1.2-1.2-2.8-1.9-4.7-1.9s-3.5.7-4.7 1.9c-.9.6-1.4 1.4-1.7 2.4m34.6 4.6H26.6c-.8 0-1.6.3-2.2.8s-.8 1.3-.8 2.2c0 .8.3 1.6.8 2.2.5.5 1.3.8 2.1.8h57c.8 0 1.5-.4 2.1-.8.5-.5.8-1.3.8-2.2 0-.8-.3-1.5-.8-2.1s-1.4-.9-2.2-.9m-2.2 10.8H28.8v51.7c0 2.8 1.2 5.5 3.1 7.3 1.8 1.8 4.4 3.1 7.3 3.1h31.7c2.8 0 5.4-1.2 7.2-3s3.1-4.4 3.1-7.3zM38.4 59.8c0-1.3 1.1-2.3 2.3-2.3s2.3 1.1 2.3 2.3v28.5c0 1.3-1.1 2.3-2.3 2.3s-2.3-1.1-2.3-2.3zm14.3 0c0-1.3 1.1-2.3 2.3-2.3s2.3 1.1 2.3 2.3v28.5c0 1.3-1.1 2.3-2.3 2.3s-2.3-1.1-2.3-2.3zm14.2 0c0-1.3 1.1-2.3 2.3-2.3s2.3 1.1 2.3 2.3v28.5c0 1.3-1.1 2.3-2.3 2.3s-2.3-1.1-2.3-2.3z" style="fill:currentColor"></path></svg>
                         </button>
-                        
+                        <button class="config-button" id="restart" @click="restart()">
+                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M59.3 106.9c21.7 0 39.4-17.7 39.4-39.4-.1-21.7-17.8-39.4-39.5-39.4-15.4 0-29.4 8.9-35.8 22.8l-1.2 2.8-5.7-12.9c-.3-.6-.8-1.1-1.5-1.4s-1.4-.2-2 .1c-1.3.6-1.9 2.2-1.3 3.5l8.9 19.9.2.2v.1h.1l.1.2s0 .1.1.1l.1.1c.1.1.2.2.2.3.1 0 .1.1.2.1l.2.2c.1 0 .1.1.2.1s.2.1.2.1h1.2l.1-.1.3-.1 19.5-6.4c.7-.3 1.2-.7 1.6-1.3.5-.8.4-1.2.2-1.8l-.1-.1c-.4-1.4-1.9-2.1-3.3-1.6l-15.2 4.9 1.1-2.7c5.1-13.2 17.7-21.7 32-21.7 8.9 0 17.3 3.5 23.7 9.9 6.5 6.4 10.1 15 10.1 24.1 0 18.8-15.3 34.1-34.1 34.1-12.9 0-24.5-7.1-30.3-18.5-.4-.6-.9-1-1.6-1.3-.2-.1-.5-.1-.8-.1-.4 0-.8.1-1.3.3-.4.3-1.1.8-1.3 1.5-.2.8-.2 1.5.2 2 6.8 13.2 20.2 21.4 35.1 21.4" style="fill:currentColor"/></svg>
+                        </button>
+                        <button class="config-button" id="loadKnowledge" @click="loadKnowledge()">
+                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M37.8 50.3 52 36v50.8c0 1.7 1.3 3 3 3s3-1.3 3-3V36l14 14.2c1.2 1.2 3 1.2 4.2 0s1.2-3 0-4.2L56.9 26.7c-.1-.1-.3-.3-.7-.5-.1-.1-.2-.1-.3-.2-.6-.3-1.5-.3-2.2 0h-.2L33.6 46c-1.2 1.2-1.2 3 0 4.2 1.2 1.3 3 1.3 4.2.1" style="fill:currentColor"/><path d="M93.7 83.8c-1.7 0-3 1.3-3 3v9.7c0 3.6-3.1 6.7-6.7 6.7H26c-3.6 0-6.7-3.1-6.7-6.7v-9.7c0-1.7-1.3-3-3-3s-3 1.3-3 3v9.7c0 7 5.7 12.7 12.7 12.7h58c7 0 12.7-5.7 12.7-12.7v-9.7c0-1.7-1.3-3-3-3" style="fill:currentColor"/></svg>
+                        </button>
                         <button class="config-button" id="loadChats" @click="loadChats()">
-                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="m42.9 41.4 9.3-9.3v55.2c0 1.6 1.3 2.8 2.8 2.8 1.6 0 2.8-1.3 2.8-2.8V32.1l9.3 9.3c.5.5 1.3.8 2 .8s1.4-.3 2-.8c1.1-1.1 1.1-2.9 0-4L57 23.3c-1.1-1.1-2.9-1.1-4 0L38.9 37.4c-1.1 1.1-1.1 2.9 0 4s2.9 1.1 4 0" style="fill:currentColor"></path><path d="M91.6 47.8H71.9c-1.6 0-2.8 1.3-2.8 2.8 0 1.6 1.3 2.8 2.8 2.8h19.7c1.6 0 2.8 1.3 2.8 2.8V104c0 1.6-1.3 2.8-2.8 2.8H18.4c-1.6 0-2.8-1.3-2.8-2.8V56.2c0-1.6 1.3-2.8 2.8-2.8h19.7c1.6 0 2.8-1.3 2.8-2.8 0-1.6-1.3-2.8-2.8-2.8H18.4c-4.7 0-8.4 3.8-8.4 8.4V104c0 4.7 3.8 8.4 8.4 8.4h73.1c4.7 0 8.4-3.8 8.4-8.4V56.2c.1-4.6-3.7-8.4-8.3-8.4" style="fill:currentColor"></path></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M99.2 55.3h-2.9V49c0-2.5-2.1-4.6-4.6-4.6H54.1l-5.5-8.5C47.4 33.8 46.1 33 44 33H19.5c-2.5 0-4.6 2.1-4.6 5.1v17.7h-3.4c-1.2 0-2.5.5-3.8 1.7-.5.5-.8 2.1-.8 3.4L11.1 98c.5 2.5 2.5 4.2 4.6 4.2h78.4c2.5 0 4.6-1.7 4.6-4.2l4.2-37.1c0-1.2-.5-2.9-1.2-3.8.1-1.3-1.3-1.8-2.5-1.8M18.6 37.6c0-.5.5-.5.8-.5h24.5c.5 0 .5 0 .8.5l5.9 9.7c.5.5.8.8 1.7.8H91c.5 0 .8.5.8.8v6.3H18.6zm76.8 59.5c0 .5-.5.5-.8.5H16.1c-.5 0-.8-.5-.8-.5L11 60.4v-.5l.5-.5h87.3c.5 0 .5 0 .5.5v.5z" style="fill:currentColor"/></svg>
                         </button>
                         <button class="config-button" id="saveChat" @click="saveChat()">
-                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M26.9 25.3h48c.6 0 1.1.3 1.5.7l.1.1 20 20c.4.4.7.9.7 1.5v60c0 1.2-.9 2.2-2.2 2.2H14.9c-1.2 0-2.2-.9-2.2-2.2V27.4c0-1.2.9-2.2 2.2-2.2h12zM63 29.6H29.1v18.3H63zm4.3 0v20.5c0 1.2-.9 2.2-2.2 2.2H26.9c-1.2 0-2.2-.9-2.2-2.2V29.6h-7.6v75.8h9.6V75.5c0-1.2.9-2.2 2.2-2.2h52.3c1.2 0 2.2.9 2.2 2.2v29.9H93v-57L74.1 29.6zM31 105.4h48V77.6H31zm25.3-69.7c0-1.2.9-2.2 2.2-2.2s2.2.9 2.2 2.2v7.4c0 1.2-.9 2.2-2.2 2.2s-2.2-.9-2.2-2.2zM40.6 88c-1.2 0-2.2-.9-2.2-2.2s.9-2.2 2.2-2.2h28.9c1.2 0 2.2.9 2.2 2.2s-1 2.2-2.3 2.2zm0 11.2c-1.2 0-2.2-.9-2.2-2.2s.9-2.2 2.2-2.2h28.9c1.2 0 2.2.9 2.2 2.2s-.9 2.2-2.2 2.2z" style="fill:currentColor"></path></svg>
-                        </button>
-                        <button class="config-button" id="restart" @click="restart()">
-                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M59.2 27.7c-15.5 0-29.7 9-36.1 23l-.9 2-5.4-12.1c-.7-1.5-2.5-2.2-4-1.5s-2.2 2.5-1.5 4L20.2 63s0 .1.1.1l.1.1c0 .1.1.2.2.3 0 .1.1.1.1.2.1.1.1.2.2.2.1.1.1.1.1.2.1.1.2.2.4.3l.1.1c.1.1.2.1.3.2.1 0 .1 0 .2.1.1 0 .3.1.4.1h.8c.1 0 .3 0 .4-.1l.3-.1 19.5-6.4q1.2-.45 1.8-1.5c.6-1.05.4-1.5.2-2.3-.5-1.6-2.2-2.4-3.8-1.9l-14.4 4.7.8-2c5-13 17.4-21.4 31.4-21.4 18.4-.1 33.6 15 33.6 33.6s-15.1 33.7-33.7 33.7c-12.7 0-24.2-7-30-18.3q-.6-1.05-1.8-1.5c-.3-.1-.6-.1-.9-.1-.5 0-.9.1-1.4.3-.7.4-1.3 1-1.5 1.8s-.2 1.6.2 2.3c6.8 13.3 20.4 21.6 35.4 21.6 21.9 0 39.8-17.8 39.8-39.8-.1-21.9-17.9-39.8-39.9-39.8" style="fill:currentColor"></path></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M28.1 27h46c.6 0 1.1.3 1.4.7l.1.1L94.8 47c.4.4.7.9.7 1.4v57.5c0 1.2-.9 2.1-2.1 2.1H16.6c-1.2 0-2.1-.9-2.1-2.1V29.1c0-1.2.9-2.1 2.1-2.1zm34.6 4.2H30.2v17.5h32.5zm4.1 0v19.7c0 1.2-.9 2.1-2.1 2.1H28.1c-1.2 0-2.1-.9-2.1-2.1V31.2h-7.3v72.7h9.2V75.2c0-1.2.9-2.1 2.1-2.1h50.1c1.2 0 2.1.9 2.1 2.1v28.7h9.2V49.2l-18.1-18zM32 103.8h46V77.2H32zM56.2 37c0-1.2.9-2.1 2.1-2.1s2.1.9 2.1 2.1v7.1c0 1.2-.9 2.1-2.1 2.1s-2.1-.9-2.1-2.1zm-15 50.2c-1.2 0-2.1-.9-2.1-2.1S40 83 41.2 83h27.7c1.2 0 2.1.9 2.1 2.1s-1 2.1-2.2 2.1zm0 10.7c-1.2 0-2.1-.9-2.1-2.1s.9-2.1 2.1-2.1h27.7c1.2 0 2.1.9 2.1 2.1s-.9 2.1-2.1 2.1z" style="fill:currentColor"/></svg>
                         </button>
                         <button class="config-button" id="settings" @click="settingsModalProxy.openModal()">
                             <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" id="Layer_1" x="0" y="0" version="1.1" viewBox="0 0 110 135"><style>.st0{fill:currentColor}</style><path d="m89.1 89.7 1.8-3.1c1.5-2.4 2.3-4 2.2-6.1-.3-2-1.4-3.3-3.3-5.5l-3.6-4c-.5-.6-1.1-2-1.1-3.4 0-1.2.4-2.8.9-3.3l4.4-4.9c1.7-1.9 2.7-3.1 2.9-5 .2-2-.7-3.5-2-5.7l-.2-.4-1.9-3.2c-1.5-2.5-2.5-4.2-4.4-5-2-.9-3.7-.3-6.7.5l-4.4 1.2c-1 .3-2.2.2-3-.3l-1.1-.5c-.9-.5-1.6-1.3-1.9-2.2l-1.2-3.7c-1-2.8-1.5-4.3-3.1-5.5s-3.4-1.2-6.3-1.2H53c-2.9 0-4.7 0-6.3 1.2-1.7 1.2-2.3 2.9-3.1 5.6l-1.2 3.5c-.4 1-1 1.8-1.7 2.2l-1.3.7c-1 .4-1.9.5-2.8.4h-.1L32 40.8c-3-.9-4.8-1.3-6.8-.5-2 .9-2.9 2.4-4.5 5.2l-1.7 3c-1.5 2.4-2.3 4-2.2 6.1.3 2 1.4 3.3 3.3 5.5l3.6 4c.5.6 1.1 2 1.1 3.4 0 1.2-.4 2.8-.9 3.3l-4.2 4.7c-1.7 1.9-2.7 3.1-2.9 5-.2 2.1.7 3.7 2.2 6.1l1.8 3.1c1.5 2.6 2.5 4.4 4.5 5.2 2 .9 3.7.3 6.7-.5l4.4-1.2c.4-.1.8-.1 1.1-.1.7 0 1.3.1 1.9.4l1.1.6c.9.5 1.6 1.3 1.9 2.2l1.2 4c.9 2.5 1.4 4.1 3 5.2 1.6 1.2 3.4 1.2 6.3 1.2H57c2.9 0 4.7 0 6.2-1.1 1.7-1.2 2.3-2.9 3.1-5.6l1.2-3.5c.4-1 1-1.8 1.7-2.2l1.3-.7c.9-.4 1.9-.5 2.8-.4h.1l4.4 1.2c2.9.9 4.7 1.3 6.8.5 2-.9 3-2.5 4.5-5.2m-6.1.5-.7-.1c-.8-.1-2.1-.5-2.8-.7l-4.6-1.3c-2.3-.5-4.7-.2-6.9.9l-1.4.8c-1.7 1-3.1 2.7-4 4.9l-1.2 3.6c-.3.9-.7 2-.9 2.5l-.2.5-.6.1c-.7.1-1.7.1-2.8.1H53c-1.3 0-2.2 0-2.8-.1l-.5-.1-.2-.5c0-.1-.1-.3-.2-.4-.2-.5-.4-1.2-.8-1.7l-.1-.2-1.3-3.8c-.7-2-2.1-3.7-4-4.9l-1.4-.8c-2.1-1.1-4.4-1.3-6.9-.8l-4.4 1.2c-.7.2-2 .6-2.8.7l-.7.1-.4-.6c-.3-.5-.9-1.5-1.4-2.4L23.3 84c-.2-.4-.5-.9-.7-1.3s-.4-.7-.5-1l-.2-.5.3-.4c.5-.8 1.5-1.9 1.8-2.2l3.9-4.4c1.2-1.7 2-4.3 2-6.6 0-2.5-.9-5-2.3-6.8l-3.8-4.2c-.7-.9-1.4-1.6-1.8-2.1v-.4l.2-.5c.2-.6.7-1.6 1.3-2.5l1.8-3.1c.5-.9 1.1-1.9 1.4-2.4l.3-.6.7.1c.8.1 2.1.5 2.8.7l4.6 1.3c2.3.5 4.7.2 6.9-.9l1.4-.8c1.7-1 3.1-2.7 4-4.9l1.2-3.6c.3-.9.7-1.9.9-2.4l.2-.5.6-.1c.7-.1 1.7-.1 2.8-.1H57c1.3 0 2.2 0 2.8.1l.4.1.2.4c.3.5.6 1.3.8 2.2l1.4 4.2c.7 1.9 2.1 3.6 4 4.9l1.3.8c2.1 1.1 4.4 1.3 6.9.8l4.3-1.3c.7-.2 2-.6 2.8-.7l.7-.1.3.6c.3.6.9 1.5 1.4 2.4l1.9 3.2c.2.4.5.9.7 1.3s.4.7.5 1l.2.5-.3.4c-.5.8-1.5 1.9-1.9 2.2l-3.9 4.4c-1.2 1.7-2 4.3-2 6.6 0 2.5.9 5 2.3 6.8l3.8 4.2c.8.9 1.4 1.7 1.8 2.1l.3.5-.2.5c-.2.6-.7 1.6-1.3 2.5l-1.8 3.1c-.5.9-1.1 1.9-1.4 2.4z" class="st0"></path><path d="M55 52.1c-8.5 0-15.4 6.9-15.4 15.4S46.5 82.9 55 82.9 70.4 76 70.4 67.5 63.5 52.1 55 52.1m0 25.5c-5.6 0-10.1-4.5-10.1-10.1S49.4 57.4 55 57.4s10.1 4.5 10.1 10.1S60.6 77.6 55 77.6" class="st0"></path></svg>
@@ -111,6 +113,66 @@
                         </ul>
                     </div>
                 </div>
+
+                <!-- Small Sidebar File Browser -->
+                <div class="config-section" id="files-section" x-data="{ entries: [], isLoading: true, currentPath: '', parentPath: '', isArchive(filename) { const archiveExts = ['zip', 'tar', 'gz', 'rar', '7z']; const ext = filename.split('.').pop().toLowerCase(); return archiveExts.includes(ext); } }" x-init="fileBrowserModalProxy.fetchFiles(); $watch('entries', value => { isLoading = false; })">
+                    <h3>Files</h3>
+                    <div class="path-navigator">
+                        <button class="text-button back-button" @click="fileBrowserModalProxy.navigateUp()" aria-label="Navigate Up">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10.5 15">
+                                <path d="m.75,5.25L5.25.75m0,0l4.5,4.5M5.25.75v13.5" fill="none"
+                                    stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                    stroke-width="1.5"></path>
+                            </svg>
+                            Up
+                        </button>
+                        <div id="current-path">
+                            <span id="path-text" x-text="currentPath"></span>
+                        </div>
+                    </div>
+                    <div class="files-list-container">
+                        <ul class="config-list">
+                            <template x-for="file in entries" :key="file.path">
+                                <li class="file-item">
+                                    <div class="file-info" @click="file.is_dir ? fileBrowserModalProxy.navigateToFolder(file.path) : fileBrowserModalProxy.downloadFile(file)" style="cursor: pointer">
+                                        <img :src="'/public/' + (file.is_dir ? 'folder' : (file.type === 'unknown' ? 'file' : (isArchive(file.name) ? 'archive' : file.type))) + '.svg'"
+                                                    class="file-icon" :alt="file.type">
+                                        <span class="file-name" x-text="file.name"></span>
+                                    </div>
+                                    <div class="file-actions">
+                                        <button class="download-button" @click.stop="fileBrowserModalProxy.downloadFile(file)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.5 19.5">
+                                                <path d="m.75,14.25v2.25c0,1.24,1.01,2.25,2.25,2.25h13.5c1.24,0,2.25-1.01,2.25-2.25v-2.25m-4.5-4.5l-4.5,4.5m0,0l-4.5-4.5m4.5,4.5V.75"
+                                                    fill="none" stroke="currentColor" stroke-linecap="round"
+                                                    stroke-linejoin="round" stroke-width="1.5"></path>
+                                            </svg>
+                                        </button>
+                                        <button class="delete-button" @click.stop="fileBrowserModalProxy.deleteFile(file)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.03 22.53"
+                                                fill="currentColor">
+                                                <path d="m14.55,7.82H4.68L14.09,3.19c.83-.41,1.17-1.42.77-2.25-.41-.83-1.42-1.17-2.25-.77l-3.16,1.55-.15-.31c-.22-.44-.59-.76-1.05-.92-.46-.16-.96-.13-1.39.09l-2.08,1.02c-.9.44-1.28,1.54-.83,2.44l.15.31-3.16,1.55c-.83.41-1.17,1.42-.77,2.25.29.59.89.94,1.51.94.25,0,.5-.06.74-.17l.38-.19s.09.03.14.03h11.14v11.43c0,.76-.62,1.38-1.38,1.38h-.46v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-2.39v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-2.39v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-.46c-.76,0-1.38-.62-1.38-1.38v-9.9c0-.26-.21-.47-.47-.47s-.47.21-.47.47v9.9c0,1.28,1.04,2.32,2.32,2.32h8.55c1.28,0,2.32-1.04,2.32-2.32v-11.91c0-.26-.21-.47-.47-.47Z"
+                                                    stroke-width="0"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                    <div class="button-row">
+                        <label class="upload-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"></path>
+                            </svg>
+                            Upload Files
+                            <input type="file" multiple="" accept="all" @change="fileBrowserModalProxy.handleFileUpload" style="display: none;">
+                        </label>
+                        <button class="full-browser-button" @click="fileBrowserModalProxy.openModal(currentPath)">
+                            Open Full Browser
+                        </button>
+                    </div>
+                </div>
+                
             </div>
             <!--Sidebar lower elements-->
             <div class="left-panel-bottom">
@@ -357,14 +419,6 @@
                         <span x-text="paused ? 'Resume Agent' : 'Pause Agent'"></span>
                     </button>
 
-                    <button class="text-button" @click="loadKnowledge()"><svg xmlns="http://www.w3.org/2000/svg"
-                            fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5">
-                            </path>
-                        </svg>
-                        <p>Import knowledge</p>
-                    </button>
                     <button class="text-button" id="work_dir_browser" @click="fileBrowserModalProxy.openModal()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 123.37 92.59">
                             <path
@@ -428,7 +482,7 @@
                         <button class="modal-close" @click="handleCancel()">&times;</button>
                     </div>
 
-                    <div class="modal-content">
+                    <div class="modal-content" id="settings-content">
                         <div id="settings-sections">
                             <nav>
                                 <ul>

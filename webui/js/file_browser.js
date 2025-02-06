@@ -20,14 +20,25 @@ const fileBrowserModalProxy = {
 
     modalAD.isOpen = true;
     modalAD.isLoading = true;
-    modalAD.history = []; // reset history when opening modal
 
-    // Initialize currentPath to root if it's empty
-    if (path) modalAD.browser.currentPath = path;
-    else if (!modalAD.browser.currentPath)
-      modalAD.browser.currentPath = "$WORK_DIR";
+    // Get updated path from sidebar data if available
+    const sidebarData = Alpine.$data(document.getElementById('files-section'));
+    const updatedPath = path || (sidebarData && sidebarData.currentPath ? sidebarData.currentPath : fileBrowserModalProxy.browser.currentPath) || "$WORK_DIR";
 
-    await modalAD.fetchFiles(modalAD.browser.currentPath);
+    // Update the entire browser object to ensure reactivity
+    modalAD.browser = {
+      ...modalAD.browser,
+      currentPath: updatedPath
+    };
+
+    await modalAD.fetchFiles(updatedPath);
+    
+    // Force update the browser object again after fetch
+    modalAD.browser = {
+      ...modalAD.browser,
+      currentPath: updatedPath
+    };
+
   },
 
   isArchive(filename) {
@@ -48,6 +59,14 @@ const fileBrowserModalProxy = {
         this.browser.entries = data.data.entries;
         this.browser.currentPath = data.data.current_path;
         this.browser.parentPath = data.data.parent_path;
+                
+        // Update sidebar files section
+        const filesSection = Alpine.$data(document.getElementById('files-section'));
+        if (filesSection) {
+          filesSection.entries = data.data.entries;
+          filesSection.currentPath = data.data.current_path;
+          filesSection.parentPath = data.data.parent_path;
+        }
       } else {
         console.error("Error fetching files:", await response.text());
         this.browser.entries = [];
@@ -66,6 +85,8 @@ const fileBrowserModalProxy = {
       this.history.push(this.browser.currentPath);
     }
     await this.fetchFiles(path);
+    // Refresh all browsers after navigation
+    await this.refreshAllBrowsers();
   },
 
   async navigateUp() {
@@ -73,6 +94,8 @@ const fileBrowserModalProxy = {
       // Push current path to history before navigating up
       this.history.push(this.browser.currentPath);
       await this.fetchFiles(this.browser.parentPath);
+      // Refresh all browsers after navigation
+      await this.refreshAllBrowsers();
     }
   },
 
@@ -126,9 +149,8 @@ const fileBrowserModalProxy = {
 
       if (response.ok) {
         const data = await response.json();
-        this.browser.entries = this.browser.entries.filter(
-          (entry) => entry.path !== file.path
-        );
+        // Instead of just filtering, refresh all browsers
+        await this.refreshAllBrowsers();
         alert("File deleted successfully.");
       } else {
         alert(`Error deleting file: ${await response.text()}`);
@@ -145,23 +167,20 @@ const fileBrowserModalProxy = {
       if (!files.length) return;
 
       const formData = new FormData();
+      // Use the shared state's currentPath
       formData.append("path", this.browser.currentPath);
 
       for (let i = 0; i < files.length; i++) {
         const ext = files[i].name.split(".").pop().toLowerCase();
         if (!["zip", "tar", "gz", "rar", "7z"].includes(ext)) {
           if (files[i].size > 100 * 1024 * 1024) {
-            // 100MB
-            alert(
-              `File ${files[i].name} exceeds the maximum allowed size of 100MB.`
-            );
+            alert(`File ${files[i].name} exceeds the maximum allowed size of 100MB.`);
             continue;
           }
         }
         formData.append("files[]", files[i]);
       }
 
-      // Proceed with upload after validation
       const response = await fetch("/upload_work_dir_files", {
         method: "POST",
         body: formData,
@@ -169,15 +188,9 @@ const fileBrowserModalProxy = {
 
       if (response.ok) {
         const data = await response.json();
-        // Update the file list with new data
-        this.browser.entries = data.data.entries.map((entry) => ({
-          ...entry,
-          uploadStatus: data.failed.includes(entry.name) ? "failed" : "success",
-        }));
-        this.browser.currentPath = data.data.current_path;
-        this.browser.parentPath = data.data.parent_path;
+        // Refresh all browsers after successful upload
+        await this.refreshAllBrowsers();
 
-        // Show success message
         if (data.failed && data.failed.length > 0) {
           const failedFiles = data.failed
             .map((file) => `${file.name}: ${file.error}`)
@@ -185,6 +198,7 @@ const fileBrowserModalProxy = {
           alert(`Some files failed to upload:\n${failedFiles}`);
         }
       } else {
+        const data = await response.json();
         alert(data.message);
       }
     } catch (error) {
@@ -243,25 +257,111 @@ const fileBrowserModalProxy = {
   handleClose() {
     this.isOpen = false;
   },
+
+  // Add a new method to update all file browser instances
+  async refreshAllBrowsers() {
+    await this.fetchFiles(this.browser.currentPath);
+    
+    // Update sidebar files section if it exists
+    const filesSection = Alpine.$data(document.getElementById('files-section'));
+    if (filesSection) {
+      filesSection.entries = this.browser.entries;
+      filesSection.currentPath = this.browser.currentPath;
+      filesSection.parentPath = this.browser.parentPath;
+      filesSection.isLoading = false;
+
+      const sidebarPathText = document.getElementById('files-section').querySelector('#path-text');
+      if (sidebarPathText) {
+        sidebarPathText.textContent = this.browser.currentPath;
+      }
+    }
+
+    // Update the modal's current path using Alpine's reactive data if modal is open
+    const modalEl = document.getElementById('fileBrowserModal');
+    if (modalEl && Alpine.$data(modalEl) && this.isOpen) {
+      const modalData = Alpine.$data(modalEl);
+      // Create an entirely new browser object to force reactivity
+      modalData.browser = {
+        title: modalData.browser.title,
+        currentPath: this.browser.currentPath,
+        entries: this.browser.entries,
+        parentPath: this.browser.parentPath,
+        sortBy: modalData.browser.sortBy,
+        sortDirection: modalData.browser.sortDirection
+      };
+    }
+  },
 };
 
 // Wait for Alpine to be ready
 document.addEventListener("alpine:init", () => {
+  // File browser modal
   Alpine.data("fileBrowserModalProxy", () => ({
     init() {
       Object.assign(this, fileBrowserModalProxy);
-      // Ensure immediate file fetch when modal opens
+      
       this.$watch("isOpen", async (value) => {
         if (value) {
           await this.fetchFiles(this.browser.currentPath);
         }
       });
+
+      // Initial file fetch for sidebar
+      this.fetchFiles("$WORK_DIR");
     },
+  }));
+
+  // Sidebar file browser
+  Alpine.data("files-section", () => ({
+    entries: [],
+    isLoading: true,
+    currentPath: "$WORK_DIR",
+    parentPath: "",
+
+    init() {
+      // Initial file fetch for sidebar
+      fileBrowserModalProxy.fetchFiles("$WORK_DIR").then(() => {
+        this.entries = fileBrowserModalProxy.browser.entries;
+        this.currentPath = fileBrowserModalProxy.browser.currentPath;
+        this.parentPath = fileBrowserModalProxy.browser.parentPath;
+        this.isLoading = false;
+      });
+    },
+
+    async navigateUp() {
+      if (this.parentPath !== "") {
+        await fileBrowserModalProxy.navigateUp();
+        // State will be updated through refreshAllBrowsers
+      }
+    },
+
+    async navigateToFolder(path) {
+      await fileBrowserModalProxy.navigateToFolder(path);
+      // State will be updated through refreshAllBrowsers
+    },
+
+    async handleFileUpload(event) {
+      // Delegate to the proxy's handleFileUpload to ensure consistent context
+      await fileBrowserModalProxy.handleFileUpload(event);
+    },
+
+    downloadFile(file) {
+      fileBrowserModalProxy.downloadFile(file);
+    },
+
+    deleteFile(file) {
+      fileBrowserModalProxy.deleteFile(file);
+    },
+
+    isArchive(filename) {
+      return fileBrowserModalProxy.isArchive(filename);
+    }
   }));
 });
 
 // Keep the global assignment for backward compatibility
 window.fileBrowserModalProxy = fileBrowserModalProxy;
+fileBrowserModalProxy.handleFileUpload = fileBrowserModalProxy.handleFileUpload.bind(fileBrowserModalProxy);
 
 openFileLink = async function (path) {
   try {
