@@ -122,7 +122,6 @@ body,
   display: -webkit-flex;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   -webkit-transition: all var(--transition-speed) ease-in-out;
   transition: all var(--transition-speed) ease-in-out;
   width: 250px;
@@ -141,6 +140,7 @@ body,
   display: -webkit-flex;
   display: flex;
   flex-direction: column;
+  flex-basis: max-content;
   min-height: 0;
   width: 100%;
   overflow: hidden;
@@ -177,8 +177,11 @@ body,
 }
 
 .left-panel-bottom {
-  position: relative;
-  flex-shrink: 0;
+  /* position: relative; */
+  /* flex-shrink: 0; */
+  display: flex;
+  flex-direction: inherit;
+  justify-content: unset;
 }
 
 /* Top icons section container */
@@ -262,8 +265,8 @@ body,
 }
 
 .arrow-icon.rotated {
-  -webkit-transform: rotate(-90deg);
-  transform: rotate(-90deg);
+  -webkit-transform: rotate(-0deg);
+  transform: rotate(-0deg);
 }
 
 .pref-section {
@@ -287,11 +290,12 @@ body,
 
 /* Right Panel */
 #right-panel {
-  display: -webkit-flex;
+  position: relative;
+  flex: 1;
   display: flex;
-  width: 100%;
   flex-direction: column;
-  flex-grow: 1;
+  overflow: hidden;
+  background-color: var(--color-background);
   -webkit-transition: margin-left var(--transition-speed) ease-in-out;
   transition: margin-left var(--transition-speed) ease-in-out;
 }
@@ -1103,7 +1107,7 @@ body.sidebar-collapsed #newChat {
 .chats-list-container,
 .files-list-container {
   flex: 1;
-  overflow-y: scroll;
+  overflow-y: auto;
   scroll-behavior: smooth;
   /* Mask */
   mask-image: linear-gradient(
@@ -1119,42 +1123,30 @@ body.sidebar-collapsed #newChat {
   /* Fallback for browsers that do not support mask-image */
   background: linear-gradient(to bottom, calc(100% - 20px), transparent 100%);
   /* Add padding to account for fade */
-  background-clip:content-box;
-  border: 6px solid transparent;  
   padding-bottom: 20px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-#chats-list-container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-#chats-list-container::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 4px 0;
-  border-radius: 6px;
-}
-
-#chats-list-container::-webkit-scrollbar-thumb {
-  background-color: rgba(155, 155, 155, 0.5);
-  border-radius: 6px;
-  -webkit-transition: background-color 0.2s ease;
-  transition: background-color 0.2s ease;
-}
-
-#chats-list-container::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(155, 155, 155, 0.7);
+.chats-list-container::-webkit-scrollbar,
+.files-list-container::-webkit-scrollbar {
+  width: 0px;
 }
 
 /* Chats and Files Sections */
-#chats-section,
-#files-section {
+.config-section {
   display: -webkit-flex;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  flex: 1;
   margin-top: var(--spacing-xs);
+}
+
+#chats-section {
+  flex: 0;
+}
+
+#files-section {
+  flex: 1;
 }
 
 #files-section .path-navigator {
@@ -2260,22 +2252,51 @@ a:active {
 }
 
 .dragdrop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1005;
+    pointer-events: none;
+}
+
+.dragdrop-overlay.active {
+    pointer-events: all;
+}
+
+/* Full screen modal drag and drop */
+.full-screen-input-modal .dragdrop-overlay {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.92);
+    z-index: 1050;
+}
+
+.modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 9999;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
     display: flex;
-    justify-content: center;
     align-items: center;
-    flex-direction: column;
-    gap: 1rem;
+    justify-content: center;
+    z-index: 1040;
 }
 
-.light-mode .dragdrop-overlay {
-    background: rgba(255, 255, 255, 0.92);
+.full-screen-input-modal {
+    position: relative;
+    width: 95vw;
+    height: 95vh;
+    background-color: var(--color-background);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 /* Alpine transition classes */
@@ -2302,6 +2323,10 @@ a:active {
     height: 128px;
     opacity: 0.85;
     filter: invert(1);
+}
+
+.light-mode .dragdrop-overlay {
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .light-mode .dragdrop-icon {

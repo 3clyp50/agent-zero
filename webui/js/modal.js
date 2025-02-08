@@ -6,67 +6,323 @@ const fullScreenInputModalProxy = {
     redoStack: [],
     maxStackSize: 100,
     lastSavedState: '',
+    isCodeMode: false,
+    aceEditor: null,
+    attachments: [],
+    hasAttachments: false,
 
     openModal() {
         const chatInput = document.getElementById('chat-input');
+        const inputSection = document.getElementById('input-section');
+        const inputData = Alpine.$data(inputSection);
+        
         this.inputText = chatInput.value;
         this.lastSavedState = this.inputText;
         this.isOpen = true;
         this.undoStack = [];
         this.redoStack = [];
         
-        // Focus the full screen input after a short delay to ensure the modal is rendered
+        // Sync attachments with the main input section
+        this.attachments = [...inputData.attachments];
+        this.hasAttachments = inputData.hasAttachments;
+        
+        // Setup drag and drop handlers
+        this.setupDragAndDrop();
+        
+        // Focus the appropriate input after a short delay to ensure the modal is rendered
         setTimeout(() => {
-            const fullScreenInput = document.getElementById('full-screen-input');
-            fullScreenInput.focus();
+            if (this.isCodeMode) {
+                if (!this.aceEditor) {
+                    this.initAceEditor();
+                }
+                this.aceEditor.setValue(this.inputText, -1);
+                this.aceEditor.focus();
+            } else {
+                const fullScreenInput = document.getElementById('full-screen-input');
+                fullScreenInput.focus();
+            }
         }, 100);
     },
 
     handleClose() {
+        // Sync attachments back to the main input section
+        const inputSection = document.getElementById('input-section');
+        const inputData = Alpine.$data(inputSection);
+        inputData.attachments = [...this.attachments];
+        inputData.hasAttachments = this.hasAttachments;
+        
+        // Cleanup drag and drop handlers
+        this.cleanupDragAndDrop();
+        
+        // Ensure both overlays are hidden
+        const modalDragdropOverlay = document.getElementById('modal-dragdrop-overlay');
+        const mainDragdropOverlay = document.getElementById('dragdrop-overlay');
+        if (modalDragdropOverlay) {
+            const modalOverlayData = Alpine.$data(modalDragdropOverlay);
+            modalOverlayData.isVisible = false;
+        }
+        if (mainDragdropOverlay) {
+            const mainOverlayData = Alpine.$data(mainDragdropOverlay);
+            mainOverlayData.isVisible = false;
+        }
+        
+        // Reset drag counter
+        this._dragCounter = 0;
+        
+        // Update the main textarea
         const chatInput = document.getElementById('chat-input');
-        chatInput.value = this.inputText;
-        chatInput.dispatchEvent(new Event('input')); // Trigger input event for textarea auto-resize
+        chatInput.value = this.isCodeMode ? this.aceEditor.getValue() : this.inputText;
         this.isOpen = false;
+        
+        // Trigger input event to update UI
+        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+
+    setupDragAndDrop() {
+        const modalContainer = document.querySelector('.full-screen-input-modal');
+        const dragdropOverlay = document.getElementById('modal-dragdrop-overlay');
+        const overlayData = Alpine.$data(dragdropOverlay);
+        
+        modalContainer.addEventListener('dragenter', this.handleDragEnter.bind(this));
+        modalContainer.addEventListener('dragover', this.handleDragOver.bind(this));
+        modalContainer.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        modalContainer.addEventListener('drop', this.handleDrop.bind(this));
+        
+        this._dragCounter = 0;
+        this._boundHandlers = {
+            dragenter: this.handleDragEnter.bind(this),
+            dragover: this.handleDragOver.bind(this),
+            dragleave: this.handleDragLeave.bind(this),
+            drop: this.handleDrop.bind(this)
+        };
+    },
+
+    cleanupDragAndDrop() {
+        const modalContainer = document.querySelector('.full-screen-input-modal');
+        if (modalContainer && this._boundHandlers) {
+            modalContainer.removeEventListener('dragenter', this._boundHandlers.dragenter);
+            modalContainer.removeEventListener('dragover', this._boundHandlers.dragover);
+            modalContainer.removeEventListener('dragleave', this._boundHandlers.dragleave);
+            modalContainer.removeEventListener('drop', this._boundHandlers.drop);
+        }
+    },
+
+    handleDragEnter(e) {
+        e.preventDefault();
+        this._dragCounter++;
+        if (this._dragCounter === 1) {
+            const dragdropOverlay = document.getElementById('modal-dragdrop-overlay');
+            const overlayData = Alpine.$data(dragdropOverlay);
+            overlayData.isVisible = true;
+        }
+    },
+
+    handleDragOver(e) {
+        e.preventDefault();
+    },
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        this._dragCounter--;
+        if (this._dragCounter === 0) {
+            const dragdropOverlay = document.getElementById('modal-dragdrop-overlay');
+            const overlayData = Alpine.$data(dragdropOverlay);
+            overlayData.isVisible = false;
+        }
+    },
+
+    async handleDrop(e) {
+        e.preventDefault();
+        this._dragCounter = 0;
+        const dragdropOverlay = document.getElementById('modal-dragdrop-overlay');
+        const overlayData = Alpine.$data(dragdropOverlay);
+        overlayData.isVisible = false;
+
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length > 0) {
+            // Process files directly in the modal
+            Array.from(files).forEach(file => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                const isImage = ['jpg', 'jpeg', 'png', 'bmp'].includes(ext);
+                
+                if (isImage) {
+                    // Handle image preview
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        this.attachments.push({
+                            file: file,
+                            url: e.target.result,
+                            type: 'image',
+                            name: file.name,
+                            extension: ext
+                        });
+                        this.hasAttachments = true;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // Handle other file types
+                    this.attachments.push({
+                        file: file,
+                        type: 'file',
+                        name: file.name,
+                        extension: ext
+                    });
+                    this.hasAttachments = true;
+                }
+            });
+
+            // Sync with main input section immediately
+            const inputSection = document.getElementById('input-section');
+            const inputData = Alpine.$data(inputSection);
+            inputData.attachments = [...this.attachments];
+            inputData.hasAttachments = this.hasAttachments;
+        }
+    },
+
+    handleFileUpload(event) {
+        const files = event.target.files;
+        
+        Array.from(files).forEach(file => {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isImage = ['jpg', 'jpeg', 'png', 'bmp'].includes(ext);
+            
+            if (isImage) {
+                // Handle image preview
+                const reader = new FileReader();
+                reader.onload = e => {
+                    this.attachments.push({
+                        file: file,
+                        url: e.target.result,
+                        type: 'image',
+                        name: file.name,
+                        extension: ext
+                    });
+                    this.hasAttachments = true;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Handle other file types
+                this.attachments.push({
+                    file: file,
+                    type: 'file',
+                    name: file.name,
+                    extension: ext
+                });
+                this.hasAttachments = true;
+            }
+        });
+    },
+
+    initAceEditor() {
+        const container = document.getElementById('ace-editor');
+        this.aceEditor = ace.edit(container);
+        this.aceEditor.setTheme(localStorage.getItem('darkMode') !== 'false' ? 'ace/theme/github_dark' : 'ace/theme/tomorrow');
+        this.aceEditor.session.setMode('ace/mode/text');
+        this.aceEditor.setOptions({
+            fontSize: '0.955rem',
+            fontFamily: "'Roboto Mono', monospace",
+            showPrintMargin: false,
+            wrap: this.wordWrap
+        });
+        
+        // Sync ACE content with our state
+        this.aceEditor.session.on('change', () => {
+            if (this.isCodeMode) {
+                this.updateHistory();
+            }
+        });
+    },
+
+    toggleMode() {
+        this.isCodeMode = !this.isCodeMode;
+        if (this.isCodeMode) {
+            if (!this.aceEditor) {
+                this.initAceEditor();
+            }
+            this.aceEditor.setValue(this.inputText, -1);
+            setTimeout(() => this.aceEditor.focus(), 0);
+        } else {
+            this.inputText = this.aceEditor.getValue();
+        }
+        this.updateVisibility();
+    },
+
+    updateVisibility() {
+        const textArea = document.getElementById('full-screen-input');
+        const aceContainer = document.getElementById('ace-editor');
+        if (this.isCodeMode) {
+            textArea.style.display = 'none';
+            aceContainer.style.display = 'block';
+            if (this.aceEditor) {
+                this.aceEditor.resize();
+            }
+        } else {
+            textArea.style.display = 'block';
+            aceContainer.style.display = 'none';
+        }
     },
 
     updateHistory() {
+        const currentText = this.isCodeMode ? this.aceEditor.getValue() : this.inputText;
         // Don't save if the text hasn't changed
-        if (this.lastSavedState === this.inputText) return;
+        if (this.lastSavedState === currentText) return;
         
         this.undoStack.push(this.lastSavedState);
         if (this.undoStack.length > this.maxStackSize) {
             this.undoStack.shift();
         }
         this.redoStack = [];
-        this.lastSavedState = this.inputText;
+        this.lastSavedState = currentText;
     },
 
     undo() {
         if (!this.canUndo) return;
         
-        this.redoStack.push(this.inputText);
-        this.inputText = this.undoStack.pop();
-        this.lastSavedState = this.inputText;
+        const currentText = this.isCodeMode ? this.aceEditor.getValue() : this.inputText;
+        this.redoStack.push(currentText);
+        const previousText = this.undoStack.pop();
+        
+        if (this.isCodeMode) {
+            this.aceEditor.setValue(previousText, -1);
+        } else {
+            this.inputText = previousText;
+        }
+        this.lastSavedState = previousText;
     },
 
     redo() {
         if (!this.canRedo) return;
         
-        this.undoStack.push(this.inputText);
-        this.inputText = this.redoStack.pop();
-        this.lastSavedState = this.inputText;
+        const currentText = this.isCodeMode ? this.aceEditor.getValue() : this.inputText;
+        this.undoStack.push(currentText);
+        const nextText = this.redoStack.pop();
+        
+        if (this.isCodeMode) {
+            this.aceEditor.setValue(nextText, -1);
+        } else {
+            this.inputText = nextText;
+        }
+        this.lastSavedState = nextText;
     },
 
     clearText() {
-        if (this.inputText) {
-            this.updateHistory(); // Save current state before clearing
-            this.inputText = '';
+        const currentText = this.isCodeMode ? this.aceEditor.getValue() : this.inputText;
+        if (currentText) {
+            this.updateHistory();
+            if (this.isCodeMode) {
+                this.aceEditor.setValue('');
+            } else {
+                this.inputText = '';
+            }
             this.lastSavedState = '';
         }
     },
 
     toggleWrap() {
         this.wordWrap = !this.wordWrap;
+        if (this.isCodeMode && this.aceEditor) {
+            this.aceEditor.setOption('wrap', this.wordWrap);
+        }
     },
 
     get canUndo() {
