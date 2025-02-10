@@ -1123,7 +1123,8 @@ body.sidebar-collapsed #newChat {
   /* Fallback for browsers that do not support mask-image */
   background: linear-gradient(to bottom, calc(100% - 20px), transparent 100%);
   /* Add padding to account for fade */
-  padding-bottom: 20px;
+  padding-bottom: 0px;
+  max-height: 10rem;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -1940,13 +1941,13 @@ input:checked + .slider:before {
   }
 
   #logo-container {
-    margin-left: 4.6rem;
+    margin-left: 4rem;
     -webkit-transition: all 0.3s ease;
     transition: all 0.3s ease;
   }
   
   #right-panel.expanded #logo-container {
-    margin-left: 4.6rem;
+    margin-left: 4rem;
   }
   
   #input-section {

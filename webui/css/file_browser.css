@@ -49,7 +49,7 @@
 .file-icon {
   width: 1.8rem;
   height: 1.8rem;
-  margin: 0 0.3rem 0 0.3rem;
+  margin: 0 0.7rem 0 0.3rem;
   vertical-align: middle;
   font-size: var(--font-size-sm);
 }
@@ -89,7 +89,7 @@
 .path-navigator {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
   background-color: var(--color-message-bg);
   padding: 0.5rem var(--spacing-sm);
   margin-bottom: 0.3rem;
@@ -121,6 +121,7 @@
 }
 
 #current-path {
+  margin-bottom: 4px;
   opacity: 0.9;
 }
 
@@ -128,6 +129,7 @@
   font-family: 'Roboto Mono', monospace;
   font-optical-sizing: auto;
   -webkit-font-optical-sizing: auto;
+  font-size: 0.7rem;
   opacity: 0.9;
 }
 
