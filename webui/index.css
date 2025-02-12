@@ -1107,7 +1107,7 @@ body.sidebar-collapsed #newChat {
 .chats-list-container,
 .files-list-container {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   scroll-behavior: smooth;
   /* Mask */
   mask-image: linear-gradient(
@@ -1124,7 +1124,6 @@ body.sidebar-collapsed #newChat {
   background: linear-gradient(to bottom, calc(100% - 20px), transparent 100%);
   /* Add padding to account for fade */
   padding-bottom: 0px;
-  max-height: 10rem;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -1132,6 +1131,11 @@ body.sidebar-collapsed #newChat {
 .chats-list-container::-webkit-scrollbar,
 .files-list-container::-webkit-scrollbar {
   width: 0px;
+}
+
+.chats-list-container,
+.files-list-container {
+  max-height: 12rem;
 }
 
 /* Chats and Files Sections */
@@ -1144,6 +1148,8 @@ body.sidebar-collapsed #newChat {
 
 #chats-section {
   flex: 0;
+  padding: 0;
+  margin-top: 10px;
 }
 
 #files-section {

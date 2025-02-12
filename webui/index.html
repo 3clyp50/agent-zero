@@ -96,34 +96,35 @@
                     </div>
                 </div>
                 
+                <!-- Chats List -->
+                <div class="pref-section" id="chats-section" x-data="{ contexts: [], selected: '', chatsOpen: true }"
+                    x-show="contexts.length > 0">
+                    <h3 class="pref-header" @click="chatsOpen = !chatsOpen">
+                        Chats
+                        <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" width="16" height="16"
+                            :class="{'rotated': !chatsOpen}">
+                            <path d="M8 4l8 8-8 8" />
+                        </svg>
+                    </h3>
+                    <div class="chats-list-container" x-show="chatsOpen" x-collapse x-transition>
+                        <ul class="config-list">
+                            <template x-for="context in contexts">
+                                <li>
+                                    <span :class="{'chat-list-button': true, 'font-bold': context.id === selected}"
+                                        @click="selected = context.id; selectChat(context.id)">
+                                        Chat #<span x-text="context.no"></span>
+                                    </span>
+                                    <button class="edit-button" @click="killChat(context.id)">X</button>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+
             </div>
             <!--Sidebar lower elements-->
             <div class="left-panel-bottom">
-                <!-- Chats List -->
-                <div class="pref-section" id="chats-section" x-data="{ contexts: [], selected: '', chatsOpen: true }"
-                x-show="contexts.length > 0">
-                <h3 class="pref-header" @click="chatsOpen = !chatsOpen">
-                    Chats
-                    <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" width="16" height="16"
-                        :class="{'rotated': !chatsOpen}">
-                        <path d="M8 4l8 8-8 8" />
-                    </svg>
-                </h3>
-                <div class="chats-list-container" x-show="chatsOpen" x-collapse x-transition>
-                    <ul class="config-list">
-                        <template x-for="context in contexts">
-                            <li>
-                                <span :class="{'chat-list-button': true, 'font-bold': context.id === selected}"
-                                    @click="selected = context.id; selectChat(context.id)">
-                                    Chat #<span x-text="context.no"></span>
-                                </span>
-                                <button class="edit-button" @click="killChat(context.id)">X</button>
-                            </li>
-                        </template>
-                    </ul>
-                </div>
-                </div>
 
                 <!-- Small Sidebar File Browser -->
                 <div class="pref-section" id="files-section" x-data="{ entries: [], isLoading: true, currentPath: '', parentPath: '', filesOpen: true, isArchive(filename) { const archiveExts = ['zip', 'tar', 'gz', 'rar', '7z']; const ext = filename.split('.').pop().toLowerCase(); return archiveExts.includes(ext); } }" x-init="fileBrowserModalProxy.fetchFiles(); $watch('entries', value => { isLoading = false; })">
