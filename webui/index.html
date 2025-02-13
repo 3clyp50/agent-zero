@@ -122,77 +122,93 @@
                     </div>
                 </div>
 
-            </div>
-            <!--Sidebar lower elements-->
-            <div class="left-panel-bottom">
-
                 <!-- Small Sidebar File Browser -->
-                <div class="pref-section" id="files-section" x-data="{ entries: [], isLoading: true, currentPath: '', parentPath: '', filesOpen: true, isArchive(filename) { const archiveExts = ['zip', 'tar', 'gz', 'rar', '7z']; const ext = filename.split('.').pop().toLowerCase(); return archiveExts.includes(ext); } }" x-init="fileBrowserModalProxy.fetchFiles(); $watch('entries', value => { isLoading = false; })">
-                <h3 class="pref-header" @click="filesOpen = !filesOpen">
-                    Files
-                    <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" width="16" height="16"
-                        :class="{'rotated': !filesOpen}">
-                        <path d="M8 4l8 8-8 8" />
-                    </svg>
-                </h3>
-                <div x-show="filesOpen" x-collapse x-transition>
-                    <div class="path-navigator">
-                        <button class="text-button back-button" @click="fileBrowserModalProxy.navigateUp()" aria-label="Navigate Up">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10.5 15">
-                                <path d="m.75,5.25L5.25.75m0,0l4.5,4.5M5.25.75v13.5" fill="none"
-                                    stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
-                                    stroke-width="1.5"></path>
-                            </svg>
-                            Up
-                        </button>
-                        <div id="current-path">
-                            <span id="path-text" x-text="currentPath"></span>
+                <div class="pref-section" id="files-section" x-data="{ entries: [], isLoading: true, currentPath: '', parentPath: '', filesOpen: true, isArchive(filename) { const archiveExts = ['zip', 'tar', 'gz', 'rar', '7z']; const ext = filename.split('.').pop().toLowerCase(); return archiveExts.includes(ext); } }" x-init="fetchFiles(); $watch('entries', value => { isLoading = false; })">
+                    <h3 class="pref-header" @click="filesOpen = !filesOpen">
+                        Files
+                        <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" width="16" height="16"
+                            :class="{'rotated': !filesOpen}">
+                            <path d="M8 4l8 8-8 8" />
+                        </svg>
+                    </h3>
+                    <div x-show="filesOpen" x-collapse x-transition>
+                        <div class="path-navigator">
+                            <button class="text-button back-button" @click="navigateUp()" aria-label="Navigate Up">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10.5 15">
+                                    <path d="m.75,5.25L5.25.75m0,0l4.5,4.5M5.25.75v13.5" fill="none"
+                                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                                        stroke-width="1.5"></path>
+                                </svg>
+                                Up
+                            </button>
+                            <div id="current-path">
+                                <span id="path-text" x-text="currentPath"></span>
+                            </div>
+                        </div>
+                        <div class="files-list-container">
+                            <!-- Add drag and drop overlay for file browser -->
+                            <div id="files-dragdrop-overlay" 
+                                x-cloak
+                                x-data="{ isVisible: false }" 
+                                x-show="isVisible"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0"
+                                x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-300"
+                                x-transition:leave-start="opacity-100"
+                                x-transition:leave-end="opacity-0"
+                                class="files-dragdrop-overlay">
+                                <img src="public/dragndrop.svg" alt="Drop files" class="dragdrop-icon">
+                                <div class="dragdrop-text">Drop files to upload them here</div>
+                            </div>
+                            <ul class="config-list">
+                                <template x-for="file in entries" :key="file.path">
+                                    <li class="file-item">
+                                        <div class="file-info" @click="file.is_dir ? navigateToFolder(file.path) : downloadFile(file)" style="cursor: pointer">
+                                            <img :src="'/public/' + (file.is_dir ? 'folder' : (file.type === 'unknown' ? 'file' : (isArchive(file.name) ? 'archive' : file.type))) + '.svg'"
+                                                        class="file-icon" :alt="file.type">
+                                            <span class="file-name" x-text="file.name"></span>
+                                        </div>
+                                        <div class="file-actions">
+                                            <button class="download-button" @click.stop="downloadFile(file)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.5 19.5">
+                                                    <path d="m.75,14.25v2.25c0,1.24,1.01,2.25,2.25,2.25h13.5c1.24,0,2.25-1.01,2.25-2.25v-2.25m-4.5-4.5l-4.5,4.5m0,0l-4.5-4.5m4.5,4.5V.75"
+                                                        fill="none" stroke="currentColor" stroke-linecap="round"
+                                                        stroke-linejoin="round" stroke-width="1.5"></path>
+                                                </svg>
+                                            </button>
+                                            <button class="delete-button" @click.stop="deleteFile(file)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.03 22.53"
+                                                    fill="currentColor">
+                                                    <path d="m14.55,7.82H4.68L14.09,3.19c.83-.41,1.17-1.42.77-2.25-.41-.83-1.42-1.17-2.25-.77l-3.16,1.55-.15-.31c-.22-.44-.59-.76-1.05-.92-.46-.16-.96-.13-1.39.09l-2.08,1.02c-.9.44-1.28,1.54-.83,2.44l.15.31-3.16,1.55c-.83.41-1.17,1.42-.77,2.25.29.59.89.94,1.51.94.25,0,.5-.06.74-.17l.38-.19s.09.03.14.03h11.14v11.43c0,.76-.62,1.38-1.38,1.38h-.46v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-2.39v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-2.39v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-.46c-.76,0-1.38-.62-1.38-1.38v-9.9c0-.26-.21-.47-.47-.47s-.47.21-.47.47v9.9c0,1.28,1.04,2.32,2.32,2.32h8.55c1.28,0,2.32-1.04,2.32-2.32v-11.91c0-.26-.21-.47-.47-.47Z"
+                                                        stroke-width="0"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                        <div class="button-row">
+                            <label class="upload-button">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"></path>
+                                </svg>
+                                Upload Files
+                                <input type="file" multiple="" accept="all" @change="handleFileUpload" style="display: none;">
+                            </label>
+                            <button class="full-browser-button" @click="fileBrowserModalProxy.openModal(currentPath)">
+                                Open Full Browser
+                            </button>
                         </div>
                     </div>
-                    <div class="files-list-container">
-                        <ul class="config-list">
-                            <template x-for="file in entries" :key="file.path">
-                                <li class="file-item">
-                                    <div class="file-info" @click="file.is_dir ? fileBrowserModalProxy.navigateToFolder(file.path) : fileBrowserModalProxy.downloadFile(file)" style="cursor: pointer">
-                                        <img :src="'/public/' + (file.is_dir ? 'folder' : (file.type === 'unknown' ? 'file' : (isArchive(file.name) ? 'archive' : file.type))) + '.svg'"
-                                                    class="file-icon" :alt="file.type">
-                                        <span class="file-name" x-text="file.name"></span>
-                                    </div>
-                                    <div class="file-actions">
-                                        <button class="download-button" @click.stop="fileBrowserModalProxy.downloadFile(file)">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 19.5 19.5">
-                                                <path d="m.75,14.25v2.25c0,1.24,1.01,2.25,2.25,2.25h13.5c1.24,0,2.25-1.01,2.25-2.25v-2.25m-4.5-4.5l-4.5,4.5m0,0l-4.5-4.5m4.5,4.5V.75"
-                                                    fill="none" stroke="currentColor" stroke-linecap="round"
-                                                    stroke-linejoin="round" stroke-width="1.5"></path>
-                                            </svg>
-                                        </button>
-                                        <button class="delete-button" @click.stop="fileBrowserModalProxy.deleteFile(file)">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15.03 22.53"
-                                                fill="currentColor">
-                                                <path d="m14.55,7.82H4.68L14.09,3.19c.83-.41,1.17-1.42.77-2.25-.41-.83-1.42-1.17-2.25-.77l-3.16,1.55-.15-.31c-.22-.44-.59-.76-1.05-.92-.46-.16-.96-.13-1.39.09l-2.08,1.02c-.9.44-1.28,1.54-.83,2.44l.15.31-3.16,1.55c-.83.41-1.17,1.42-.77,2.25.29.59.89.94,1.51.94.25,0,.5-.06.74-.17l.38-.19s.09.03.14.03h11.14v11.43c0,.76-.62,1.38-1.38,1.38h-.46v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-2.39v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-2.39v-11.28c0-.26-.21-.47-.47-.47s-.47.21-.47.47v11.28h-.46c-.76,0-1.38-.62-1.38-1.38v-9.9c0-.26-.21-.47-.47-.47s-.47.21-.47.47v9.9c0,1.28,1.04,2.32,2.32,2.32h8.55c1.28,0,2.32-1.04,2.32-2.32v-11.91c0-.26-.21-.47-.47-.47Z"
-                                                    stroke-width="0"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </li>
-                            </template>
-                        </ul>
-                    </div>
-                    <div class="button-row">
-                        <label class="upload-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"></path>
-                            </svg>
-                            Upload Files
-                            <input type="file" multiple="" accept="all" @change="fileBrowserModalProxy.handleFileUpload" style="display: none;">
-                        </label>
-                        <button class="full-browser-button" @click="fileBrowserModalProxy.openModal(currentPath)">
-                            Open Full Browser
-                        </button>
-                    </div>
                 </div>
-                </div>
+
+            </div>
+
+            <!--Sidebar lower elements-->
+            <div class="left-panel-bottom">
 
                 <!-- Preferences -->
                 <div class="pref-section" x-data="{ prefOpen: true }">
@@ -437,18 +453,6 @@
                         <span x-text="paused ? 'Resume Agent' : 'Pause Agent'"></span>
                     </button>
 
-                    <button class="text-button" id="work_dir_browser" @click="fileBrowserModalProxy.openModal()">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 123.37 92.59">
-                            <path
-                                d="m5.72,11.5l-3.93,8.73h119.77s-3.96-8.73-3.96-8.73h-60.03c-1.59,0-2.88-1.29-2.88-2.88V1.75H13.72v6.87c0,1.59-1.29,2.88-2.88,2.88h-5.12Z"
-                                fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="7"></path>
-                            <path
-                                d="m6.38,20.23H1.75l7.03,67.03c.11,1.07.55,2.02,1.2,2.69.55.55,1.28.89,2.11.89h97.1c.82,0,1.51-.33,2.05-.87.68-.68,1.13-1.67,1.28-2.79l9.1-66.94H6.38Z"
-                                fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="8"></path>
-                        </svg>
-                        <p>Files</p>
-                    </button>
-
                     <button class="text-button" id="history_inspect" @click="window.openHistoryModal()">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="5 10 85 85">
                             <path fill="currentColor"
@@ -643,7 +647,15 @@
                 <div class="modal-container">
                     <div class="modal-header">
                         <h2 class="modal-title" x-text="browser.title"></h2>
-                        <button class="modal-close" @click="handleClose()">&times;</button>
+                        <div class="modal-header-actions">
+                            <button class="text-button" @click="syncSidebarToModal()" title="Open in Sidebar">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                Pin to Sidebar
+                            </button>
+                            <button class="modal-close" @click="handleClose()">&times;</button>
+                        </div>
                     </div>
                     <div class="modal-content">
                         <div x-show="isLoading" class="loading-spinner">

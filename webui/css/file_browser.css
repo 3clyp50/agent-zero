@@ -4,14 +4,13 @@
 .file-header,
 .file-item {
   width: 100%;
-  border-radius: 4px;
   overflow: hidden;
 }
 
 /* Header Styles */
 .file-header {
   display: grid;
-  grid-template-columns: 2fr 0.6fr 1fr 80px;
+  grid-template-columns: 2fr 0.80fr 1.05fr 60px;
   background: var(--secondary-bg);
   padding: 8px 0;
   font-weight: bold;
@@ -30,10 +29,10 @@
 /* File Item Styles */
 .file-item {
   display: grid;
-  grid-template-columns: 2fr 0.6fr 1fr 80px;
+  grid-template-columns: 2fr 0.8fr 1fr 60px;
   align-items: center;
-  padding: 8px 0;
-  font-size: 0.875rem;
+  padding: 4px 0;
+  font-size: 0.785rem;
   border-top: 1px solid var(--color-border);
   transition: background-color 0.2s;
   white-space: nowrap;
@@ -47,8 +46,8 @@
 
 /* File Icon and Name */
 .file-icon {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 1.6rem;
+  height: 1.4rem;
   margin: 0 0.7rem 0 0.3rem;
   vertical-align: middle;
   font-size: var(--font-size-sm);
@@ -181,8 +180,8 @@
   border: none;
   color: var(--color-primary);
   cursor: pointer;
-  width: 32px;
-  padding: 4px 8px;
+  width: 13px;
+  padding: 2px 0px;
   border-radius: 4px;
   transition: opacity 0.2s, background-color 0.2s;
 }
@@ -206,7 +205,7 @@
   border: none;
   cursor: pointer;
   width: 32px;
-  padding: 6px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   transition: background-color 0.2s;
 }

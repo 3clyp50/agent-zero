@@ -1123,7 +1123,7 @@ body.sidebar-collapsed #newChat {
   /* Fallback for browsers that do not support mask-image */
   background: linear-gradient(to bottom, calc(100% - 20px), transparent 100%);
   /* Add padding to account for fade */
-  padding-bottom: 0px;
+  padding-bottom: 20px;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -1146,10 +1146,10 @@ body.sidebar-collapsed #newChat {
   margin-top: var(--spacing-xs);
 }
 
-#chats-section {
+#chats-section, #files-section {
   flex: 0;
   padding: 0;
-  margin-top: 10px;
+  margin-top: 15px;
 }
 
 #files-section {
@@ -1247,7 +1247,7 @@ body.sidebar-collapsed #newChat {
 
 #files-section .delete-button {
   background: none;
-  width: 22px;
+  width: 18px;
   border: none;
   padding: 4px;
   cursor: pointer;
@@ -1261,8 +1261,6 @@ body.sidebar-collapsed #newChat {
 }
 
 #files-section .delete-button svg {
-  width: 14px;
-  height: 14px;
 }
 
 .download-button {
@@ -2363,4 +2361,101 @@ a:active {
 /* Alpine cloak to prevent FOUC */
 [x-cloak] {
     display: none !important;
+}
+
+
+
+.files-list-container {
+  position: relative;  /* Add this to contain the overlay */
+  flex: 1;
+  overflow-y: auto;
+  padding: 5px 0px;
+}
+
+.files-dragdrop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.files-dragdrop-overlay.active {
+  pointer-events: all;
+}
+
+.light-mode .files-dragdrop-overlay {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+
+/* Ensure the overlay's dragdrop icon and text are properly styled */
+.files-dragdrop-overlay .dragdrop-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 1rem;
+}
+
+.files-dragdrop-overlay .dragdrop-text {
+  color: var(--color-text);
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 0.5rem;
+}
+
+.modal-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: var(--spacing-md);
+border-bottom: 1px solid var(--color-border);
+}
+
+.modal-header-actions {
+display: flex;
+align-items: center;
+gap: var(--spacing-sm);
+}
+
+.modal-header .text-button {
+display: flex;
+align-items: center;
+gap: var(--spacing-xs);
+padding: var(--spacing-xs) var(--spacing-sm);
+font-size: var(--font-size-small);
+color: var(--color-text);
+background: var(--color-panel);
+border: 1px solid var(--color-border);
+border-radius: 4px;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+
+.modal-header .text-button:hover {
+background: var(--color-secondary);
+}
+
+.modal-header .text-button svg {
+width: 16px;
+height: 16px;
+}
+
+.modal-header .modal-close {
+background: none;
+border: none;
+color: var(--color-text);
+font-size: 1.5rem;
+cursor: pointer;
+opacity: 0.7;
+transition: opacity 0.2s ease;
+}
+
+.modal-header .modal-close:hover {
+opacity: 1;
 }

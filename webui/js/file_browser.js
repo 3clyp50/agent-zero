@@ -38,7 +38,22 @@ const fileBrowserModalProxy = {
       ...modalAD.browser,
       currentPath: updatedPath
     };
+  },
 
+  // Add new method to sync sidebar with modal's current path
+  async syncSidebarToModal() {
+    const filesSection = Alpine.$data(document.getElementById('files-section'));
+    if (filesSection) {
+      await filesSection.navigateToFolder(this.browser.currentPath);
+    }
+  },
+
+  // Add new method to sync modal with sidebar's current path
+  async syncModalToSidebar() {
+    const filesSection = Alpine.$data(document.getElementById('files-section'));
+    if (filesSection) {
+      await this.navigateToFolder(filesSection.currentPath);
+    }
   },
 
   isArchive(filename) {
@@ -59,14 +74,6 @@ const fileBrowserModalProxy = {
         this.browser.entries = data.data.entries;
         this.browser.currentPath = data.data.current_path;
         this.browser.parentPath = data.data.parent_path;
-                
-        // Update sidebar files section
-        const filesSection = Alpine.$data(document.getElementById('files-section'));
-        if (filesSection) {
-          filesSection.entries = data.data.entries;
-          filesSection.currentPath = data.data.current_path;
-          filesSection.parentPath = data.data.parent_path;
-        }
       } else {
         console.error("Error fetching files:", await response.text());
         this.browser.entries = [];
@@ -85,8 +92,6 @@ const fileBrowserModalProxy = {
       this.history.push(this.browser.currentPath);
     }
     await this.fetchFiles(path);
-    // Refresh all browsers after navigation
-    await this.refreshAllBrowsers();
   },
 
   async navigateUp() {
@@ -94,8 +99,6 @@ const fileBrowserModalProxy = {
       // Push current path to history before navigating up
       this.history.push(this.browser.currentPath);
       await this.fetchFiles(this.browser.parentPath);
-      // Refresh all browsers after navigation
-      await this.refreshAllBrowsers();
     }
   },
 
@@ -148,9 +151,7 @@ const fileBrowserModalProxy = {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        // Instead of just filtering, refresh all browsers
-        await this.refreshAllBrowsers();
+        await this.fetchFiles();
         alert("File deleted successfully.");
       } else {
         alert(`Error deleting file: ${await response.text()}`);
@@ -167,7 +168,6 @@ const fileBrowserModalProxy = {
       if (!files.length) return;
 
       const formData = new FormData();
-      // Use the shared state's currentPath
       formData.append("path", this.browser.currentPath);
 
       for (let i = 0; i < files.length; i++) {
@@ -188,8 +188,7 @@ const fileBrowserModalProxy = {
 
       if (response.ok) {
         const data = await response.json();
-        // Refresh all browsers after successful upload
-        await this.refreshAllBrowsers();
+        await this.fetchFiles();
 
         if (data.failed && data.failed.length > 0) {
           const failedFiles = data.failed
@@ -291,6 +290,89 @@ const fileBrowserModalProxy = {
       };
     }
   },
+
+  setupDragAndDrop() {
+    const filesContainer = document.querySelector('.files-list-container');
+    const dragdropOverlay = document.getElementById('files-dragdrop-overlay');
+    
+    if (!filesContainer || !dragdropOverlay) return;
+    
+    this._dragCounter = 0;
+    
+    const handleDragEnter = (e) => {
+      e.preventDefault();
+      this._dragCounter++;
+      if (this._dragCounter === 1) {
+        const overlayData = Alpine.$data(dragdropOverlay);
+        overlayData.isVisible = true;
+        dragdropOverlay.classList.add('active');
+      }
+    };
+    
+    const handleDragOver = (e) => {
+      e.preventDefault();
+    };
+    
+    const handleDragLeave = (e) => {
+      e.preventDefault();
+      this._dragCounter--;
+      if (this._dragCounter === 0) {
+        const overlayData = Alpine.$data(dragdropOverlay);
+        overlayData.isVisible = false;
+        dragdropOverlay.classList.remove('active');
+      }
+    };
+    
+    const handleDrop = async (e) => {
+      e.preventDefault();
+      this._dragCounter = 0;
+      const overlayData = Alpine.$data(dragdropOverlay);
+      overlayData.isVisible = false;
+      dragdropOverlay.classList.remove('active');
+      
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        // Use the existing file upload functionality
+        await this.handleFileUpload({ target: { files } });
+      }
+    };
+    
+    filesContainer.addEventListener('dragenter', handleDragEnter);
+    filesContainer.addEventListener('dragover', handleDragOver);
+    filesContainer.addEventListener('dragleave', handleDragLeave);
+    filesContainer.addEventListener('drop', handleDrop);
+    
+    // Store handlers for cleanup
+    this._boundHandlers = {
+      dragenter: handleDragEnter,
+      dragover: handleDragOver,
+      dragleave: handleDragLeave,
+      drop: handleDrop
+    };
+  },
+
+  cleanupDragAndDrop() {
+    const filesContainer = document.querySelector('.files-list-container');
+    if (filesContainer && this._boundHandlers) {
+      filesContainer.removeEventListener('dragenter', this._boundHandlers.dragenter);
+      filesContainer.removeEventListener('dragover', this._boundHandlers.dragover);
+      filesContainer.removeEventListener('dragleave', this._boundHandlers.dragleave);
+      filesContainer.removeEventListener('drop', this._boundHandlers.drop);
+    }
+  },
+
+  // Add initialization of drag and drop to the init function
+  init() {
+    // ... existing init code ...
+    
+    // Setup drag and drop handlers
+    this.setupDragAndDrop();
+    
+    // Cleanup on destroy
+    this.$cleanup(() => {
+      this.cleanupDragAndDrop();
+    });
+  },
 };
 
 // Wait for Alpine to be ready
@@ -306,7 +388,7 @@ document.addEventListener("alpine:init", () => {
         }
       });
 
-      // Initial file fetch for sidebar
+      // Initial file fetch for modal
       this.fetchFiles("$WORK_DIR");
     },
   }));
@@ -317,40 +399,132 @@ document.addEventListener("alpine:init", () => {
     isLoading: true,
     currentPath: "$WORK_DIR",
     parentPath: "",
+    filesOpen: true,
 
-    init() {
+    async init() {
       // Initial file fetch for sidebar
-      fileBrowserModalProxy.fetchFiles("$WORK_DIR").then(() => {
-        this.entries = fileBrowserModalProxy.browser.entries;
-        this.currentPath = fileBrowserModalProxy.browser.currentPath;
-        this.parentPath = fileBrowserModalProxy.browser.parentPath;
+      console.log("Initializing sidebar file browser");
+      await this.fetchFiles("$WORK_DIR");
+      this.filesOpen = true;
+    },
+
+    isArchive(filename) {
+      const archiveExts = ["zip", "tar", "gz", "rar", "7z"];
+      const ext = filename.split(".").pop().toLowerCase();
+      return archiveExts.includes(ext);
+    },
+
+    async fetchFiles(path = "") {
+      console.log("Fetching files for sidebar:", path);
+      this.isLoading = true;
+      try {
+        const response = await fetch(
+          `/get_work_dir_files?path=${encodeURIComponent(path || this.currentPath || "$WORK_DIR")}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Received files for sidebar:", data);
+          this.entries = data.data.entries;
+          this.currentPath = data.data.current_path;
+          this.parentPath = data.data.parent_path;
+        } else {
+          console.error("Error fetching files:", await response.text());
+          this.entries = [];
+        }
+      } catch (error) {
+        window.toastFetchError("Error fetching files", error);
+        this.entries = [];
+      } finally {
         this.isLoading = false;
-      });
+      }
     },
 
     async navigateUp() {
       if (this.parentPath !== "") {
-        await fileBrowserModalProxy.navigateUp();
-        // State will be updated through refreshAllBrowsers
+        await this.fetchFiles(this.parentPath);
       }
     },
 
     async navigateToFolder(path) {
-      await fileBrowserModalProxy.navigateToFolder(path);
-      // State will be updated through refreshAllBrowsers
+      await this.fetchFiles(path);
     },
 
     async handleFileUpload(event) {
-      // Delegate to the proxy's handleFileUpload to ensure consistent context
-      await fileBrowserModalProxy.handleFileUpload(event);
+      try {
+        const files = event.target.files;
+        if (!files.length) return;
+  
+        const formData = new FormData();
+        formData.append("path", this.currentPath);
+  
+        for (let i = 0; i < files.length; i++) {
+          const ext = files[i].name.split(".").pop().toLowerCase();
+          if (!["zip", "tar", "gz", "rar", "7z"].includes(ext)) {
+            if (files[i].size > 100 * 1024 * 1024) {
+              alert(`File ${files[i].name} exceeds the maximum allowed size of 100MB.`);
+              continue;
+            }
+          }
+          formData.append("files[]", files[i]);
+        }
+  
+        const response = await fetch("/upload_work_dir_files", {
+          method: "POST",
+          body: formData,
+        });
+  
+        if (response.ok) {
+          const data = await response.json();
+          await this.fetchFiles();
+  
+          if (data.failed && data.failed.length > 0) {
+            const failedFiles = data.failed
+              .map((file) => `${file.name}: ${file.error}`)
+              .join("\n");
+            alert(`Some files failed to upload:\n${failedFiles}`);
+          }
+        } else {
+          const data = await response.json();
+          alert(data.message);
+        }
+      } catch (error) {
+        window.toastFetchError("Error uploading files", error);
+        alert("Error uploading files");
+      }
     },
 
     downloadFile(file) {
       fileBrowserModalProxy.downloadFile(file);
     },
 
-    deleteFile(file) {
-      fileBrowserModalProxy.deleteFile(file);
+    async deleteFile(file) {
+      if (!confirm(`Are you sure you want to delete ${file.name}?`)) {
+        return;
+      }
+  
+      try {
+        const response = await fetch("/delete_work_dir_file", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            path: file.path,
+            currentPath: this.currentPath,
+          }),
+        });
+  
+        if (response.ok) {
+          await this.fetchFiles();
+          alert("File deleted successfully.");
+        } else {
+          alert(`Error deleting file: ${await response.text()}`);
+        }
+      } catch (error) {
+        window.toastFetchError("Error deleting file", error);
+        alert("Error deleting file");
+      }
     },
 
     isArchive(filename) {
@@ -384,3 +558,33 @@ openFileLink = async function (path) {
   }
 };
 window.openFileLink = openFileLink;
+
+// Add global fetchFiles function for the sidebar
+window.fetchFiles = async function(path = "") {
+  const filesSection = document.getElementById('files-section');
+  if (!filesSection) return;
+  
+  const component = Alpine.$data(filesSection);
+  component.isLoading = true;
+  
+  try {
+    const response = await fetch(
+      `/get_work_dir_files?path=${encodeURIComponent(path || "$WORK_DIR")}`
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      component.entries = data.data.entries;
+      component.currentPath = data.data.current_path;
+      component.parentPath = data.data.parent_path;
+    } else {
+      console.error("Error fetching files:", await response.text());
+      component.entries = [];
+    }
+  } catch (error) {
+    window.toastFetchError("Error fetching files", error);
+    component.entries = [];
+  } finally {
+    component.isLoading = false;
+  }
+};
