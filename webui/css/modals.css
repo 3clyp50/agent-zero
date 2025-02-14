@@ -325,15 +325,20 @@
 }
 
 /* Adjust textarea and ACE editor to account for preview section */
-.full-screen-input-modal #full-screen-input,
-.full-screen-input-modal #ace-editor {
-    height: calc(100% - 50px);
+.full-screen-input-modal #full-screen-input {
+    height: calc(100% - 140px);
     transition: height 0.3s ease;
 }
 
 .full-screen-input-modal .preview-section:not(:empty) ~ #full-screen-input,
-.full-screen-input-modal .preview-section:not(:empty) ~ #ace-editor {
-    height: calc(100% - 170px);
+.full-screen-input-modal .preview-section:not(:empty) ~ #ace-editor
+{
+    height: calc(100% - 140px);
+}
+
+.full-screen-input-modal #ace-editor
+{
+    height: 100% !important;
 }
 
 /* Buttons Container */
@@ -518,7 +523,7 @@ h2 {
     cursor: pointer;
     transition: all 0.3s ease;
     margin-top: 2px;
-    margin-left: 10px;
+    margin-left: var(--spacing-xs);
     border: 1px solid var(--color-border);
 }
 
