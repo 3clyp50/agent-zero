@@ -199,7 +199,7 @@ nav ul li a img {
 @media (min-width: 960px) {
 
   #settings-content {
-    padding: 0.5rem 1.0rem 0 1.0rem !important;
+    padding: 0.5rem 1.0rem 0 1rem !important;
     overflow-y: auto;
     height: calc(90vh);
     background-clip: border-box;
@@ -223,6 +223,7 @@ nav ul li a img {
 
   nav ul li {
     display: flex;
+    width: 100%;
     font-weight: 500;
   }
 
@@ -230,8 +231,14 @@ nav ul li a img {
     flex-direction: row;
     justify-content: baseline;
     gap: var(--spacing-sm);
-    padding: 0.75rem 1rem;
+    padding: 0.35rem 1rem;
+    text-align: left !important;
   }
+  nav ul li a img {
+    width: 30px;
+    height: 30px;
+    filter: var(--svg-filter);
+  } 
 }
 
 @media (max-width: 960px) {

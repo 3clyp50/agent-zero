@@ -2459,3 +2459,43 @@ transition: opacity 0.2s ease;
 .modal-header .modal-close:hover {
 opacity: 1;
 }
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+.icon-button {
+  aspect-ratio: 1;
+  width: 40px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover {
+  background: var(--bg-hover);
+}
+
+.icon-button.active {
+  background: var(--primary-color);
+  box-shadow: 0 0 12px var(--primary-color-alpha);
+}
+
+.icon-button .icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.icon-button.active .icon {
+  color: white;
+}
