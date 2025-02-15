@@ -34,14 +34,23 @@
   padding: 4px 0;
   font-size: 0.785rem;
   border-top: 1px solid var(--color-border);
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
   white-space: nowrap;
   overflow: hidden;
   color: var(--color-text);
+  position: relative;
 }
 
 .file-item:hover {
-  background-color: var(--color-secondary);
+  background-color: rgba(255, 255, 255, 10%);
+}
+
+.file-name:hover {
+  transform: translateX(4px);
+}
+
+.file-name:active {
+  transform: translateX(2px);
 }
 
 /* File Icon and Name */
@@ -74,9 +83,11 @@
 
 /* No Files Message */
 .no-files {
-  padding: 32px;
+  padding: 2rem;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--color-text);
+  opacity: 0.7;
+  font-size: 0.9rem;
 }
 
 /* Light Mode Adjustments */
@@ -130,6 +141,11 @@
   -webkit-font-optical-sizing: auto;
   font-size: 0.7rem;
   opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.files-list-container:hover #path-text {
+  opacity: 1;
 }
 
 /* Folder Specific Styles */
@@ -198,6 +214,12 @@
 .file-actions {
   display: flex;
   gap: var(--spacing-xs);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.file-item:hover .file-actions {
+  opacity: 1;
 }
 
 .action-button {
@@ -207,7 +229,7 @@
   width: 32px;
   padding: 4px 8px;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .download-button {
@@ -220,6 +242,59 @@
 
 .light-mode .download-button:hover {
   background-color: #c6d4de;
+}
+
+/* Loading state */
+.files-list-container.loading {
+  min-height: 100px;
+  position: relative;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  text-align: center;
+  background-color: var(--color-background);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Improve disabled states */
+.back-button.disabled,
+.back-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Improve file item interactions */
+.file-info {
+  transition: opacity 0.2s ease;
+  user-select: none;
+}
+
+.file-info:active {
+  opacity: 0.7;
+}
+
+/* Improve button interactions */
+.file-actions button {
+  transition: all 0.2s ease;
+}
+
+.file-actions button:hover {
+  transform: scale(1.1);
+}
+
+.file-actions button:active {
+  transform: scale(0.9);
 }
 
 /* Responsive Design */
@@ -247,4 +322,49 @@
   .file-date {
     display: none;
   }
+}
+
+.modal-content {
+    position: relative;  /* Ensure modal-content is positioned relative for absolute overlay */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.files-dragdrop-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    pointer-events: none;
+}
+
+.files-dragdrop-overlay.active {
+    pointer-events: all;
+}
+
+.light-mode .files-dragdrop-overlay {
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
+/* Ensure the overlay's dragdrop icon and text are properly styled */
+.files-dragdrop-overlay .dragdrop-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+}
+
+.files-dragdrop-overlay .dragdrop-text {
+    color: var(--color-text);
+    font-size: 0.9rem;
+    text-align: center;
+    margin: 0.5rem;
 }

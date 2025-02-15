@@ -222,7 +222,43 @@ const fullScreenInputModalProxy = {
             fontSize: '0.955rem',
             fontFamily: "'Roboto Mono', monospace",
             showPrintMargin: false,
-            wrap: this.wordWrap
+            wrap: this.wordWrap,
+            tabSize: 4,
+            useSoftTabs: true,
+            navigateWithinSoftTabs: true,
+            enableLiveAutocompletion: false,
+            enableBasicAutocompletion: false,
+            enableSnippets: false
+        });
+
+        // Handle tab key for proper indentation
+        this.aceEditor.commands.bindKey({ win: 'Tab', mac: 'Tab' }, (editor) => {
+            if (editor.selection.isEmpty()) {
+                // If no text is selected, insert spaces
+                const cursorPosition = editor.getCursorPosition();
+                const line = editor.session.getLine(cursorPosition.row);
+                const beforeCursor = line.slice(0, cursorPosition.column);
+                
+                // If at start of line or only whitespace before cursor, indent
+                if (!beforeCursor.trim()) {
+                    editor.indent();
+                } else {
+                    // Insert spaces to reach next tab stop
+                    const tabSize = editor.session.getTabSize();
+                    const nextTabStop = tabSize - (cursorPosition.column % tabSize);
+                    editor.insert(" ".repeat(nextTabStop));
+                }
+            } else {
+                // If text is selected, indent the selected lines
+                editor.indent();
+            }
+            return true; // Prevent default
+        });
+
+        // Handle Shift+Tab for unindent
+        this.aceEditor.commands.bindKey({ win: 'Shift-Tab', mac: 'Shift-Tab' }, (editor) => {
+            editor.blockOutdent();
+            return true; // Prevent default
         });
         
         // Sync ACE content with our state
@@ -322,6 +358,47 @@ const fullScreenInputModalProxy = {
         this.wordWrap = !this.wordWrap;
         if (this.isCodeMode && this.aceEditor) {
             this.aceEditor.setOption('wrap', this.wordWrap);
+        }
+    },
+
+    async pasteFromClipboard() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                // Save current state for undo
+                this.updateHistory();
+                
+                // Update the appropriate editor
+                if (this.isCodeMode && this.aceEditor) {
+                    const currentPosition = this.aceEditor.getCursorPosition();
+                    const currentContent = this.aceEditor.getValue();
+                    const beforeCursor = currentContent.substring(0, this.aceEditor.session.doc.positionToIndex(currentPosition));
+                    const afterCursor = currentContent.substring(this.aceEditor.session.doc.positionToIndex(currentPosition));
+                    
+                    // Insert text at cursor position
+                    this.aceEditor.setValue(beforeCursor + text + afterCursor, -1);
+                    
+                    // Calculate new cursor position
+                    const newPosition = this.aceEditor.session.doc.indexToPosition(beforeCursor.length + text.length);
+                    this.aceEditor.moveCursorToPosition(newPosition);
+                    this.aceEditor.focus();
+                } else {
+                    const textarea = document.getElementById('full-screen-input');
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    
+                    // Insert text at cursor position
+                    this.inputText = this.inputText.substring(0, start) + text + this.inputText.substring(end);
+                    
+                    // Restore cursor position after the pasted text
+                    setTimeout(() => {
+                        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+                        textarea.focus();
+                    }, 0);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to read clipboard contents:', err);
         }
     },
 
