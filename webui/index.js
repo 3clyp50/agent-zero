@@ -887,33 +887,54 @@ document.addEventListener("DOMContentLoaded", startPolling);
 document.addEventListener('DOMContentLoaded', () => {
     const dragDropOverlay = document.getElementById('dragdrop-overlay');
     const inputSection = document.getElementById('input-section');
+    const rightPanel = document.getElementById('right-panel');
     let dragCounter = 0;
 
-    // Prevent default drag behaviors
+    // Prevent default drag behaviors only on the right panel
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        document.addEventListener(eventName, (e) => {
+        rightPanel.addEventListener(eventName, (e) => {
             e.preventDefault();
             e.stopPropagation();
         }, false);
     });
 
-    // Handle drag enter
-    document.addEventListener('dragenter', (e) => {
-        dragCounter++;
-        if (dragCounter === 1) {
-            Alpine.$data(dragDropOverlay).isVisible = true;
+    // Handle drag enter on right panel only
+    rightPanel.addEventListener('dragenter', (e) => {
+        // Check if we're dragging from/to the overlay itself
+        const isFromOverlay = e.relatedTarget && (
+            e.relatedTarget.classList.contains('dragdrop-overlay') ||
+            e.relatedTarget.classList.contains('dragdrop-text') ||
+            e.relatedTarget.classList.contains('dragdrop-icon')
+        );
+
+        // Only increment if not coming from overlay
+        if (!isFromOverlay) {
+            dragCounter++;
+            if (dragCounter === 1) {
+                Alpine.$data(dragDropOverlay).isVisible = true;
+            }
         }
     }, false);
 
-    // Handle drag leave
-    document.addEventListener('dragleave', (e) => {
-        dragCounter--;
-        if (dragCounter === 0) {
-            Alpine.$data(dragDropOverlay).isVisible = false;
+    // Handle drag leave on right panel only
+    rightPanel.addEventListener('dragleave', (e) => {
+        // Check if we're dragging from/to the overlay itself
+        const isToOverlay = e.relatedTarget && (
+            e.relatedTarget.classList.contains('dragdrop-overlay') ||
+            e.relatedTarget.classList.contains('dragdrop-text') ||
+            e.relatedTarget.classList.contains('dragdrop-icon')
+        );
+
+        // Only decrement if not going to overlay
+        if (!isToOverlay) {
+            dragCounter--;
+            if (dragCounter === 0) {
+                Alpine.$data(dragDropOverlay).isVisible = false;
+            }
         }
     }, false);
 
-    // Handle drop
+    // Handle drop on overlay
     dragDropOverlay.addEventListener('drop', (e) => {
         dragCounter = 0;
         Alpine.$data(dragDropOverlay).isVisible = false;

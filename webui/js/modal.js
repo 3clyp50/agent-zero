@@ -81,29 +81,57 @@ const fullScreenInputModalProxy = {
     setupDragAndDrop() {
         const modalContainer = document.querySelector('.full-screen-input-modal');
         const dragdropOverlay = document.getElementById('modal-dragdrop-overlay');
-        const overlayData = Alpine.$data(dragdropOverlay);
-        
-        modalContainer.addEventListener('dragenter', this.handleDragEnter.bind(this));
-        modalContainer.addEventListener('dragover', this.handleDragOver.bind(this));
-        modalContainer.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        modalContainer.addEventListener('drop', this.handleDrop.bind(this));
-        
-        this._dragCounter = 0;
-        this._boundHandlers = {
-            dragenter: this.handleDragEnter.bind(this),
-            dragover: this.handleDragOver.bind(this),
-            dragleave: this.handleDragLeave.bind(this),
-            drop: this.handleDrop.bind(this)
-        };
+        if (!modalContainer || !dragdropOverlay) return;
+
+        this._dragDropInstance = DragDropManager.create({
+            container: modalContainer,
+            overlay: dragdropOverlay,
+            onDrop: async (files) => {
+                // Process files directly in the modal
+                Array.from(files).forEach(file => {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    const isImage = ['jpg', 'jpeg', 'png', 'bmp'].includes(ext);
+                    
+                    if (isImage) {
+                        // Handle image preview
+                        const reader = new FileReader();
+                        reader.onload = e => {
+                            this.attachments.push({
+                                file: file,
+                                url: e.target.result,
+                                type: 'image',
+                                name: file.name,
+                                extension: ext
+                            });
+                            this.hasAttachments = true;
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        // Handle other file types
+                        this.attachments.push({
+                            file: file,
+                            type: 'file',
+                            name: file.name,
+                            extension: ext
+                        });
+                        this.hasAttachments = true;
+                    }
+                });
+
+                // Sync with main input section immediately
+                const inputSection = document.getElementById('input-section');
+                const inputData = Alpine.$data(inputSection);
+                inputData.attachments = [...this.attachments];
+                inputData.hasAttachments = this.hasAttachments;
+            },
+            globalOverlay: document.getElementById('dragdrop-overlay')
+        });
     },
 
     cleanupDragAndDrop() {
-        const modalContainer = document.querySelector('.full-screen-input-modal');
-        if (modalContainer && this._boundHandlers) {
-            modalContainer.removeEventListener('dragenter', this._boundHandlers.dragenter);
-            modalContainer.removeEventListener('dragover', this._boundHandlers.dragover);
-            modalContainer.removeEventListener('dragleave', this._boundHandlers.dragleave);
-            modalContainer.removeEventListener('drop', this._boundHandlers.drop);
+        if (this._dragDropInstance) {
+            this._dragDropInstance.cleanup();
+            this._dragDropInstance = null;
         }
     },
 

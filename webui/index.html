@@ -35,6 +35,7 @@
 
 
     <script type="module" src="index.js"></script>
+    <script type="text/javascript" src="js/dragdrop.js"></script>
     <script type="text/javascript" src="js/settings.js"></script>
     <script type="text/javascript" src="js/file_browser.js"></script>
     <script type="text/javascript" src="js/modal.js"></script>
@@ -63,7 +64,7 @@
                 </a>
             </div>
 
-            <button id="newChat" @click="newChat()">
+            <button id="newChat" onclick="newChat()">
                 <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135" width="36px" height="36px"><path d="m38.3 81.3 3.2-9.1 3.1-9v-.1c0-.2.1-.3.2-.4.1-.2.2-.3.3-.4L82.4 25c1.6-1.6 3.7-2.4 5.7-2.4h.2c2 0 4 .8 5.6 2.4l3.7 3.7.1.2c1.5 1.6 2.2 3.6 2.2 5.6v.2c0 2-.8 4-2.4 5.6l-.1.1-3.8 3.6-.1.1-.1.1-32.9 33-.1.1q-.45.45-.9.6l-9.1 3.2h-.1l-9.1 3.1c-1.2.4-2.5-.2-2.9-1.4q-.3-.75 0-1.5m7.5-7.6-1.6 4.6 4.6-1.6 5.7-2-3.4-3.4-3.3-3.3zm4.2-9.9 4.3 4.3 4.3 4.3 30-30-8.6-8.5zm35.7-35.7-2.5 2.5 8.6 8.6 2.4-2.4.1-.1c.6-.6 1-1.5 1-2.3v-.1c0-.9-.3-1.8-1-2.4l-3.7-3.7c-.6-.6-1.5-1-2.3-1h-.1c-.9-.1-1.8.3-2.5.9m.4 44.1c0-1.3 1-2.3 2.3-2.3s2.3 1 2.3 2.3V101c0 3.2-1.3 6.1-3.4 8.2s-5 3.4-8.2 3.4H21.6c-3.2 0-6.1-1.3-8.2-3.4s-3.4-5-3.4-8.2V43.4c0-3.2 1.3-6.1 3.4-8.2s5-3.4 8.2-3.4h28.8c1.3 0 2.3 1 2.3 2.3s-1 2.3-2.3 2.3H21.6c-1.9 0-3.7.8-4.9 2-1.3 1.3-2 3-2 4.9v57.6c0 1.9.8 3.6 2 4.9 1.3 1.3 3 2 4.9 2h57.6c1.9 0 3.7-.8 4.9-2 1.3-1.3 2-3 2-4.9z" style="fill:currentColor"></path></svg>
             </button>
 
@@ -75,25 +76,33 @@
 
                 <div class="wrapper">
                     <div x-data="{ showQuickActions: true }" id="quick-actions">
-                        <button class="config-button" id="resetChat" @click="resetChat()">
+                        <button class="config-button" id="resetChat" onclick="resetChat()">
                             <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M26.6 31h17.3c.5-2.2 1.5-4.2 3.1-5.7 2-2 4.9-3.3 8-3.3s5.9 1.3 8 3.3c1.5 1.5 2.6 3.5 3.1 5.7h17.3c2.1 0 4 .8 5.5 2.2l.1.1.1.1c1.3 1.4 2.2 3.3 2.2 5.3 0 2.1-.8 4-2.2 5.5-.9.8-1.9 1.4-3.1 1.8v52.1c0 4.1-1.7 7.9-4.4 10.6l-.1.1c-2.7 2.6-6.4 4.3-10.6 4.3H39.2c-4.1 0-7.9-1.7-10.6-4.4-2.6-2.7-4.4-6.5-4.4-10.6V46c-1.2-.4-2.2-1.1-3.1-1.8-1.4-1.4-2.2-3.3-2.2-5.5 0-2.1.8-4 2.2-5.5 1.4-1.4 3.4-2.2 5.5-2.2m22.2 0h12.6c-.3-.8-.8-1.7-1.5-2.4-1.2-1.2-2.8-1.9-4.7-1.9s-3.5.7-4.7 1.9c-.9.6-1.4 1.4-1.7 2.4m34.6 4.6H26.6c-.8 0-1.6.3-2.2.8s-.8 1.3-.8 2.2c0 .8.3 1.6.8 2.2.5.5 1.3.8 2.1.8h57c.8 0 1.5-.4 2.1-.8.5-.5.8-1.3.8-2.2 0-.8-.3-1.5-.8-2.1s-1.4-.9-2.2-.9m-2.2 10.8H28.8v51.7c0 2.8 1.2 5.5 3.1 7.3 1.8 1.8 4.4 3.1 7.3 3.1h31.7c2.8 0 5.4-1.2 7.2-3s3.1-4.4 3.1-7.3zM38.4 59.8c0-1.3 1.1-2.3 2.3-2.3s2.3 1.1 2.3 2.3v28.5c0 1.3-1.1 2.3-2.3 2.3s-2.3-1.1-2.3-2.3zm14.3 0c0-1.3 1.1-2.3 2.3-2.3s2.3 1.1 2.3 2.3v28.5c0 1.3-1.1 2.3-2.3 2.3s-2.3-1.1-2.3-2.3zm14.2 0c0-1.3 1.1-2.3 2.3-2.3s2.3 1.1 2.3 2.3v28.5c0 1.3-1.1 2.3-2.3 2.3s-2.3-1.1-2.3-2.3z" style="fill:currentColor"></path></svg>
                         </button>
-                        <button class="config-button" id="restart" @click="restart()">
+                        <button class="config-button" id="restart" onclick="restart()">
                             <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M59.3 106.9c21.7 0 39.4-17.7 39.4-39.4-.1-21.7-17.8-39.4-39.5-39.4-15.4 0-29.4 8.9-35.8 22.8l-1.2 2.8-5.7-12.9c-.3-.6-.8-1.1-1.5-1.4s-1.4-.2-2 .1c-1.3.6-1.9 2.2-1.3 3.5l8.9 19.9.2.2v.1h.1l.1.2s0 .1.1.1l.1.1c.1.1.2.2.2.3.1 0 .1.1.2.1l.2.2c.1 0 .1.1.2.1s.2.1.2.1h1.2l.1-.1.3-.1 19.5-6.4c.7-.3 1.2-.7 1.6-1.3.5-.8.4-1.2.2-1.8l-.1-.1c-.4-1.4-1.9-2.1-3.3-1.6l-15.2 4.9 1.1-2.7c5.1-13.2 17.7-21.7 32-21.7 8.9 0 17.3 3.5 23.7 9.9 6.5 6.4 10.1 15 10.1 24.1 0 18.8-15.3 34.1-34.1 34.1-12.9 0-24.5-7.1-30.3-18.5-.4-.6-.9-1-1.6-1.3-.2-.1-.5-.1-.8-.1-.4 0-.8.1-1.3.3-.4.3-1.1.8-1.3 1.5-.2.8-.2 1.5.2 2 6.8 13.2 20.2 21.4 35.1 21.4" style="fill:currentColor"/></svg>
                         </button>
-                        <button class="config-button" id="loadKnowledge" @click="loadKnowledge()">
+                        <button class="config-button" id="loadKnowledge" onclick="loadKnowledge()">
                             <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M37.8 50.3 52 36v50.8c0 1.7 1.3 3 3 3s3-1.3 3-3V36l14 14.2c1.2 1.2 3 1.2 4.2 0s1.2-3 0-4.2L56.9 26.7c-.1-.1-.3-.3-.7-.5-.1-.1-.2-.1-.3-.2-.6-.3-1.5-.3-2.2 0h-.2L33.6 46c-1.2 1.2-1.2 3 0 4.2 1.2 1.3 3 1.3 4.2.1" style="fill:currentColor"/><path d="M93.7 83.8c-1.7 0-3 1.3-3 3v9.7c0 3.6-3.1 6.7-6.7 6.7H26c-3.6 0-6.7-3.1-6.7-6.7v-9.7c0-1.7-1.3-3-3-3s-3 1.3-3 3v9.7c0 7 5.7 12.7 12.7 12.7h58c7 0 12.7-5.7 12.7-12.7v-9.7c0-1.7-1.3-3-3-3" style="fill:currentColor"/></svg>
                         </button>
-                        <button class="config-button" id="loadChats" @click="loadChats()">
+                        <button class="config-button" id="loadChats" onclick="loadChats()">
                             <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M99.2 55.3h-2.9V49c0-2.5-2.1-4.6-4.6-4.6H54.1l-5.5-8.5C47.4 33.8 46.1 33 44 33H19.5c-2.5 0-4.6 2.1-4.6 5.1v17.7h-3.4c-1.2 0-2.5.5-3.8 1.7-.5.5-.8 2.1-.8 3.4L11.1 98c.5 2.5 2.5 4.2 4.6 4.2h78.4c2.5 0 4.6-1.7 4.6-4.2l4.2-37.1c0-1.2-.5-2.9-1.2-3.8.1-1.3-1.3-1.8-2.5-1.8M18.6 37.6c0-.5.5-.5.8-.5h24.5c.5 0 .5 0 .8.5l5.9 9.7c.5.5.8.8 1.7.8H91c.5 0 .8.5.8.8v6.3H18.6zm76.8 59.5c0 .5-.5.5-.8.5H16.1c-.5 0-.8-.5-.8-.5L11 60.4v-.5l.5-.5h87.3c.5 0 .5 0 .5.5v.5z" style="fill:currentColor"/></svg>
                         </button>
-                        <button class="config-button" id="saveChat" @click="saveChat()">
+                        <button class="config-button" id="saveChat" onclick="saveChat()">
                             <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M28.1 27h46c.6 0 1.1.3 1.4.7l.1.1L94.8 47c.4.4.7.9.7 1.4v57.5c0 1.2-.9 2.1-2.1 2.1H16.6c-1.2 0-2.1-.9-2.1-2.1V29.1c0-1.2.9-2.1 2.1-2.1zm34.6 4.2H30.2v17.5h32.5zm4.1 0v19.7c0 1.2-.9 2.1-2.1 2.1H28.1c-1.2 0-2.1-.9-2.1-2.1V31.2h-7.3v72.7h9.2V75.2c0-1.2.9-2.1 2.1-2.1h50.1c1.2 0 2.1.9 2.1 2.1v28.7h9.2V49.2l-18.1-18zM32 103.8h46V77.2H32zM56.2 37c0-1.2.9-2.1 2.1-2.1s2.1.9 2.1 2.1v7.1c0 1.2-.9 2.1-2.1 2.1s-2.1-.9-2.1-2.1zm-15 50.2c-1.2 0-2.1-.9-2.1-2.1S40 83 41.2 83h27.7c1.2 0 2.1.9 2.1 2.1s-1 2.1-2.2 2.1zm0 10.7c-1.2 0-2.1-.9-2.1-2.1s.9-2.1 2.1-2.1h27.7c1.2 0 2.1.9 2.1 2.1s-.9 2.1-2.1 2.1z" style="fill:currentColor"/></svg>
                         </button>
-                        <button class="config-button" id="settings" @click="settingsModalProxy.openModal()">
-                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" id="Layer_1" x="0" y="0" version="1.1" viewBox="0 0 110 135"><style>.st0{fill:currentColor}</style><path d="m89.1 89.7 1.8-3.1c1.5-2.4 2.3-4 2.2-6.1-.3-2-1.4-3.3-3.3-5.5l-3.6-4c-.5-.6-1.1-2-1.1-3.4 0-1.2.4-2.8.9-3.3l4.4-4.9c1.7-1.9 2.7-3.1 2.9-5 .2-2-.7-3.5-2-5.7l-.2-.4-1.9-3.2c-1.5-2.5-2.5-4.2-4.4-5-2-.9-3.7-.3-6.7.5l-4.4 1.2c-1 .3-2.2.2-3-.3l-1.1-.5c-.9-.5-1.6-1.3-1.9-2.2l-1.2-3.7c-1-2.8-1.5-4.3-3.1-5.5s-3.4-1.2-6.3-1.2H53c-2.9 0-4.7 0-6.3 1.2-1.7 1.2-2.3 2.9-3.1 5.6l-1.2 3.5c-.4 1-1 1.8-1.7 2.2l-1.3.7c-1 .4-1.9.5-2.8.4h-.1L32 40.8c-3-.9-4.8-1.3-6.8-.5-2 .9-2.9 2.4-4.5 5.2l-1.7 3c-1.5 2.4-2.3 4-2.2 6.1.3 2 1.4 3.3 3.3 5.5l3.6 4c.5.6 1.1 2 1.1 3.4 0 1.2-.4 2.8-.9 3.3l-4.2 4.7c-1.7 1.9-2.7 3.1-2.9 5-.2 2.1.7 3.7 2.2 6.1l1.8 3.1c1.5 2.6 2.5 4.4 4.5 5.2 2 .9 3.7.3 6.7-.5l4.4-1.2c.4-.1.8-.1 1.1-.1.7 0 1.3.1 1.9.4l1.1.6c.9.5 1.6 1.3 1.9 2.2l1.2 4c.9 2.5 1.4 4.1 3 5.2 1.6 1.2 3.4 1.2 6.3 1.2H57c2.9 0 4.7 0 6.2-1.1 1.7-1.2 2.3-2.9 3.1-5.6l1.2-3.5c.4-1 1-1.8 1.7-2.2l1.3-.7c.9-.4 1.9-.5 2.8-.4h.1l4.4 1.2c2.9.9 4.7 1.3 6.8.5 2-.9 3-2.5 4.5-5.2m-6.1.5-.7-.1c-.8-.1-2.1-.5-2.8-.7l-4.6-1.3c-2.3-.5-4.7-.2-6.9.9l-1.4.8c-1.7 1-3.1 2.7-4 4.9l-1.2 3.6c-.3.9-.7 2-.9 2.5l-.2.5-.6.1c-.7.1-1.7.1-2.8.1H53c-1.3 0-2.2 0-2.8-.1l-.5-.1-.2-.5c0-.1-.1-.3-.2-.4-.2-.5-.4-1.2-.8-1.7l-.1-.2-1.3-3.8c-.7-2-2.1-3.7-4-4.9l-1.4-.8c-2.1-1.1-4.4-1.3-6.9-.8l-4.4 1.2c-.7.2-2 .6-2.8.7l-.7.1-.4-.6c-.3-.5-.9-1.5-1.4-2.4L23.3 84c-.2-.4-.5-.9-.7-1.3s-.4-.7-.5-1l-.2-.5.3-.4c.5-.8 1.5-1.9 1.8-2.2l3.9-4.4c1.2-1.7 2-4.3 2-6.6 0-2.5-.9-5-2.3-6.8l-3.8-4.2c-.7-.9-1.4-1.6-1.8-2.1v-.4l.2-.5c.2-.6.7-1.6 1.3-2.5l1.8-3.1c.5-.9 1.1-1.9 1.4-2.4l.3-.6.7.1c.8.1 2.1.5 2.8.7l4.6 1.3c2.3.5 4.7.2 6.9-.9l1.4-.8c1.7-1 3.1-2.7 4-4.9l1.2-3.6c.3-.9.7-1.9.9-2.4l.2-.5.6-.1c.7-.1 1.7-.1 2.8-.1H57c1.3 0 2.2 0 2.8.1l.4.1.2.4c.3.5.6 1.3.8 2.2l1.4 4.2c.7 1.9 2.1 3.6 4 4.9l1.3.8c2.1 1.1 4.4 1.3 6.9.8l4.3-1.3c.7-.2 2-.6 2.8-.7l.7-.1.3.6c.3.6.9 1.5 1.4 2.4l1.9 3.2c.2.4.5.9.7 1.3s.4.7.5 1l.2.5-.3.4c-.5.8-1.5 1.9-1.9 2.2l-3.9 4.4c-1.2 1.7-2 4.3-2 6.6 0 2.5.9 5 2.3 6.8l3.8 4.2c.8.9 1.4 1.7 1.8 2.1l.3.5-.2.5c-.2.6-.7 1.6-1.3 2.5l-1.8 3.1c-.5.9-1.1 1.9-1.4 2.4z" class="st0"></path><path d="M55 52.1c-8.5 0-15.4 6.9-15.4 15.4S46.5 82.9 55 82.9 70.4 76 70.4 67.5 63.5 52.1 55 52.1m0 25.5c-5.6 0-10.1-4.5-10.1-10.1S49.4 57.4 55 57.4s10.1 4.5 10.1 10.1S60.6 77.6 55 77.6" class="st0"></path></svg>
-                        </button>
                     </div>
+                </div>
+
+                <div class="wrapper">
+                        <button class="config-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><path d="M69.8 82.5c1.1-.3 1.7-1.3 1.5-2.4L69.6 73c0-.1 0-.2-.1-.3-.5-1.4-2.3-3.9-5.5-4.4q-1.95-.3-3.3-.6c2.2-1.8 3.6-4.5 3.6-7.4 0-5.2-4.2-9.5-9.5-9.5h-.1c-5.2 0-9.5 4.2-9.5 9.5 0 2.9 1.4 5.7 3.6 7.4q-1.35.3-3.3.6c-3.2.5-4.9 3-5.5 4.4 0 .1-.1.2-.1.3l-1.6 7.2c-.2 1.1.4 2.1 1.5 2.4h.4c.9 0 1.7-.6 1.9-1.6l1.6-7c.2-.4.9-1.6 2.3-1.8 2.9-.5 5.1-.9 5.2-.9.9-.2 1.5-.9 1.6-1.8L53 67c.1-.8-.3-1.5-1-1.9v.1c-1.7-1-2.8-2.8-2.8-4.8 0-3 2.4-5.5 5.5-5.5h.1c3 0 5.5 2.4 5.5 5.5 0 2-1.1 3.8-2.8 4.8l-.1.1c-.7.4-1 1.1-1 1.9l.2 2.5c.1.9.7 1.6 1.6 1.8.1 0 2.3.5 5.2.9 1.5.2 2.2 1.5 2.3 1.8l1.6 6.9c.3 1 1.4 1.7 2.5 1.4M53 36.7v9.2c0 1.1.9 2 2 2s2-.9 2-2v-9.2c2.9-.9 5-3.6 5-6.7 0-3.9-3.1-7-7-7s-7 3.1-7 7c0 3.2 2.1 5.8 5 6.7m2-9.7c1.7 0 3 1.4 3 3s-1.4 3-3 3c-1.7 0-3-1.4-3-3s1.3-3 3-3M29.7 50.7c1.2 0 2.3-.3 3.3-.8l6.5 6.5c.4.4.9.6 1.4.6s1-.2 1.4-.6c.8-.8.8-2 0-2.8L35.9 47c1.4-2.7 1-6.1-1.2-8.3-1.3-1.3-3.1-2.1-5-2.1s-3.6.7-5 2.1c-1.3 1.3-2.1 3.1-2.1 5s.7 3.6 2.1 5c1.4 1.3 3.2 2 5 2m-2.1-9.1q.9-.9 2.1-.9c1.2 0 1.6.3 2.1.9 1.2 1.2 1.2 3.1 0 4.3s-3.1 1.2-4.3 0q-.9-.9-.9-2.1c0-1.2.4-1.7 1-2.2M68.4 57c.5 0 1-.2 1.4-.6l6.5-6.5c1 .6 2.2.8 3.3.8 1.8 0 3.6-.7 5-2.1 2.7-2.7 2.7-7.2 0-9.9s-7.2-2.7-9.9 0c-1.3 1.3-2.1 3.1-2.1 5 0 1.2.3 2.3.8 3.3L67 53.5c-.8.8-.8 2 0 2.8.3.5.9.7 1.4.7m9.1-15.4c.6-.6 1.4-.9 2.1-.9q1.2 0 2.1.9c1.2 1.2 1.2 3.1 0 4.3s-3.1 1.2-4.3 0q-.9-.9-.9-2.1c0-1.2.4-1.7 1-2.2M57 100.7v-9.2c0-1.1-.9-2-2-2s-2 .9-2 2v9.2c-2.9.9-5 3.6-5 6.7 0 3.9 3.1 7 7 7s7-3.1 7-7c0-3.1-2.1-5.8-5-6.7m-2 9.8c-1.7 0-3-1.4-3-3s1.4-3 3-3c1.7 0 3 1.4 3 3s-1.3 3-3 3M24 71.7h12c1.1 0 2-.9 2-2s-.9-2-2-2H24c-.9-2.9-3.6-5-6.7-5-3.9 0-7 3.1-7 7s3.1 7 7 7c3.1 0 5.8-2.1 6.7-5m-6.7 1c-1.7 0-3-1.4-3-3 0-1.7 1.4-3 3-3s3 1.4 3 3c0 1.7-1.4 3-3 3M92.7 62.7c-3.2 0-5.9 2.1-6.7 5H74c-1.1 0-2 .9-2 2s.9 2 2 2h12c.9 2.9 3.6 5 6.7 5 3.9 0 7-3.1 7-7s-3.1-7-7-7m0 10c-1.7 0-3-1.4-3-3 0-1.7 1.4-3 3-3s3 1.4 3 3c.1 1.7-1.3 3-3 3M38.6 85.1 32 91.6c-2.7-1.4-6.1-1-8.3 1.2-2.7 2.7-2.7 7.2 0 9.9 1.3 1.3 3.1 2.1 5 2.1s3.6-.7 5-2.1c2.2-2.2 2.6-5.6 1.2-8.3l6.5-6.5c.8-.8.8-2 0-2.8s-2.1-.8-2.8 0m-7.8 14.8c-1.1 1.1-3.1 1.1-4.3 0-1.2-1.2-1.2-3.1 0-4.3.6-.6 1.4-.9 2.1-.9q1.2 0 2.1.9c1.3 1.2 1.3 3.1.1 4.3M78.3 91.6l-6.5-6.5c-.8-.8-2-.8-2.8 0s-.8 2 0 2.8l6.5 6.5c-1.4 2.7-1 6.1 1.2 8.3 1.4 1.4 3.2 2.1 5 2.1s3.6-.7 5-2.1c2.7-2.7 2.7-7.2 0-9.9-2.3-2.3-5.7-2.7-8.4-1.2m5.5 8.3c-1.2 1.2-3.1 1.2-4.3 0s-1.2-3.1 0-4.3c.6-.6 1.4-.9 2.1-.9q1.2 0 2.1.9c1.3 1.2 1.3 3.1.1 4.3" style="fill:currentColor"/></svg>
+                            <span>Admin</span>
+                        </button>
+                        <button class="config-button" onclick="settingsModalProxy.openModal()">
+                            <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 110 135"><style>.st0{fill:currentColor}</style><path d="m89.1 89.7 1.8-3.1c1.5-2.4 2.3-4 2.2-6.1-.3-2-1.4-3.3-3.3-5.5l-3.6-4c-.5-.6-1.1-2-1.1-3.4 0-1.2.4-2.8.9-3.3l4.4-4.9c1.7-1.9 2.7-3.1 2.9-5 .2-2-.7-3.5-2-5.7l-.2-.4-1.9-3.2c-1.5-2.5-2.5-4.2-4.4-5-2-.9-3.7-.3-6.7.5l-4.4 1.2c-1 .3-2.2.2-3-.3l-1.1-.5c-.9-.5-1.6-1.3-1.9-2.2l-1.2-3.7c-1-2.8-1.5-4.3-3.1-5.5s-3.4-1.2-6.3-1.2H53c-2.9 0-4.7 0-6.3 1.2-1.7 1.2-2.3 2.9-3.1 5.6l-1.2 3.5c-.4 1-1 1.8-1.7 2.2l-1.3.7c-1 .4-1.9.5-2.8.4h-.1L32 40.8c-3-.9-4.8-1.3-6.8-.5-2 .9-2.9 2.4-4.5 5.2l-1.7 3c-1.5 2.4-2.3 4-2.2 6.1.3 2 1.4 3.3 3.3 5.5l3.6 4c.5.6 1.1 2 1.1 3.4 0 1.2-.4 2.8-.9 3.3l-4.2 4.7c-1.7 1.9-2.7 3.1-2.9 5-.2 2.1.7 3.7 2.2 6.1l1.8 3.1c1.5 2.6 2.5 4.4 4.5 5.2 2 .9 3.7.3 6.7-.5l4.4-1.2c.4-.1.8-.1 1.1-.1.7 0 1.3.1 1.9.4l1.1.6c.9.5 1.6 1.3 1.9 2.2l1.2 4c.9 2.5 1.4 4.1 3 5.2 1.6 1.2 3.4 1.2 6.3 1.2H57c2.9 0 4.7 0 6.2-1.1 1.7-1.2 2.3-2.9 3.1-5.6l1.2-3.5c.4-1 1-1.8 1.7-2.2l1.3-.7c.9-.4 1.9-.5 2.8-.4h.1l4.4 1.2c2.9.9 4.7 1.3 6.8.5 2-.9 3-2.5 4.5-5.2m-6.1.5-.7-.1c-.8-.1-2.1-.5-2.8-.7l-4.6-1.3c-2.3-.5-4.7-.2-6.9.9l-1.4.8c-1.7 1-3.1 2.7-4 4.9l-1.2 3.6c-.3.9-.7 2-.9 2.5l-.2.5-.6.1c-.7.1-1.7.1-2.8.1H53c-1.3 0-2.2 0-2.8-.1l-.5-.1-.2-.5c0-.1-.1-.3-.2-.4-.2-.5-.4-1.2-.8-1.7l-.1-.2-1.3-3.8c-.7-2-2.1-3.7-4-4.9l-1.4-.8c-2.1-1.1-4.4-1.3-6.9-.8l-4.4 1.2c-.7.2-2 .6-2.8.7l-.7.1-.4-.6c-.3-.5-.9-1.5-1.4-2.4L23.3 84c-.2-.4-.5-.9-.7-1.3s-.4-.7-.5-1l-.2-.5.3-.4c.5-.8 1.5-1.9 1.8-2.2l3.9-4.4c1.2-1.7 2-4.3 2-6.6 0-2.5-.9-5-2.3-6.8l-3.8-4.2c-.7-.9-1.4-1.6-1.8-2.1v-.4l.2-.5c.2-.6.7-1.6 1.3-2.5l1.8-3.1c.5-.9 1.1-1.9 1.4-2.4l.3-.6.7.1c.8.1 2.1.5 2.8.7l4.6 1.3c2.3.5 4.7.2 6.9-.9l1.4-.8c1.7-1 3.1-2.7 4-4.9l1.2-3.6c.3-.9.7-1.9.9-2.4l.2-.5.6-.1c.7-.1 1.7-.1 2.8-.1H57c1.3 0 2.2 0 2.8.1l.4.1.2.4c.3.5.6 1.3.8 2.2l1.4 4.2c.7 1.9 2.1 3.6 4 4.9l1.3.8c2.1 1.1 4.4 1.3 6.9.8l4.3-1.3c.7-.2 2-.6 2.8-.7l.7-.1.3.6c.3.6.9 1.5 1.4 2.4l1.9 3.2c.2.4.5.9.7 1.3s.4.7.5 1l.2.5-.3.4c-.5.8-1.5 1.9-1.9 2.2l-3.9 4.4c-1.2 1.7-2 4.3-2 6.6 0 2.5.9 5 2.3 6.8l3.8 4.2c.8.9 1.4 1.7 1.8 2.1l.3.5-.2.5c-.2.6-.7 1.6-1.3 2.5l-1.8 3.1c-.5.9-1.1 1.9-1.4 2.4z" class="st0"></path><path d="M55 52.1c-8.5 0-15.4 6.9-15.4 15.4S46.5 82.9 55 82.9 70.4 76 70.4 67.5 63.5 52.1 55 52.1m0 25.5c-5.6 0-10.1-4.5-10.1-10.1S49.4 57.4 55 57.4s10.1 4.5 10.1 10.1S60.6 77.6 55 77.6" class="st0"></path></svg>
+                            <span>Settings</span>
+                        </button>
                 </div>
                 
                 <!-- Chats List -->
@@ -129,8 +138,7 @@
                     currentPath: '', 
                     parentPath: '', 
                     filesOpen: true,
-                    _dragCounter: 0,
-                    _boundHandlers: null,
+                    _dragDropInstance: null,
                     
                     init() {
                         this.fetchFiles();
@@ -143,60 +151,25 @@
                     },
                     
                     setupDragAndDrop() {
+                        // Target the files-list-container for the sidebar
                         const filesContainer = this.$el.querySelector('.files-list-container');
                         const dragdropOverlay = this.$el.querySelector('#files-dragdrop-overlay');
                         
                         if (!filesContainer || !dragdropOverlay) return;
                         
-                        this._boundHandlers = {
-                            dragenter: (e) => {
-                                e.preventDefault();
-                                this._dragCounter++;
-                                if (this._dragCounter === 1) {
-                                    const overlayData = Alpine.$data(dragdropOverlay);
-                                    overlayData.isVisible = true;
-                                    dragdropOverlay.classList.add('active');
-                                }
-                            },
-                            dragover: (e) => {
-                                e.preventDefault();
-                            },
-                            dragleave: (e) => {
-                                e.preventDefault();
-                                this._dragCounter--;
-                                if (this._dragCounter === 0) {
-                                    const overlayData = Alpine.$data(dragdropOverlay);
-                                    overlayData.isVisible = false;
-                                    dragdropOverlay.classList.remove('active');
-                                }
-                            },
-                            drop: async (e) => {
-                                e.preventDefault();
-                                this._dragCounter = 0;
-                                const overlayData = Alpine.$data(dragdropOverlay);
-                                overlayData.isVisible = false;
-                                dragdropOverlay.classList.remove('active');
-                                
-                                const files = Array.from(e.dataTransfer.files);
-                                if (files.length > 0) {
-                                    await this.handleFileUpload({ target: { files } });
-                                }
+                        this._dragDropInstance = DragDropManager.create({
+                            container: filesContainer,
+                            overlay: dragdropOverlay,
+                            onDrop: async (files) => {
+                                await this.handleFileUpload(DragDropManager.createUploadEvent(files, 'sidebar'));
                             }
-                        };
-                        
-                        filesContainer.addEventListener('dragenter', this._boundHandlers.dragenter);
-                        filesContainer.addEventListener('dragover', this._boundHandlers.dragover);
-                        filesContainer.addEventListener('dragleave', this._boundHandlers.dragleave);
-                        filesContainer.addEventListener('drop', this._boundHandlers.drop);
+                        });
                     },
                     
                     cleanupDragAndDrop() {
-                        const filesContainer = this.$el.querySelector('.files-list-container');
-                        if (filesContainer && this._boundHandlers) {
-                            filesContainer.removeEventListener('dragenter', this._boundHandlers.dragenter);
-                            filesContainer.removeEventListener('dragover', this._boundHandlers.dragover);
-                            filesContainer.removeEventListener('dragleave', this._boundHandlers.dragleave);
-                            filesContainer.removeEventListener('drop', this._boundHandlers.drop);
+                        if (this._dragDropInstance) {
+                            this._dragDropInstance.cleanup();
+                            this._dragDropInstance = null;
                         }
                     },
                     
@@ -331,6 +304,21 @@
                     </svg>
                 </h3>
                 <div x-show="filesOpen" x-collapse x-transition>
+                    <!-- Add drag and drop overlay for file browser -->
+                    <div id="files-dragdrop-overlay" 
+                        x-cloak
+                        x-data="{ isVisible: false }" 
+                        x-show="isVisible"
+                        :class="{ 'files-dragdrop-overlay': true, 'active': isVisible }"
+                        x-transition:enter="transition ease-out duration-300"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-300"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0">
+                        <img src="public/dragndrop.svg" alt="Drop files" class="dragdrop-icon">
+                        <div class="dragdrop-text">Drop files to upload them here</div>
+                    </div>
                     <div class="path-navigator">
                             <button class="text-button back-button" 
                                 @click.prevent="navigateUp()" 
@@ -349,21 +337,6 @@
                         </div>
                     </div>
                         <div class="files-list-container" :class="{ 'loading': isLoading }">
-                            <!-- Add drag and drop overlay for file browser -->
-                            <div id="files-dragdrop-overlay" 
-                                x-cloak
-                                x-data="{ isVisible: false }" 
-                                x-show="isVisible"
-                                x-transition:enter="transition ease-out duration-300"
-                                x-transition:enter-start="opacity-0"
-                                x-transition:enter-end="opacity-100"
-                                x-transition:leave="transition ease-in duration-300"
-                                x-transition:leave-start="opacity-100"
-                                x-transition:leave-end="opacity-0"
-                                class="files-dragdrop-overlay">
-                                <img src="public/dragndrop.svg" alt="Drop files" class="dragdrop-icon">
-                                <div class="dragdrop-text">Drop files to upload them here</div>
-                            </div>
                             <template x-if="isLoading">
                                 <div class="loading-indicator">Loading...</div>
                             </template>
@@ -494,56 +467,184 @@
         <div id="right-panel" class="panel" 
             x-data="{ 
                 _dragCounter: 0,
-                _boundHandlers: null,
+                _dragDropInstance: null,
+
                 init() {
                     const overlay = document.getElementById('dragdrop-overlay');
-                    if (!overlay) return;
+                    const rightPanel = document.getElementById('right-panel');
+                    if (!overlay || !rightPanel) return;
 
-                    this._boundHandlers = {
-                        dragenter: (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this._dragCounter++;
-                            if (this._dragCounter === 1) {
-                                const overlayData = Alpine.$data(overlay);
-                                overlayData.isVisible = true;
-                            }
-                        },
-                        dragover: (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        },
-                        dragleave: (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this._dragCounter--;
-                            if (this._dragCounter === 0) {
-                                const overlayData = Alpine.$data(overlay);
-                                overlayData.isVisible = false;
-                            }
-                        },
-                        drop: (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this._dragCounter = 0;
-                            const overlayData = Alpine.$data(overlay);
+                    // Create drag drop instance using our manager
+                    this._dragDropInstance = DragDropManager.create({
+                        container: rightPanel,
+                        overlay: overlay,
+                        useCapture: true,
+                        onDrop: async (files) => {
+                            const inputSection = document.getElementById('input-section');
+                            const inputData = Alpine.$data(inputSection);
+                            
+                            // Process each dropped file
+                            Array.from(files).forEach(file => {
+                                const ext = file.name.split('.').pop().toLowerCase();
+                                const isImage = ['jpg', 'jpeg', 'png', 'bmp'].includes(ext);
+                                
+                                if (isImage) {
+                                    // Handle image preview
+                                    const reader = new FileReader();
+                                    reader.onload = e => {
+                                        inputData.attachments.push({
+                                            file: file,
+                                            url: e.target.result,
+                                            type: 'image',
+                                            name: file.name,
+                                            extension: ext
+                                        });
+                                        inputData.hasAttachments = true;
+                                    };
+                                    reader.readAsDataURL(file);
+                                } else {
+                                    // Handle other file types
+                                    inputData.attachments.push({
+                                        file: file,
+                                        type: 'file',
+                                        name: file.name,
+                                        extension: ext
+                                    });
+                                    inputData.hasAttachments = true;
+                                }
+                            });
+                        }
+                    });
+
+                    // Add a guard to prevent drag events from bubbling outside right panel
+                    const preventDrag = (e) => {
+                        const path = e.composedPath();
+                        // Don't prevent if we're in the right panel
+                        if (path.includes(rightPanel)) return;
+                        
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Hide overlay when dragging outside
+                        const overlayData = Alpine.$data(overlay);
+                        if (overlayData && overlayData.isVisible) {
+                            overlay.classList.remove('active');
                             overlayData.isVisible = false;
                         }
                     };
 
-                    this.$el.addEventListener('dragenter', this._boundHandlers.dragenter);
-                    this.$el.addEventListener('dragover', this._boundHandlers.dragover);
-                    this.$el.addEventListener('dragleave', this._boundHandlers.dragleave);
-                    this.$el.addEventListener('drop', this._boundHandlers.drop);
+                    // Handle overlay visibility directly in right panel
+                    const handleDragEnter = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
 
+                        // Get the path of elements from the event target up to the root
+                        const path = e.composedPath();
+                        
+                        // Only proceed if we're in the right panel
+                        if (!path.includes(rightPanel)) {
+                            return;
+                        }
+
+                        // Check if the drag is entering from the overlay
+                        const isFromOverlay = e.relatedTarget && (
+                            e.relatedTarget.classList.contains('dragdrop-overlay') ||
+                            e.relatedTarget.classList.contains('dragdrop-text') ||
+                            e.relatedTarget.classList.contains('dragdrop-icon')
+                        );
+
+                        // Only increment counter if not coming from overlay
+                        if (!isFromOverlay) {
+                            this._dragCounter++;
+                            if (this._dragCounter === 1) {
+                                const overlayData = Alpine.$data(overlay);
+                                if (overlayData && !overlayData.isVisible) {
+                                    overlayData.isVisible = true;
+                                }
+                            }
+                        }
+                    };
+
+                    const handleDragLeave = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Get the path of elements from the event target up to the root
+                        const path = e.composedPath();
+                        
+                        // Only proceed if we're in the right panel
+                        if (!path.includes(rightPanel)) {
+                            return;
+                        }
+
+                        // Check if the drag is leaving to the overlay
+                        const isToOverlay = e.relatedTarget && (
+                            e.relatedTarget.classList.contains('dragdrop-overlay') ||
+                            e.relatedTarget.classList.contains('dragdrop-text') ||
+                            e.relatedTarget.classList.contains('dragdrop-icon')
+                        );
+
+                        // Only decrement counter if not going to overlay
+                        if (!isToOverlay) {
+                            this._dragCounter--;
+                            if (this._dragCounter === 0) {
+                                const overlayData = Alpine.$data(overlay);
+                                if (overlayData && overlayData.isVisible) {
+                                    overlayData.isVisible = false;
+                                }
+                            }
+                        }
+                    };
+
+                    const handleDrop = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this._dragCounter = 0;
+                        const overlayData = Alpine.$data(overlay);
+                        if (overlayData && overlayData.isVisible) {
+                            overlayData.isVisible = false;
+                            overlay.classList.remove('active');
+                            console.log('🟢 Overlay hidden from right panel drop handler');
+                        }
+                    };
+
+                    // Add direct handlers to right panel
+                    rightPanel.addEventListener('dragenter', handleDragEnter, true);
+                    rightPanel.addEventListener('dragleave', handleDragLeave, true);
+                    rightPanel.addEventListener('drop', handleDrop, true);
+                    rightPanel.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }, true);
+
+                    // Make overlay completely transparent to drag events
+                    const overlayEventHandler = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    };
+
+                    overlay.addEventListener('dragenter', overlayEventHandler, true);
+                    overlay.addEventListener('dragleave', overlayEventHandler, true);
+                    overlay.addEventListener('dragover', overlayEventHandler, true);
+                    overlay.addEventListener('drop', overlayEventHandler, true);
+
+                    // Cleanup on destroy
                     this.$el._x_cleanups = this.$el._x_cleanups || [];
                     this.$el._x_cleanups.push(() => {
-                        if (this._boundHandlers) {
-                            this.$el.removeEventListener('dragenter', this._boundHandlers.dragenter);
-                            this.$el.removeEventListener('dragover', this._boundHandlers.dragover);
-                            this.$el.removeEventListener('dragleave', this._boundHandlers.dragleave);
-                            this.$el.removeEventListener('drop', this._boundHandlers.drop);
+                        if (this._dragDropInstance) {
+                            this._dragDropInstance.cleanup();
+                            this._dragDropInstance = null;
                         }
+                        rightPanel.removeEventListener('dragenter', handleDragEnter, true);
+                        rightPanel.removeEventListener('dragleave', handleDragLeave, true);
+                        rightPanel.removeEventListener('drop', handleDrop, true);
+                        this.$el.removeEventListener('dragenter', preventDrag, true);
+                        this.$el.removeEventListener('dragover', preventDrag, true);
+                        this.$el.removeEventListener('drop', preventDrag, true);
+                        overlay.removeEventListener('dragenter', overlayEventHandler, true);
+                        overlay.removeEventListener('dragleave', overlayEventHandler, true);
+                        overlay.removeEventListener('dragover', overlayEventHandler, true);
+                        overlay.removeEventListener('drop', overlayEventHandler, true);
                     });
                 }
             }">
@@ -762,18 +863,18 @@
         <div id="dragdrop-overlay" 
             x-cloak
             x-data="{ isVisible: false }" 
-            x-show="isVisible && !$store.fullScreenInputModal.isOpen"
+            x-show="isVisible"
+            class="dragdrop-overlay"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0"
             x-transition:enter-end="opacity-100"
             x-transition:leave="transition ease-in duration-300"
             x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="dragdrop-overlay active">
+            x-transition:leave-end="opacity-0">
             <img src="public/dragndrop.svg" alt="Drop files" class="dragdrop-icon">
             <div class="dragdrop-text">Drop files to attach them to your message</div>
             <div class="dragdrop-subtext"></div>
-            </div>
+        </div>
         </div>
     </div>
     <div id="settingsModal" x-data="settingsModalProxy">
@@ -905,11 +1006,13 @@
     </div>
 
     <!-- work_dir Browser Modal -->
-
     <div id="fileBrowserModal" x-data="fileBrowserModalProxy">
         <template x-teleport="body">
-            <div x-show="isOpen" class="modal-overlay" @click.self="handleClose()"
-                @keydown.escape.window="handleClose()" x-transition>
+            <div x-show="isOpen" 
+                class="modal-overlay" 
+                @click.self="handleClose()"
+                @keydown.escape.window="handleClose()" 
+                x-transition>
                 <div class="modal-container">
                     <div class="modal-header">
                         <h2 class="modal-title" x-text="browser.title"></h2>
@@ -920,12 +1023,12 @@
                                 </svg>
                                 Pin to Sidebar
                             </button>
-                        <button class="modal-close" @click="handleClose()">&times;</button>
+                            <button class="modal-close" @click="handleClose()">&times;</button>
                         </div>
                     </div>
                     <div class="modal-content">
                         <!-- Add drag and drop overlay -->
-                        <div class="files-dragdrop-overlay active"
+                        <div class="files-dragdrop-overlay"
                             x-cloak
                             x-data="{ isVisible: false }" 
                             x-show="isVisible"
@@ -980,6 +1083,7 @@
                                             x-text="browser.sortDirection === 'asc' ? '↑' : '↓'">
                                         </span>
                                     </div>
+                                    <div class="file-actions-header"></div>
                                 </div>
 
                                 <!-- File List -->
@@ -994,7 +1098,6 @@
                                             </div>
                                             <div class="file-size" x-text="formatFileSize(file.size)"></div>
                                             <div class="file-date" x-text="formatDate(file.modified)"></div>
-
                                             <div class="file-actions">
                                                 <button class="action-button download-button"
                                                     @click.stop="downloadFile(file)">
@@ -1034,7 +1137,6 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                                 </svg>
                                 Upload Files
-                                <!-- Added data-upload-source="modal" attribute -->
                                 <input type="file" multiple="" accept="all" data-upload-source="modal" @change="handleFileUpload" style="display: none;">
                             </label>
                             <button class="btn btn-cancel" @click="handleClose()">Close Browser</button>
@@ -1192,14 +1294,14 @@
     <div id="dragdrop-overlay" 
          x-cloak
          x-data="{ isVisible: false }" 
-         x-show="isVisible && !$store.fullScreenInputModal.isOpen"
+         :class="{ 'dragdrop-overlay': true, 'active': isVisible }"
+         x-show="isVisible"
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
          x-transition:leave="transition ease-in duration-300"
          x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="dragdrop-overlay active">
+         x-transition:leave-end="opacity-0">
         <img src="public/dragndrop.svg" alt="Drop files" class="dragdrop-icon">
         <div class="dragdrop-text">Drop files to attach them to your message</div>
         <div class="dragdrop-subtext"></div>

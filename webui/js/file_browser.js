@@ -15,15 +15,20 @@ const fileBrowserModalProxy = {
   history: [],
 
   async openModal(path) {
+    console.log('🔵 openModal called with path:', path);
     const modalEl = document.getElementById("fileBrowserModal");
+    console.log('🔵 Modal element found:', !!modalEl);
     const modalAD = Alpine.$data(modalEl);
+    console.log('🔵 Modal Alpine data:', modalAD ? 'exists' : 'null');
 
     modalAD.isOpen = true;
     modalAD.isLoading = true;
+    console.log('🔵 Modal state set - isOpen:', modalAD.isOpen, 'isLoading:', modalAD.isLoading);
 
     // Get updated path from sidebar data if available
     const sidebarData = Alpine.$data(document.getElementById('files-section'));
     const updatedPath = path || (sidebarData && sidebarData.currentPath ? sidebarData.currentPath : fileBrowserModalProxy.browser.currentPath) || "$WORK_DIR";
+    console.log('🔵 Updated path determined:', updatedPath);
 
     // Update the entire browser object to ensure reactivity
     modalAD.browser = {
@@ -32,15 +37,22 @@ const fileBrowserModalProxy = {
     };
 
     await modalAD.fetchFiles(updatedPath);
+    console.log('🔵 Files fetched for path:', updatedPath);
     
-    // Force update the browser object again after fetch
-    modalAD.browser = {
-      ...modalAD.browser,
-      currentPath: updatedPath
-    };
+    modalAD.isLoading = false;
+    console.log('🔵 Modal loading completed');
 
-    // Setup drag and drop handlers when modal opens
-    this.setupDragAndDrop();
+    // Setup drag and drop handlers after a longer delay to ensure DOM is fully rendered
+    console.log('🔵 Scheduling drag and drop setup');
+    setTimeout(() => {
+      // Double check modal is still open before setting up
+      if (modalAD.isOpen) {
+        console.log('🔵 Setting up drag and drop after delay');
+        this.setupDragAndDrop();
+      } else {
+        console.log('🔵 Modal closed before drag and drop setup');
+      }
+    }, 300); // Increased delay to ensure DOM is ready
   },
 
   // Add new method to sync sidebar with modal's current path
@@ -372,197 +384,121 @@ const fileBrowserModalProxy = {
   },
 
   setupDragAndDrop() {
-    const modalEl = document.getElementById('fileBrowserModal');
-    if (!modalEl) return;
-    const modalContent = modalEl.querySelector('.modal-content');
-    const dragdropOverlay = modalEl.querySelector('.files-dragdrop-overlay');
-    if (!modalContent || !dragdropOverlay) return;
+    console.log('🟣 setupDragAndDrop called');
     
-    this._dragCounter = 0;
-
-    const handleDragEnter = (e) => {
-      e.preventDefault();
-      e.stopPropagation();  // Prevent event from reaching the body
-      this._dragCounter++;
-      if (this._dragCounter === 1) {
-        // Hide the main overlay first
-        const mainOverlay = document.getElementById('dragdrop-overlay');
-        if (mainOverlay) {
-          const mainOverlayData = Alpine.$data(mainOverlay);
-          mainOverlayData.isVisible = false;
-        }
-        // Show our modal overlay
-        const overlayData = Alpine.$data(dragdropOverlay);
-        overlayData.isVisible = true;
-        dragdropOverlay.classList.add('active');
-      }
-    };
-
-    const handleDragOver = (e) => {
-      e.preventDefault();
-      e.stopPropagation();  // Prevent event from reaching the body
-    };
-
-    const handleDragLeave = (e) => {
-      e.preventDefault();
-      e.stopPropagation();  // Prevent event from reaching the body
-      this._dragCounter--;
-      if (this._dragCounter === 0) {
-        const overlayData = Alpine.$data(dragdropOverlay);
-        overlayData.isVisible = false;
-        dragdropOverlay.classList.remove('active');
-      }
-    };
-
-    const handleDrop = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();  // Prevent event from reaching the body
-      this._dragCounter = 0;
-      const overlayData = Alpine.$data(dragdropOverlay);
-      overlayData.isVisible = false;
-      dragdropOverlay.classList.remove('active');
-
-      // Hide the main chat overlay as well
-      const mainOverlay = document.getElementById('dragdrop-overlay');
-      if (mainOverlay) {
-        const mainOverlayData = Alpine.$data(mainOverlay);
-        mainOverlayData.isVisible = false;
-        mainOverlay.classList.remove('active');
-      }
-
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) {
-        // Add data-upload-source to indicate this is from the modal
-        await this.handleFileUpload({ 
-          target: { 
-            files,
-            getAttribute: () => 'modal' 
-          } 
+    // First clean up any existing instances
+    console.log('🟣 Cleaning up existing drag drop instances');
+    this.cleanupDragAndDrop();
+    
+    // Get modal container and overlay - search in body since content is teleported
+    const modalOverlay = Array.from(document.querySelectorAll('body > .modal-overlay'))
+      .find(overlay => overlay.querySelector('.modal-title')?.textContent === this.browser.title);
+    
+    console.log('🟣 Modal overlay found:', !!modalOverlay);
+    
+    if (!modalOverlay) {
+        console.error('🟣 Error: Could not find file browser modal overlay');
+        return;
+    }
+    
+    const modalContainer = modalOverlay.querySelector('.modal-container');
+    const modalContent = modalOverlay.querySelector('.modal-content');
+    const dragdropOverlay = modalContent?.querySelector('.files-dragdrop-overlay');
+    
+    console.log('🟣 Modal elements found:', {
+        modalContainer: !!modalContainer,
+        modalContent: !!modalContent,
+        dragdropOverlay: !!dragdropOverlay,
+        modalContainerClasses: modalContainer?.className,
+        modalContentClasses: modalContent?.className,
+        dragdropOverlayClasses: dragdropOverlay?.className,
+        modalTitle: modalOverlay.querySelector('.modal-title')?.textContent
+    });
+    
+    if (!modalContainer || !modalContent || !dragdropOverlay) {
+        console.error('🟣 Error: Could not find required modal elements', {
+            modalContainer: modalContainer?.outerHTML?.slice(0, 100) + '...',
+            modalContent: modalContent?.outerHTML?.slice(0, 100) + '...',
+            dragdropOverlay: dragdropOverlay?.outerHTML?.slice(0, 100) + '...',
+            modalTitle: modalOverlay.querySelector('.modal-title')?.textContent
         });
-      }
-    };
-
-    // Attach listeners to the modal-content element
-    modalContent.addEventListener('dragenter', handleDragEnter, true);
-    modalContent.addEventListener('dragover', handleDragOver, true);
-    modalContent.addEventListener('dragleave', handleDragLeave, true);
-    modalContent.addEventListener('drop', handleDrop, true);
+        return;
+    }
     
-    // Store handlers for cleanup
-    this._boundHandlers = {
-      dragenter: handleDragEnter,
-      dragover: handleDragOver,
-      dragleave: handleDragLeave,
-      drop: handleDrop
-    };
+    console.log('🟣 Creating modal drag drop instance');
+    const overlayData = Alpine.$data(dragdropOverlay);
+    console.log('🟣 Overlay Alpine data:', overlayData ? 'exists' : 'null', overlayData);
+    
+    this._modalDragDropInstance = DragDropManager.create({
+        container: modalContainer,
+        overlay: dragdropOverlay,
+        onDrop: async (files) => {
+            console.log('🟣 Drop event triggered with files:', files.length);
+            await this.handleFileUpload(DragDropManager.createUploadEvent(files, 'modal'));
+        },
+        useCapture: true,
+        globalOverlay: document.getElementById('dragdrop-overlay'),
+        onDragStart: () => {
+            console.log('🟣 Drag start event triggered');
+            const overlayData = Alpine.$data(dragdropOverlay);
+            console.log('🟣 Overlay data on drag start:', overlayData ? 'exists' : 'null');
+            if (overlayData) {
+                overlayData.isVisible = true;
+                console.log('🟣 Overlay visibility set to true');
+            }
+        },
+        onDragEnd: () => {
+            console.log('🟣 Drag end event triggered');
+            const overlayData = Alpine.$data(dragdropOverlay);
+            if (overlayData) {
+                setTimeout(() => {
+                    overlayData.isVisible = false;
+                    console.log('🟣 Overlay visibility set to false after timeout');
+                }, 300);
+            }
+        }
+    });
+    console.log('🟣 Modal drag drop instance created:', !!this._modalDragDropInstance);
   },
 
   cleanupDragAndDrop() {
-    const modalEl = document.getElementById('fileBrowserModal');
-    if (!modalEl) return;
-    const modalContent = modalEl.querySelector('.modal-content');
-    if (modalContent && this._boundHandlers) {
-      modalContent.removeEventListener('dragenter', this._boundHandlers.dragenter);
-      modalContent.removeEventListener('dragover', this._boundHandlers.dragover);
-      modalContent.removeEventListener('dragleave', this._boundHandlers.dragleave);
-      modalContent.removeEventListener('drop', this._boundHandlers.drop);
+    console.log('🔴 cleanupDragAndDrop called');
+    if (this._modalDragDropInstance) {
+        console.log('🔴 Cleaning up modal drag drop instance');
+        this._modalDragDropInstance.cleanup();
+        this._modalDragDropInstance = null;
+    }
+    if (this._sidebarDragDropInstance) {
+        console.log('🔴 Cleaning up sidebar drag drop instance');
+        this._sidebarDragDropInstance.cleanup();
+        this._sidebarDragDropInstance = null;
     }
   },
 
   // Add initialization of drag and drop to the init function
   init() {
     // Watch for modal open/close
-    this.$watch('isOpen', (value) => {
-      if (value) {
-        this.setupDragAndDrop();
-      } else {
-        this.cleanupDragAndDrop();
-      }
+    this.$watch('isOpen', async (value) => {
+        if (value) {
+            await this.fetchFiles(this.browser.currentPath);
+            // Setup drag and drop when modal opens
+            setTimeout(() => {
+                this.setupDragAndDrop();
+            }, 100); // Small delay to ensure DOM is ready
+        } else {
+            // Cleanup drag and drop when modal closes
+            this.cleanupDragAndDrop();
+        }
     });
-  },
 
-  setupModalDragAndDrop() {
-    const modalContainer = document.getElementById('fileBrowserModal');
-    const dragdropOverlay = document.querySelector('.files-dragdrop-overlay');
-    
-    if (!modalContainer || !dragdropOverlay) return;
-    
-    this._modalDragCounter = 0;
-    
-    const handleDragEnter = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this._modalDragCounter++;
-      if (this._modalDragCounter === 1) {
-        const overlayData = Alpine.$data(dragdropOverlay);
-        overlayData.isVisible = true;
-        dragdropOverlay.classList.add('active');
-      }
-    };
-    
-    const handleDragOver = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    
-    const handleDragLeave = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this._modalDragCounter--;
-      if (this._modalDragCounter === 0) {
-        const overlayData = Alpine.$data(dragdropOverlay);
-        overlayData.isVisible = false;
-        dragdropOverlay.classList.remove('active');
-      }
-    };
-    
-    const handleDrop = async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      this._modalDragCounter = 0;
-      const overlayData = Alpine.$data(dragdropOverlay);
-      overlayData.isVisible = false;
-      dragdropOverlay.classList.remove('active');
-      
-      // Hide the main chat overlay as well
-      const mainOverlay = document.getElementById('dragdrop-overlay');
-      if (mainOverlay) {
-        const mainOverlayData = Alpine.$data(mainOverlay);
-        mainOverlayData.isVisible = false;
-        mainOverlay.classList.remove('active');
-      }
-      
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) {
-        await this.handleFileUpload({ target: { files } });
-      }
-    };
-    
-    // Add event listeners to the entire modal container
-    modalContainer.addEventListener('dragenter', handleDragEnter);
-    modalContainer.addEventListener('dragover', handleDragOver);
-    modalContainer.addEventListener('dragleave', handleDragLeave);
-    modalContainer.addEventListener('drop', handleDrop);
-    
-    // Store handlers for cleanup
-    this._modalBoundHandlers = {
-      dragenter: handleDragEnter,
-      dragover: handleDragOver,
-      dragleave: handleDragLeave,
-      drop: handleDrop
-    };
-  },
+    // Ensure cleanup on component destroy
+    this.$el._x_cleanups = this.$el._x_cleanups || [];
+    this.$el._x_cleanups.push(() => {
+        this.cleanupDragAndDrop();
+    });
 
-  cleanupModalDragAndDrop() {
-    const modalContainer = document.getElementById('fileBrowserModal');
-    const filesList = modalContainer?.querySelector('.files-list');
-    
-    if (filesList && this._modalBoundHandlers) {
-      filesList.removeEventListener('dragenter', this._modalBoundHandlers.dragenter);
-      filesList.removeEventListener('dragover', this._modalBoundHandlers.dragover);
-      filesList.removeEventListener('dragleave', this._modalBoundHandlers.dragleave);
-      filesList.removeEventListener('drop', this._modalBoundHandlers.drop);
-    }
+    // Initial file fetch for modal
+    this.fetchFiles("$WORK_DIR");
   },
 
   // Add a new method to refresh both browsers while maintaining their separate contexts
@@ -595,40 +531,39 @@ const fileBrowserModalProxy = {
 document.addEventListener("alpine:init", () => {
   // File browser modal
   Alpine.data("fileBrowserModalProxy", () => ({
+    ...fileBrowserModalProxy,
     init() {
-      Object.assign(this, fileBrowserModalProxy);
-      
-      // Replace modal-specific drag and drop with the working global version
+      // Watch for modal open/close
       this.$watch("isOpen", async (value) => {
         if (value) {
           await this.fetchFiles(this.browser.currentPath);
-          // Setup drag and drop when modal opens using the working method
+          // Setup drag and drop when modal opens
           this.setupDragAndDrop();
         } else {
-          // Cleanup drag and drop when modal closes using the working method
+          // Cleanup drag and drop when modal closes
           this.cleanupDragAndDrop();
         }
       });
 
-      // Initial file fetch for modal
+      // Initial file fetch
       this.fetchFiles("$WORK_DIR");
-    },
+    }
   }));
 });
 
-// Keep the global assignment for backward compatibility
+// Remove the alpine:initialized event listener since we handle initialization in Alpine.data
 window.fileBrowserModalProxy = fileBrowserModalProxy;
 fileBrowserModalProxy.handleFileUpload = fileBrowserModalProxy.handleFileUpload.bind(fileBrowserModalProxy);
 
 // Add global fetchFiles function for the sidebar
 window.fetchFiles = async function(path = "") {
-  const filesSection = document.getElementById('files-section');
-  if (!filesSection) return;
-  
-  const component = Alpine.$data(filesSection);
-  if (!component) return;
-  
-  await component.fetchFiles(path);
+    const filesSection = document.getElementById('files-section');
+    if (!filesSection) return;
+    
+    const component = Alpine.$data(filesSection);
+    if (!component) return;
+    
+    await component.fetchFiles(path);
 };
 
 openFileLink = async function (path) {
