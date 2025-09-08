@@ -15,9 +15,9 @@ Scope: Extract UI from `index.html` into modular components without changing Set
 - UI: `components/chat/quick-actions.html`
 - Actions: Reset Chat, New Chat, Load Chat, Save Chat, Restart, Open Settings
 
-3) Extract Chats list sidebar to component and store [pending]
-- UI: `components/chat/sidebar/chats.html`
-- Store: `components/chat/sidebar/chats-store.js`
+3) Extract Chats list sidebar to component and store [completed]
+- UI: `components/sidebar/chats-list.html`
+- Store: `components/sidebar/chats-store.js`
 - Includes: list/select/kill chats, highlight selected
 
 4) Extract Tasks list sidebar to component and store [pending]

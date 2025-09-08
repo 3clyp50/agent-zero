@@ -54,8 +54,8 @@ Planned components and stores (proposed paths):
     - Status: Completed — `<x-component path="chat/quick-actions.html">` wired in `index.html`; behavior unchanged.
 
 3.  Sidebar — Chats List
-    - UI: `components/chat/sidebar/chats.html`
-    - Store: `components/chat/sidebar/chats-store.js`
+    - UI: `components/sidebar/chats-list.html`
+    - Store: `components/sidebar/chats-store.js`
     - Scope: List, select, kill chats; highlight selected
     - Acceptance: Parity with current behavior and performance on large lists.
 
