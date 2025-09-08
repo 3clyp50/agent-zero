@@ -402,12 +402,19 @@ async function poll() {
     // Update chats list and sort by created_at time (newer first)
     let chatsAD = null;
     let contexts = response.contexts || [];
-    if (globalThis.Alpine && chatsSection) {
-      chatsAD = Alpine.$data(chatsSection);
-      if (chatsAD) {
-        chatsAD.contexts = contexts.sort(
+    if (globalThis.Alpine) {
+      const chatsStore = Alpine.store && Alpine.store("chats");
+      if (chatsStore) {
+        chatsStore.contexts = contexts.sort(
           (a, b) => (b.created_at || 0) - (a.created_at || 0)
         );
+      } else if (chatsSection) {
+        chatsAD = Alpine.$data(chatsSection);
+        if (chatsAD) {
+          chatsAD.contexts = contexts.sort(
+            (a, b) => (b.created_at || 0) - (a.created_at || 0)
+          );
+        }
       }
     }
 
@@ -439,8 +446,10 @@ async function poll() {
       // Update selection in the active tab
       const activeTab = localStorage.getItem("activeTab") || "chats";
 
-      if (activeTab === "chats" && chatsAD) {
-        chatsAD.selected = context;
+      if (activeTab === "chats") {
+        const chatsStore = globalThis.Alpine && Alpine.store && Alpine.store("chats");
+        if (chatsStore) chatsStore.selected = context;
+        if (chatsAD) chatsAD.selected = context;
         localStorage.setItem("lastSelectedChat", context);
 
         // Check if this context exists in the chats list
@@ -456,7 +465,8 @@ async function poll() {
           // Only create a new context if we're not currently in an existing context
           // This helps prevent duplicate contexts when switching tabs
           setContext(firstChatId);
-          chatsAD.selected = firstChatId;
+          if (chatsStore) chatsStore.selected = firstChatId;
+          if (chatsAD) chatsAD.selected = firstChatId;
           localStorage.setItem("lastSelectedChat", firstChatId);
         }
       } else if (activeTab === "tasks" && tasksSection) {
@@ -499,7 +509,9 @@ async function poll() {
       // Only set context if we don't already have one to avoid duplicates
       if (!context) {
         setContext(firstChatId);
-        chatsAD.selected = firstChatId;
+        const chatsStore = globalThis.Alpine && Alpine.store && Alpine.store("chats");
+        if (chatsStore) chatsStore.selected = firstChatId;
+        if (chatsAD) chatsAD.selected = firstChatId;
         localStorage.setItem("lastSelectedChat", firstChatId);
       }
     }
@@ -612,9 +624,11 @@ globalThis.killChat = async function (id) {
 
   try {
     const chatsAD = Alpine.$data(chatsSection);
+    const chatsStore = globalThis.Alpine && Alpine.store && Alpine.store("chats");
+    const contexts = (chatsStore?.contexts ?? chatsAD?.contexts ?? []);
     console.log(
       "Current contexts before deletion:",
-      JSON.stringify(chatsAD.contexts.map((c) => ({ id: c.id, name: c.name })))
+      JSON.stringify(contexts.map((c) => ({ id: c.id, name: c.name })))
     );
 
     // switch to another context if deleting current
@@ -625,14 +639,15 @@ globalThis.killChat = async function (id) {
 
     // Update the UI manually to ensure the correct chat is removed
     // Deep clone the contexts array to prevent reference issues
-    const updatedContexts = chatsAD.contexts.filter((ctx) => ctx.id !== id);
+    const updatedContexts = contexts.filter((ctx) => ctx.id !== id);
     console.log(
       "Updated contexts after deletion:",
       JSON.stringify(updatedContexts.map((c) => ({ id: c.id, name: c.name })))
     );
 
     // Force UI update by creating a new array
-    chatsAD.contexts = [...updatedContexts];
+    if (chatsStore) chatsStore.contexts = [...updatedContexts];
+    if (chatsAD && chatsAD.contexts) chatsAD.contexts = [...updatedContexts];
 
     updateAfterScroll();
 
@@ -647,12 +662,14 @@ export function switchFromContext(id) {
   // If we're deleting the currently selected chat, switch to another one first
   if (context === id) {
     const chatsAD = Alpine.$data(chatsSection);
+    const chatsStore = globalThis.Alpine && Alpine.store && Alpine.store("chats");
 
     // Find an alternate chat to switch to if we're deleting the current one
     let alternateChat = null;
-    for (let i = 0; i < chatsAD.contexts.length; i++) {
-      if (chatsAD.contexts[i].id !== id) {
-        alternateChat = chatsAD.contexts[i];
+    const contexts = (chatsStore?.contexts ?? chatsAD?.contexts ?? []);
+    for (let i = 0; i < contexts.length; i++) {
+      if (contexts[i].id !== id) {
+        alternateChat = contexts[i];
         break;
       }
     }
@@ -714,12 +731,14 @@ globalThis.selectChat = async function (id) {
 
     // Update both contexts and tasks lists to reflect the selected item
     const chatsAD = Alpine.$data(chatsSection);
+    const chatsStore = globalThis.Alpine && Alpine.store && Alpine.store("chats");
     const tasksSection = document.getElementById("tasks-section");
     if (tasksSection) {
       const tasksAD = Alpine.$data(tasksSection);
       tasksAD.selected = id;
     }
-    chatsAD.selected = id;
+    if (chatsStore) chatsStore.selected = id;
+    if (chatsAD) chatsAD.selected = id;
 
     // Store this selection in the appropriate localStorage key
     const activeTab = localStorage.getItem("activeTab") || "chats";
@@ -769,6 +788,8 @@ export const setContext = function (id) {
   if (globalThis.Alpine) {
     if (chatsSection) {
       const chatsAD = Alpine.$data(chatsSection);
+      const chatsStore = globalThis.Alpine && Alpine.store && Alpine.store("chats");
+      if (chatsStore) chatsStore.selected = id;
       if (chatsAD) chatsAD.selected = id;
     }
     if (tasksSection) {

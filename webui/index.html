@@ -159,7 +159,7 @@
         <div id="left-panel" class="panel">
             <!--Sidebar upper elements-->
             <div class="left-panel-top">
-                <x-component path="chat/quick-actions.html"></x-component>
+                <x-component path="sidebar/quick-actions.html"></x-component>
 
                 <!-- Tabs container -->
                 <div class="tabs-container">
@@ -170,25 +170,8 @@
                 </div>
 
                 <!-- Chats List -->
-                <div class="config-section" id="chats-section" x-data="{ contexts: [], selected: '' }"
-                    x-show="contexts.length > 0 || true">
-                    <div class="chats-list-container">
-                        <ul class="config-list" x-show="contexts.length > 0">
-                            <template x-for="context in contexts">
-                                <li>
-                                    <div :class="{'chat-list-button': true, 'font-bold': context.id === selected}"
-                                        @click="selected = context.id; selectChat(context.id)">
-                                        <span class="chat-name" :title="context.name ? context.name : 'Chat #' + context.no"
-                                            x-text="context.name ? context.name : 'Chat #' + context.no"></span>
-                                    </div>
-                                    <button class="edit-button" @click="killChat(context.id)">X</button>
-                                </li>
-                            </template>
-                        </ul>
-                        <div class="empty-list-message" x-show="contexts.length === 0">
-                            <p><i>No chats to list.</i></p>
-                        </div>
-                    </div>
+                <div class="config-section" id="chats-section" x-data x-show="$store.chats?.contexts?.length > 0 || true">
+                    <x-component path="sidebar/chats-list.html"></x-component>
                 </div>
 
                 <!-- Tasks List -->
@@ -251,7 +234,7 @@
             <!--Sidebar lower elements-->
             <div class="left-panel-bottom">
                 <!-- Preferences -->
-                <x-component path="preferences/preferences-panel.html"></x-component>
+                <x-component path="sidebar/preferences/preferences-panel.html"></x-component>
                 <!-- Version Info -->
                 <div class="version-info">
                     <span id="a0version">Version {{version_no}} {{version_time}}</span>
