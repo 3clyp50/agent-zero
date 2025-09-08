@@ -268,69 +268,7 @@
             <!--Sidebar lower elements-->
             <div class="left-panel-bottom">
                 <!-- Preferences -->
-                <div class="pref-section" x-data="{ prefOpen: true }">
-                    <span>
-                        <h3 class="pref-header" @click="prefOpen = !prefOpen">
-                            Preferences
-                            <svg class="arrow-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2" width="16" height="16"
-                                :class="{'rotated': !prefOpen}">
-                                <path d="M8 4l8 8-8 8" />
-                            </svg>
-                        </h3>
-                        <ul class="config-list" id="pref-list" x-show="prefOpen" x-collapse x-transition>
-                            <!-- Preferences Items -->
-                            <li x-data="{ autoScroll: true }">
-                                <span>Autoscroll</span>
-                                <label class="switch">
-                                    <input id="auto-scroll-switch" type="checkbox" x-model="autoScroll"
-                                        x-effect="globalThis.safeCall('toggleAutoScroll',autoScroll)">
-                                    <span class="slider"></span>
-                                </label>
-                            </li>
-                            <li x-data="{ darkMode: localStorage.getItem('darkMode') != 'false' }"
-                                x-init="$watch('darkMode', val => toggleDarkMode(val))">
-                                <span class="switch-label">Dark mode</span>
-                                <label class="switch">
-                                    <input type="checkbox" x-model="darkMode">
-                                    <span class="slider"></span>
-                                </label>
-                            </li>
-                            <li x-data="{ speech: localStorage.getItem('speech') == 'true' }"
-                                x-init="$watch('speech', val => toggleSpeech(val))">
-                                <span class="switch-label">Speech</span>
-                                <label class="switch">
-                                    <input type="checkbox" x-model="speech">
-                                    <span class="slider"></span>
-                                </label>
-                            </li>
-                            <li x-data="{ showThoughts: true }">
-                                <span>Show thoughts</span>
-                                <label class="switch">
-                                    <input type="checkbox" x-model="showThoughts"
-                                        x-effect="globalThis.safeCall('toggleThoughts',showThoughts)">
-                                    <span class="slider"></span>
-                                </label>
-                            </li>
-                            <li x-data="{ showJson: false }">
-                                <span>Show JSON</span>
-                                <label class="switch">
-                                    <input type="checkbox" x-model="showJson"
-                                        x-effect="globalThis.safeCall('toggleJson',showJson)">
-                                    <span class="slider"></span>
-                                </label>
-                            </li>
-                            <li x-data="{ showUtils: false }">
-                                <span>Show utility messages</span>
-                                <label class="switch">
-                                    <input type="checkbox" x-model="showUtils"
-                                        x-effect="globalThis.safeCall('toggleUtils',showUtils)">
-                                    <span class="slider"></span>
-                                </label>
-                            </li>
-                        </ul>
-                    </span>
-                </div>
+                <x-component path="preferences/preferences-panel.html"></x-component>
                 <!-- Version Info -->
                 <div class="version-info">
                     <span id="a0version">Version {{version_no}} {{version_time}}</span>
