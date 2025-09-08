@@ -45,11 +45,13 @@ Planned components and stores (proposed paths):
     - Store: `components/preferences/preferences-store.js`
     - Scope: Autoscroll, Dark Mode, Speech, Show Thoughts, Show JSON, Show Utility Messages
     - Acceptance: Toggles update UI instantly; state persisted (localStorage) as today; no reliance on `safeCall`.
+    - Status: Completed — `<x-component path="preferences/preferences-panel.html">` wired in `index.html`; store created; removed `safeCall`.
 
 2.  Quick Actions Toolbar (left sidebar top)
     - UI: `components/chat/quick-actions.html`
     - Scope: Reset Chat, New Chat, Load Chat, Save Chat, Restart, Open Settings
     - Acceptance: Button actions call existing functions; keyboard focus management preserved.
+    - Status: Completed — `<x-component path="chat/quick-actions.html">` wired in `index.html`; behavior unchanged.
 
 3.  Sidebar — Chats List
     - UI: `components/chat/sidebar/chats.html`

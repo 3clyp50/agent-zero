@@ -5,13 +5,13 @@ Scope: Extract UI from `index.html` into modular components without changing Set
 
 ## Tasks (Cursor TODO list)
 
-1) Create Preferences component and store [pending]
+1) Create Preferences component and store [completed]
 - UI: `components/preferences/preferences-panel.html`
 - Store: `components/preferences/preferences-store.js`
 - Includes: Autoscroll, Dark Mode, Speech, Show Thoughts, Show JSON, Show Utility Messages
 - Acceptance: Toggles parity; persistent state (localStorage) as today; no `safeCall` reliance
 
-2) Extract Quick Actions toolbar to component [pending]
+2) Extract Quick Actions toolbar to component [completed]
 - UI: `components/chat/quick-actions.html`
 - Actions: Reset Chat, New Chat, Load Chat, Save Chat, Restart, Open Settings
 
@@ -51,7 +51,7 @@ Scope: Extract UI from `index.html` into modular components without changing Set
 - UI: `components/chat/header/status-bar.html`
 - Keep notifications icon component as-is
 
-11) Normalize preference toggles into Alpine store (remove `safeCall`) [pending]
+11) Normalize preference toggles into Alpine store (remove `safeCall`) [completed]
 - Consolidate side-effects into the preferences store
 
 Recommended implementation order:
