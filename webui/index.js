@@ -5,6 +5,7 @@ import { sleep } from "/js/sleep.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "/components/chat/speech/speech-store.js";
 import { store as notificationStore } from "/components/notifications/notification-store.js";
+import { store as tasksStore } from "/components/sidebar/tasks-store.js";
 
 globalThis.fetchApi = api.fetchApi; // TODO - backward compatibility for non-modular scripts, remove once refactored to alpine
 
@@ -422,23 +423,13 @@ async function poll() {
     const tasksSection = document.getElementById("tasks-section");
     if (globalThis.Alpine && tasksSection) {
       const tasksAD = Alpine.$data(tasksSection);
-      if (tasksAD) {
-        let tasks = response.tasks || [];
+      let tasks = response.tasks || [];
 
-        // Always update tasks to ensure state changes are reflected
-        if (tasks.length > 0) {
-          // Sort the tasks by creation time
-          const sortedTasks = [...tasks].sort(
-            (a, b) => (b.created_at || 0) - (a.created_at || 0)
-          );
+      // Update central tasks store first
+      tasksStore.applyTasks(tasks);
 
-          // Assign the sorted tasks to the Alpine data
-          tasksAD.tasks = sortedTasks;
-        } else {
-          // Make sure to use a new empty array instance
-          tasksAD.tasks = [];
-        }
-      }
+      // Mirror into the legacy Alpine data bridge if present
+      if (tasksAD) tasksAD.tasks = tasksStore.tasks;
     }
 
     // Make sure the active context is properly selected in both lists
@@ -471,7 +462,8 @@ async function poll() {
         }
       } else if (activeTab === "tasks" && tasksSection) {
         const tasksAD = Alpine.$data(tasksSection);
-        tasksAD.selected = context;
+        if (tasksAD) tasksAD.selected = context;
+        tasksStore.setSelected(context);
         localStorage.setItem("lastSelectedTask", context);
 
         // Check if this context exists in the tasks list
@@ -479,9 +471,10 @@ async function poll() {
 
         // If it doesn't exist in the tasks list but we're in tasks tab, try to select the first task
         if (!taskExists && response.tasks?.length > 0) {
-          const firstTaskId = response.tasks[0].id;
+          const firstTaskId = tasksStore.firstId() || response.tasks[0].id;
           setContext(firstTaskId);
-          tasksAD.selected = firstTaskId;
+          if (tasksAD) tasksAD.selected = firstTaskId;
+          tasksStore.setSelected(firstTaskId);
           localStorage.setItem("lastSelectedTask", firstTaskId);
         }
       }
@@ -491,11 +484,12 @@ async function poll() {
       localStorage.getItem("activeTab") === "tasks"
     ) {
       // If we're in tasks tab with no selection but have tasks, select the first one
-      const firstTaskId = response.tasks[0].id;
+      const firstTaskId = tasksStore.firstId() || response.tasks[0].id;
       setContext(firstTaskId);
       if (tasksSection) {
         const tasksAD = Alpine.$data(tasksSection);
-        tasksAD.selected = firstTaskId;
+        if (tasksAD) tasksAD.selected = firstTaskId;
+        tasksStore.setSelected(firstTaskId);
         localStorage.setItem("lastSelectedTask", firstTaskId);
       }
     } else if (
@@ -688,16 +682,8 @@ function ensureProperTabSelection(contextId) {
   // Get current active tab
   const activeTab = localStorage.getItem("activeTab") || "chats";
 
-  // First attempt to determine if this is a task or chat based on the task list
-  const tasksSection = document.getElementById("tasks-section");
-  let isTask = false;
-
-  if (tasksSection) {
-    const tasksAD = Alpine.$data(tasksSection);
-    if (tasksAD && tasksAD.tasks) {
-      isTask = tasksAD.tasks.some((task) => task.id === contextId);
-    }
-  }
+  // Determine if this is a task using central tasks store
+  let isTask = tasksStore.contains(contextId);
 
   // If we're selecting a task but are in the chats tab, switch to tasks tab
   if (isTask && activeTab === "chats") {
@@ -738,6 +724,7 @@ globalThis.selectChat = async function (id) {
       tasksAD.selected = id;
     }
     if (chatsStore) chatsStore.selected = id;
+    tasksStore.setSelected(id);
     if (chatsAD) chatsAD.selected = id;
 
     // Store this selection in the appropriate localStorage key
@@ -795,6 +782,7 @@ export const setContext = function (id) {
     if (tasksSection) {
       const tasksAD = Alpine.$data(tasksSection);
       if (tasksAD) tasksAD.selected = id;
+      tasksStore.setSelected(id);
     }
   }
 
@@ -1196,7 +1184,7 @@ function activateTab(tabName) {
 
     // Get the available tasks from Alpine.js data
     const tasksAD = globalThis.Alpine ? Alpine.$data(tasksSection) : null;
-    const availableTasks = tasksAD?.tasks || [];
+    const availableTasks = tasksStore.tasks || tasksAD?.tasks || [];
 
     // Restore previous task selection
     const lastSelectedTask = localStorage.getItem("lastSelectedTask");
