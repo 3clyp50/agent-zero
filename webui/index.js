@@ -1108,24 +1108,8 @@ document.addEventListener("DOMContentLoaded", function () {
   initializeActiveTab();
 });
 
-// Setup tabs functionality
-function setupTabs() {
-  const chatsTab = document.getElementById("chats-tab");
-  const tasksTab = document.getElementById("tasks-tab");
-
-  if (chatsTab && tasksTab) {
-    chatsTab.addEventListener("click", function () {
-      activateTab("chats");
-    });
-
-    tasksTab.addEventListener("click", function () {
-      activateTab("tasks");
-    });
-  } else {
-    console.error("Tab elements not found");
-    setTimeout(setupTabs, 100); // Retry setup
-  }
-}
+// Setup tabs functionality delegated to tabs-store (kept as no-op for backward compatibility)
+function setupTabs() {}
 
 function activateTab(tabName) {
   const chatsTab = document.getElementById("chats-tab");
@@ -1206,16 +1190,12 @@ function activateTab(tabName) {
   poll();
 }
 
+// Expose for tabs-store
+globalThis.activateTab = activateTab;
+
 // Add function to initialize active tab and selections from localStorage
 function initializeActiveTab() {
-  // Initialize selection storage if not present
-  if (!localStorage.getItem("lastSelectedChat")) {
-    localStorage.setItem("lastSelectedChat", "");
-  }
-  if (!localStorage.getItem("lastSelectedTask")) {
-    localStorage.setItem("lastSelectedTask", "");
-  }
-
+  // delegated to tabs-store via tabs component init
   const activeTab = localStorage.getItem("activeTab") || "chats";
   activateTab(activeTab);
 }
