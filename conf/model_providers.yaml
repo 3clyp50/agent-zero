@@ -17,6 +17,13 @@
 #                     This is useful for `api_base`, `extra_headers`, etc.
 
 chat:
+  a0_venice:
+    name: Agent Zero Venice.ai
+    litellm_provider: openai
+    kwargs:
+      api_base: https://api.agent-zero.ai/venice/v1
+      venice_parameters:
+        include_venice_system_prompt: false
   anthropic:
     name: Anthropic
     litellm_provider: anthropic
@@ -58,10 +65,15 @@ chat:
     name: Sambanova
     litellm_provider: sambanova
   venice:
-    name: Venice
+    name: Venice.ai
     litellm_provider: openai
     kwargs:
       api_base: https://api.venice.ai/api/v1
+      venice_parameters:
+        include_venice_system_prompt: false
+  xai:
+    name: xAI
+    litellm_provider: xai
   other:
     name: Other OpenAI compatible
     litellm_provider: openai
