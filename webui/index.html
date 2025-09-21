@@ -219,14 +219,7 @@
                 <button class="toast__copy" style="display: none;">Copy</button>
                 <button class="toast__close">Close</button>
             </div>
-            <div id="progress-bar-box">
-                <h4 id="progress-bar-h">
-                    <span id="progress-bar-i">|></span><span id="progress-bar"></span>
-                </h4>
-                <h4 id="progress-bar-stop-speech" x-data x-cloak x-show="$store.speech.isSpeaking">
-                    <span id="stop-speech" @click="$store.speech.stop()" style="cursor: pointer">Stop Speech</span>
-                </h4>
-            </div>
+            <x-component path="chat/status/progress.html"></x-component>
             <div id="input-section" x-data="{
                 paused: false
             }">

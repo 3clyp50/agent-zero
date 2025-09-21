@@ -1,0 +1,17 @@
+<html>
+<head>
+  <!-- no scripts required; uses existing globals and $store.speech -->
+</head>
+<body>
+  <div id="progress-bar-box">
+    <h4 id="progress-bar-h">
+      <span id="progress-bar-i">|></span><span id="progress-bar"></span>
+    </h4>
+    <h4 id="progress-bar-stop-speech" x-data x-cloak x-show="$store.speech.isSpeaking">
+      <span id="stop-speech" @click="$store.speech.stop()" style="cursor: pointer">Stop Speech</span>
+    </h4>
+  </div>
+</body>
+</html>
+
+
