@@ -411,11 +411,12 @@ async function poll() {
     // Update notifications from response
     notificationStore.updateFromPoll(response);
 
-    //set ui model vars from backend
-    if (globalThis.Alpine && inputSection) {
-      const inputAD = Alpine.$data(inputSection);
-      if (inputAD) {
-        inputAD.paused = response.paused;
+    // set UI model vars from backend (late-mount safe)
+    if (globalThis.Alpine) {
+      const inputSectionEl = document.getElementById("input-section");
+      if (inputSectionEl) {
+        const inputAD = Alpine.$data(inputSectionEl);
+        if (inputAD) inputAD.paused = response.paused;
       }
     }
 
