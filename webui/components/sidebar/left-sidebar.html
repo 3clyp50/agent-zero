@@ -43,7 +43,47 @@
   </script>
 
   <style>
-    /* This wrapper intentionally carries no additional styles; main styles live in index.css */
+    .left-panel-top {
+      flex: 1;
+      display: -webkit-flex;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      margin-top: 3.5rem;
+      padding: var(--spacing-md) var(--spacing-md) 0 var(--spacing-md);
+    }
+    .left-panel-top::-webkit-scrollbar {
+      width: 0px;
+    }
+    .left-panel-top {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .left-panel-bottom {
+      position: relative;
+      flex-shrink: 0;
+    }
+    /* Ensure non-chat sections don't shrink */
+    .config-section:not(#chats-section) {
+      flex-shrink: 0;
+    }
+    /* Chats section container inside sidebar */
+    #chats-section {
+      display: -webkit-flex;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+      margin-top: 0.5rem;
+    }
+    /* Version label area */
+    .version-info { line-height: 0.8rem; position: relative; margin: 0 var(--spacing-md) 1rem var(--spacing-md); padding-top: 10px; border-top: 1px solid var(--color-border); }
+    #a0version { color: var(--color-text); opacity: 0.7; font-size: 0.7rem; user-select: all; }
+    @media (max-height: 600px) {
+      #chats-section { min-height: 100%; }
+      .left-panel-top { overflow-y: auto; -webkit-scroll-behavior: smooth; scroll-behavior: smooth; }
+    }
   </style>
 </body>
 </html>

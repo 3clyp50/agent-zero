@@ -139,14 +139,18 @@
 
 <body class="dark-mode device-pointer">
     <div class="container">
+        <!-- Sidebar Overlay -->
         <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
-            <x-component path="sidebar/header-icons.html"></x-component>
-
+        <!-- Sidebar Header (Logo and Hamburger icon) -->
+        <x-component path="sidebar/header-icons.html"></x-component>
+        <!-- Left Sidebar (Quick Actions, Tabs, Chats List, Tasks List) -->
         <div id="left-panel" class="panel">
             <x-component path="sidebar/left-sidebar.html"></x-component>
         </div>
+        
+        <!-- Right Panel (Message History and Input Section) -->
         <div id="right-panel" class="panel">
-            <!--Chat-->
+            <!-- Time and Date -->
             <div id="time-date-container">
                 <div id="time-date"></div>
                 <div class="status-icon" x-data="{ connected: true }">
@@ -163,6 +167,7 @@
                 <!-- Notification Toggle positioned next to time-date -->
                 <x-component path="notifications/notification-icons.html"></x-component>
             </div>
+            <!-- Message History (actual messages) -->
             <div id="chat-history">
             </div>
 
@@ -180,7 +185,9 @@
                 <button class="toast__copy" style="display: none;">Copy</button>
                 <button class="toast__close">Close</button>
             </div>
+            <!-- Progress Bar -->
             <x-component path="chat/status/progress.html"></x-component>
+            <!-- Input Section -->
             <x-component path="chat/input/chat-bar.html"></x-component>
         </div>
     </div>

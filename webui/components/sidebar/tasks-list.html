@@ -58,4 +58,36 @@
 </body>
 </html>
 
+<style>
+  /* Tasks list styling (migrated) */
+  .tasks-list-container { max-height: 300px; overflow-y: auto; margin-top: 10px; padding-right: 5px; border-radius: 5px; position: relative; scrollbar-width: thin; -ms-overflow-style: auto; }
+  .tasks-list-container::-webkit-scrollbar { width: 5px; }
+  .tasks-list-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 6px; }
+  .tasks-list-container::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 6px; }
+  .tasks-list-container::-webkit-scrollbar-thumb:hover { background-color: var(--color-border); }
+
+  .task-name { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 0; margin-left: 10px; cursor: pointer; border-radius: 4px; transition: background-color 0.2s; font-size: var(--font-size-small); margin-bottom: 2px; }
+  .task-name:hover { background-color: rgba(255,255,255,0.1); text-decoration: none; }
+  .light-mode .task-name:hover { background-color: rgba(0,0,0,0.05); }
+
+  .task-info-line { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 2px; margin-left: 5px; }
+
+  .task-container-vertical { display: flex; flex-direction: column; width: 100%; gap: 6px; }
+
+  /* Scheduler badges (subset used in sidebar) */
+  .scheduler-status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; text-transform: capitalize; white-space: nowrap; }
+  .scheduler-status-badge-small { font-size: 10px; padding: 2px 6px; margin-right: 5px; min-width: 40px; text-align: center; }
+  .scheduler-status-idle { background-color: rgba(0, 100, 0, 0.2); color: #2a9d8f; border: 1px solid rgba(42, 157, 143, 0.3); }
+  .scheduler-status-running { background-color: rgba(0, 60, 120, 0.2); color: #4361ee; border: 1px solid rgba(67, 97, 238, 0.3); }
+  .scheduler-status-disabled { background-color: rgba(70, 70, 70, 0.2); color: #6c757d; border: 1px solid rgba(108, 117, 125, 0.3); }
+  .scheduler-status-error { background-color: rgba(120, 0, 0, 0.2); color: #e63946; border: 1px solid rgba(230, 57, 70, 0.3); }
+  .light-mode .scheduler-status-idle { background-color: rgba(42, 157, 143, 0.1); color: #1a6f65; }
+  .light-mode .scheduler-status-running { background-color: rgba(67, 97, 238, 0.1); color: #2540b3; }
+  .light-mode .scheduler-status-disabled { background-color: rgba(108, 117, 125, 0.1); color: #495057; }
+  .light-mode .scheduler-status-error { background-color: rgba(230, 57, 70, 0.1); color: #c5283d; }
+
+  .empty-list-message { display: flex; justify-content: center; align-items: center; height: 100px; color: var(--color-secondary); text-align: center; opacity: 0.7; font-style: italic; }
+  .light-mode .empty-list-message { color: var(--color-secondary-light); }
+</style>
+
 
