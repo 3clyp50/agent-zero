@@ -83,15 +83,18 @@
     .pref-section .pref-header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 6px;
       cursor: pointer;
       user-select: none;
     }
     .pref-section .arrow-icon {
+      margin-left: 0.5rem;
       transition: transform .15s ease;
+      transform: rotate(90deg);
     }
     .pref-section .arrow-icon.rotated {
-      transform: rotate(90deg);
+      transform: rotate(0deg);
     }
     .pref-section .config-list {
       list-style: none;
