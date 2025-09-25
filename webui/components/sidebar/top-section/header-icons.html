@@ -1,13 +1,13 @@
 <html>
 <head>
   <script type="module">
-    // No store required; uses global toggleSidebar wiring from index.js
+    import { store as sidebarStore } from "/components/sidebar/sidebar-store.js";
   </script>
 </head>
 <body>
-  <div class="icons-section" id="hide-button" x-data="{ connected: true }">
+  <div class="icons-section" id="hide-button" x-data>
     <!-- Sidebar Toggle Button -->
-    <button id="toggle-sidebar" class="toggle-sidebar-button" aria-label="Toggle Sidebar" aria-expanded="false">
+    <button id="toggle-sidebar" class="toggle-sidebar-button" @click="$store.sidebar.toggle()" aria-label="Toggle Sidebar" aria-expanded="false">
       <span aria-hidden="true">
         <!-- Hamburger Icon -->
         <svg id="sidebar-hamburger-svg" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="CurrentColor">
@@ -24,7 +24,10 @@
   </div>
 
   <script>
-    // Nothing to init; global listeners in index.js bind to #toggle-sidebar
+    document.addEventListener('alpine:init', () => {
+      const s = Alpine.store('sidebar');
+      if (s && typeof s.init === 'function') s.init();
+    });
   </script>
 
   <style>

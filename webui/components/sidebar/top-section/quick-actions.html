@@ -1,11 +1,11 @@
 <html>
 <head>
-  <!-- No additional scripts required; uses global functions defined in index.js/settings.js -->
+  <!-- No additional scripts required; uses global functions and stores -->
 </head>
 <body>
-  <div class="config-section" x-data="{ showQuickActions: true }">
-    <button class="config-button" id="resetChat" @click="resetChat()">Reset Chat</button>
-    <button class="config-button" id="newChat" @click="newChat()">New Chat</button>
+  <div class="config-section" x-data>
+    <button class="config-button" id="resetChat" @click="$store.chats.resetChat()">Reset Chat</button>
+    <button class="config-button" id="newChat" @click="$store.chats.newChat()">New Chat</button>
     <button class="config-button" id="loadChats" @click="loadChats()">Load Chat</button>
     <button class="config-button" id="loadChat" @click="saveChat()">Save Chat</button>
     <button class="config-button" id="restart" @click="restart()">Restart</button>
@@ -20,5 +20,3 @@
   </div>
 </body>
 </html>
-
-

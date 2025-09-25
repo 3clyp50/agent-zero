@@ -131,25 +131,22 @@
     <script type="text/javascript" src="js/file_browser.js"></script>
     <script type="text/javascript" src="js/modal.js"></script>
     <script type="module" src="js/tunnel.js"></script>
-    <script>
-        // Expose git info for sidebar component
-        globalThis.gitinfo = { version: "{{version_no}}", commit_time: "{{version_time}}" };
+    <script type="module">
+        import { store as sidebarStore } from "/components/sidebar/sidebar-store.js";
     </script>
 </head>
 
 <body class="dark-mode device-pointer">
     <div class="container">
         <!-- Sidebar Overlay -->
-        <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+        <div id="sidebar-overlay" class="sidebar-overlay" :class="{'visible': $store.sidebar.isOpen && $store.sidebar.isMobile()}" @click="$store.sidebar.close()"></div>
         <!-- Sidebar Header (Logo and Hamburger icon) -->
-        <x-component path="sidebar/header-icons.html"></x-component>
+        <x-component path="sidebar/top-section/header-icons.html"></x-component>
         <!-- Left Sidebar (Quick Actions, Tabs, Chats List, Tasks List) -->
-        <div id="left-panel" class="panel">
-            <x-component path="sidebar/left-sidebar.html"></x-component>
-        </div>
+        <x-component path="sidebar/left-sidebar.html"></x-component>
         
         <!-- Right Panel (Message History and Input Section) -->
-        <div id="right-panel" class="panel">
+        <div id="right-panel" class="panel" :class="{'expanded': !$store.sidebar.isOpen}">
             <!-- Time and Date -->
             <div id="time-date-container">
                 <div id="time-date"></div>
@@ -186,7 +183,7 @@
                 <button class="toast__close">Close</button>
             </div>
             <!-- Progress Bar -->
-            <x-component path="chat/status/progress.html"></x-component>
+            <x-component path="chat/input/progress.html"></x-component>
             <!-- Input Section -->
             <x-component path="chat/input/chat-bar.html"></x-component>
         </div>
@@ -1205,7 +1202,7 @@
     </div>
 
     <!-- Full Screen Input Modal -->
-    <x-component path="chat/input/full-screen-input.html"></x-component>
+    <x-component path="modals/full-screen-input.html"></x-component>
 
     <!-- Drag and Drop Overlay Component -->
     <x-component path="chat/attachments/dragDropOverlay.html"></x-component>

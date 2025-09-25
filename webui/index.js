@@ -5,11 +5,10 @@ import { sleep } from "/js/sleep.js";
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { store as speechStore } from "/components/chat/speech/speech-store.js";
 import { store as notificationStore } from "/components/notifications/notification-store.js";
-import { store as tasksStore } from "/components/sidebar/tasks-store.js";
+import { store as tasksStore } from "/components/sidebar/tasks/tasks-store.js";
 
 globalThis.fetchApi = api.fetchApi; // TODO - backward compatibility for non-modular scripts, remove once refactored to alpine
 
-const leftPanel = document.getElementById("left-panel");
 const rightPanel = document.getElementById("right-panel");
 const container = document.querySelector(".container");
 const chatInput = document.getElementById("chat-input");
@@ -29,8 +28,6 @@ let resetCounter = 0;
 let skipOneSpeech = false;
 let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
 
-// Initialize the toggle button
-setupSidebarToggle();
 // Initialize tabs
 setupTabs();
 
@@ -42,59 +39,15 @@ function isMobile() {
   return window.innerWidth <= 768;
 }
 
-function toggleSidebar(show) {
-  const overlay = document.getElementById("sidebar-overlay");
-  if (typeof show === "boolean") {
-    leftPanel.classList.toggle("hidden", !show);
-    rightPanel.classList.toggle("expanded", !show);
-    overlay.classList.toggle("visible", show);
-  } else {
-    leftPanel.classList.toggle("hidden");
-    rightPanel.classList.toggle("expanded");
-    overlay.classList.toggle(
-      "visible",
-      !leftPanel.classList.contains("hidden")
-    );
-  }
-}
-
-function handleResize() {
-  const overlay = document.getElementById("sidebar-overlay");
-  if (isMobile()) {
-    leftPanel.classList.add("hidden");
-    rightPanel.classList.add("expanded");
-    overlay.classList.remove("visible");
-  } else {
-    leftPanel.classList.remove("hidden");
-    rightPanel.classList.remove("expanded");
-    overlay.classList.remove("visible");
-  }
-}
-
-globalThis.addEventListener("load", handleResize);
-globalThis.addEventListener("resize", handleResize);
-
 document.addEventListener("DOMContentLoaded", () => {
   const overlay = document.getElementById("sidebar-overlay");
   overlay.addEventListener("click", () => {
-    if (isMobile()) {
-      toggleSidebar(false);
+    const sidebarStore = Alpine.store('sidebar');
+    if (sidebarStore) {
+      sidebarStore.close();
     }
   });
 });
-
-function setupSidebarToggle() {
-  const leftPanel = document.getElementById("left-panel");
-  const rightPanel = document.getElementById("right-panel");
-  const toggleSidebarButton = document.getElementById("toggle-sidebar");
-  if (toggleSidebarButton) {
-    toggleSidebarButton.addEventListener("click", toggleSidebar);
-  } else {
-    console.error("Toggle sidebar button not found");
-    setTimeout(setupSidebarToggle, 100);
-  }
-}
-document.addEventListener("DOMContentLoaded", setupSidebarToggle);
 
 export async function sendMessage() {
   try {
@@ -1122,7 +1075,6 @@ document.addEventListener("DOMContentLoaded", startPolling);
 
 // Setup event handlers once the DOM is fully loaded
 document.addEventListener("DOMContentLoaded", function () {
-  setupSidebarToggle();
   setupTabs();
   initializeActiveTab();
 });
