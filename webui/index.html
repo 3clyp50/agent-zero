@@ -134,6 +134,10 @@
     <script type="module">
         import { store as sidebarStore } from "/components/sidebar/sidebar-store.js";
     </script>
+    <script>
+        // Expose git info for sidebar component
+        globalThis.gitinfo = { version: "{{version_no}}", commit_time: "{{version_time}}" };
+    </script>
 </head>
 
 <body class="dark-mode device-pointer">
