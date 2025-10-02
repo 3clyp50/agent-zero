@@ -15,13 +15,23 @@ let autoScroll = true;
 let context = "";
 globalThis.resetCounter = 0; // Used by stores and getChatBasedId
 let skipOneSpeech = false;
-let connectionStatus = undefined; // undefined = not checked yet, true = connected, false = disconnected
+let connectionStatus = undefined; /**
+ * Retrieve whether chat history should automatically scroll to the bottom.
+ * @returns {boolean} `true` if auto-scroll is enabled, `false` otherwise.
+ */
 
 export function getAutoScroll() {
   return autoScroll;
 }
 
-// Sidebar toggle logic is now handled by sidebar-store.js
+/**
+ * Send the current chat input (and any selected attachments) to the server and update client state and UI.
+ *
+ * If the chat input element is not present the function logs a warning and exits. When a message or attachments
+ * exist, the function clears the input and attachment store, renders a user message (shows an uploading heading when
+ * attachments are present), and sends the payload to the backend. On success it updates the active context from the
+ * server response; on failure it shows an error notification.
+ */
 
 export async function sendMessage() {
   const chatInputEl = document.getElementById("chat-input");
@@ -101,6 +111,14 @@ export async function sendMessage() {
 }
 globalThis.sendMessage = sendMessage;
 
+/**
+ * Show a frontend error toast for a failed fetch-like operation and log the error to the console.
+ *
+ * If the application reports the backend as disconnected, the toast is presented with a connection-specific message/title.
+ *
+ * @param {string} text - A short, user-facing message to describe the error context (used as the toast prefix).
+ * @param {any} error - The error value (typically an Error); its message or string representation will be appended to the toast and logged.
+ */
 function toastFetchError(text, error) {
   console.error(text, error);
   // Use new frontend error notification system (async, but we don't need to wait)
@@ -121,7 +139,13 @@ function toastFetchError(text, error) {
 }
 globalThis.toastFetchError = toastFetchError;
 
-// Event listeners will be set up in DOMContentLoaded
+/**
+ * Insert text into the chat input element, ensuring proper spacing, adjusting the textarea height, and emitting an input event.
+ *
+ * If the chat input element (id="chat-input") is not present, the function logs a warning and returns without modifying state.
+ *
+ * @param {string} text - The text to append to the current chat input; a trailing space is ensured after appending.
+ */
 
 export function updateChatInput(text) {
   const chatInputEl = document.getElementById("chat-input");
@@ -143,6 +167,11 @@ export function updateChatInput(text) {
   console.log("Updated chat input value:", chatInputEl.value);
 }
 
+/**
+ * Update the page's time-and-date display with the current local time and date.
+ *
+ * Formats the local time as H:MM:SS am/pm and the date using a locale-aware short month (e.g., "Oct 2, 2025"), then sets the innerHTML of the element with id "time-date" to the time followed by a line break and the date inside a span with id "user-date".
+ */
 function updateUserTime() {
   const now = new Date();
   const hours = now.getHours();
@@ -168,6 +197,16 @@ function updateUserTime() {
 updateUserTime();
 setInterval(updateUserTime, 1000);
 
+/**
+ * Render a message into the chat history and, if auto-scroll is enabled, scroll the history to the bottom.
+ * @param {string} id - Message identifier.
+ * @param {string} type - Message type (e.g., "user", "assistant", "system").
+ * @param {string} heading - Short heading or title for the message.
+ * @param {string|HTMLElement} content - Message body or content.
+ * @param {boolean} temp - Whether the message is temporary.
+ * @param {Object|null} kvps - Optional key/value metadata for the message.
+ * @returns {*} The value returned by msgs.setMessage (commonly the created message node or a message descriptor).
+ */
 function setMessage(id, type, heading, content, temp, kvps = null) {
   const result = msgs.setMessage(id, type, heading, content, temp, kvps);
   const chatHistoryEl = document.getElementById("chat-history");
@@ -182,6 +221,11 @@ globalThis.loadKnowledge = async function () {
   if (inputStore) await inputStore.loadKnowledge();
 };
 
+/**
+ * Resize the textarea with id "chat-input" so its height matches its content.
+ *
+ * Locates the element with id "chat-input" and sets its inline height to accommodate its scrollHeight.
+ */
 function adjustTextareaHeight() {
   const chatInputEl = document.getElementById("chat-input");
   if (chatInputEl) {
@@ -217,11 +261,24 @@ function generateGUID() {
   });
 }
 
+/**
+ * Retrieve the current connection status used by the polling and UI code.
+ * @returns {string} The current connection status string (for example, "healthy" or "disconnected").
+ */
 function getConnectionStatus() {
   return connectionStatus;
 }
 globalThis.getConnectionStatus = getConnectionStatus;
 
+/**
+ * Update the application's connection status and reflect it in the UI.
+ *
+ * When provided, updates the internal connection status flag and, if an Alpine.js
+ * status icon exists inside the element with id "time-date-container", sets its
+ * `connected` property to match.
+ *
+ * @param {boolean} connected - `true` when the backend is reachable, `false` otherwise.
+ */
 function setConnectionStatus(connected) {
   connectionStatus = connected;
   const timeDateEl = document.getElementById("time-date-container");
@@ -240,6 +297,13 @@ let lastLogVersion = 0;
 let lastLogGuid = "";
 let lastSpokenNo = 0;
 
+/**
+ * Polls the backend for new logs, notifications, contexts, and tasks and applies any updates to the UI and stores.
+ *
+ * Updates local context selection, chat/task stores, notifications, progress state, connection status, and invokes message rendering and post-update hooks when new logs arrive.
+ *
+ * @returns {boolean} `true` if the poll processed new logs, `false` otherwise.
+ */
 async function poll() {
   let updated = false;
   try {
@@ -406,12 +470,26 @@ async function poll() {
 }
 globalThis.poll = poll;
 
+/**
+ * Triggers speech synthesis for the provided message logs when the user's speech preference is enabled.
+ * @param {Array} logs - Array of message log objects to consider for speech output.
+ */
 function afterMessagesUpdate(logs) {
   if (localStorage.getItem("speech") == "true") {
     speakMessages(logs);
   }
 }
 
+/**
+ * Speak the most-recent completed message from a list of logs via the speech store.
+ *
+ * Iterates logs from newest to oldest and triggers speech for the first matching entry:
+ * - If a log has `type === "response"`, speaks `log.content` and passes `log.kvps?.finished` as the finished flag.
+ * - If a log has `type === "agent"` and `log.kvps.headline` and `log.kvps.tool_args` are present and `log.kvps.tool_name !== "response"`, speaks `log.kvps.headline` and sets the finished flag to `true`.
+ * If the global `skipOneSpeech` flag is set, the flag is cleared and no speech is initiated.
+ *
+ * @param {Array<Object>} logs - Array of log objects ordered chronologically; each log may include `no`, `type`, `content`, and `kvps`.
+ */
 function speakMessages(logs) {
   if (skipOneSpeech) {
     skipOneSpeech = false;
@@ -449,6 +527,15 @@ function speakMessages(logs) {
   }
 }
 
+/**
+ * Update the visible progress bar text and toggle its "shiny" visual state.
+ *
+ * Replaces the #progress-bar element's content with the provided progress text (after converting any inline icons)
+ * only if the content differs, and adds or removes the "shiny-text" CSS class based on the `active` flag.
+ *
+ * @param {string} progress - Text to display in the progress bar; empty string clears the content.
+ * @param {boolean} active - If `true`, applies the "shiny-text" class to indicate active progress; if `false`, removes it.
+ */
 function updateProgress(progress, active) {
   const progressBarEl = document.getElementById("progress-bar");
   if (!progressBarEl) return;
@@ -492,6 +579,11 @@ globalThis.selectChat = async function (id) {
   if (chatsStore) await chatsStore.selectChat(id);
 };
 
+/**
+ * Create a short random identifier.
+ *
+ * @returns {string} An 8-character alphanumeric identifier composed of uppercase letters, lowercase letters, and digits.
+ */
 function generateShortId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
@@ -615,6 +707,11 @@ globalThis.saveChat = async function () {
 };
 
 
+/**
+ * Adds a CSS class to the given DOM element.
+ * @param {Element} element - The target DOM element.
+ * @param {string} className - The CSS class to add.
+ */
 function addClassToElement(element, className) {
   element.classList.add(className);
 }
@@ -623,6 +720,13 @@ function removeClassFromElement(element, className) {
   element.classList.remove(className);
 }
 
+/**
+ * Show a transient frontend toast notification.
+ * @param {string} text - Message text to display in the toast.
+ * @param {string} [type="info"] - Toast variant such as "info", "success", "warning", or "error".
+ * @param {number} [timeout=5000] - Duration in milliseconds before the toast auto-dismisses.
+ * @param {string} [group=""] - Optional group identifier to associate related toasts.
+ */
 function justToast(text, type = "info", timeout = 5000, group = "") {
   notificationStore.addFrontendToastOnly(
     type,
@@ -635,6 +739,13 @@ function justToast(text, type = "info", timeout = 5000, group = "") {
 globalThis.justToast = justToast;
   
 
+/**
+ * Show a frontend toast notification with the given text and severity.
+ * @param {string} text - Message to display in the notification.
+ * @param {string} [type="info"] - Notification severity; one of "info", "success", "warning", or "error".
+ * @param {number} [timeout=5000] - Desired display duration in milliseconds (converted to seconds; minimum 1000 ms).
+ * @returns {*} The value returned by the underlying notification system call.
+ */
 function toast(text, type = "info", timeout = 5000) {
   // Convert timeout from milliseconds to seconds for new notification system
   const display_time = Math.max(timeout / 1000, 1); // Minimum 1 second
@@ -655,7 +766,10 @@ function toast(text, type = "info", timeout = 5000) {
 }
 globalThis.toast = toast;
 
-// OLD: hideToast function removed - now using new notification system
+/**
+ * Update the auto-scroll control/state to reflect whether the chat is scrolled to the bottom.
+ * @param {boolean} isAtBottom - True if the chat history is scrolled to the bottom, false otherwise.
+ */
 
 function scrollChanged(isAtBottom) {
   const autoScrollSwitchEl = document.getElementById("auto-scroll-switch");
@@ -668,6 +782,11 @@ function scrollChanged(isAtBottom) {
   // autoScrollSwitch.checked = isAtBottom
 }
 
+/**
+ * Update the application's scroll state based on the chat history's position.
+ *
+ * Checks the element with id "chat-history" and determines whether it is within a 10px tolerance of the bottom; calls `scrollChanged(isAtBottom)` with the resulting boolean.
+ */
 function updateAfterScroll() {
   // const toleranceEm = 1; // Tolerance in em units
   // const tolerancePx = toleranceEm * parseFloat(getComputedStyle(document.documentElement).fontSize); // Convert em to pixels
@@ -683,7 +802,12 @@ function updateAfterScroll() {
 }
 globalThis.updateAfterScroll = updateAfterScroll;
 
-// setInterval(poll, 250);
+/**
+ * Start a self-scheduling polling loop that adapts its interval between short and long cadence based on recent activity.
+ *
+ * The loop performs repeated polls; when a poll indicates activity, it switches to a short interval for a limited number of iterations,
+ * otherwise it uses a longer interval. Polling errors are caught and the loop continues running.
+ */
 
 async function startPolling() {
   const shortInterval = 25;
