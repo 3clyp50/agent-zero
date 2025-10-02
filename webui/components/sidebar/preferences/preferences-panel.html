@@ -16,7 +16,7 @@
             </svg>
           </h3>
           <ul class="config-list" id="pref-list" x-show="prefOpen" x-collapse x-transition>
-            <li x-data="{ get autoScroll(){ return $store.preferences.autoScroll }, set autoScroll(v){ $store.preferences.autoScroll = v } }" x-init="$watch('$store.preferences.autoScroll', v => $store.preferences.applyAutoScroll(v))">
+            <li x-data x-init="$watch('$store.preferences.autoScroll', v => $store.preferences.applyAutoScroll(v))">
               <span>Autoscroll</span>
               <label class="switch">
                 <input id="auto-scroll-switch" type="checkbox" x-model="$store.preferences.autoScroll">

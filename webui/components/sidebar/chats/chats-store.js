@@ -118,10 +118,11 @@ const model = {
   },
 
   // Reset current chat
-  async resetChat() {
+  async resetChat(ctxid = null) {
     try {
+      const context = ctxid || this.selected || globalThis.getContext?.();
       await sendJsonData("/chat_reset", {
-        context: this.selected || globalThis.getContext?.()
+        context
       });
       
       // Increment reset counter

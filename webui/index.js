@@ -474,7 +474,7 @@ globalThis.pauseAgent = async function (paused) {
 
 globalThis.resetChat = async function (ctxid = null) {
   const chatsStore = globalThis.Alpine?.store('chats');
-  if (chatsStore) await chatsStore.resetChat();
+  if (chatsStore) await chatsStore.resetChat(ctxid);
 };
 
 globalThis.newChat = async function () {

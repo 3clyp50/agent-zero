@@ -22,7 +22,6 @@
     document.addEventListener('alpine:init', () => {
       const s = Alpine.store('tabs');
       if (s && typeof s.init === 'function') s.init();
-      if (s && typeof s.initializeActiveTab === 'function') s.initializeActiveTab();
     });
   </script>
 </body>

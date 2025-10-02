@@ -24,11 +24,14 @@ const model = {
   },
 
   async pauseAgent(paused) {
+    const prev = this.paused;
+    this.paused = paused;
     try {
-      this.paused = paused;
-      const context = globalThis.getContext();
-      await globalThis.sendJsonData("/pause", { paused: paused, context });
+      const context = globalThis.getContext?.();
+      if (!globalThis.sendJsonData) throw new Error("sendJsonData not available");
+      await globalThis.sendJsonData("/pause", { paused, context });
     } catch (e) {
+      this.paused = prev;
       if (globalThis.toastFetchError) {
         globalThis.toastFetchError("Error pausing agent", e);
       }

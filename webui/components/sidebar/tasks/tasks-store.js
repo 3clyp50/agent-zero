@@ -15,6 +15,11 @@ const model = {
       const tasks = Array.isArray(tasksList) ? tasksList : [];
       const sorted = [...tasks].sort((a, b) => (b?.created_at || 0) - (a?.created_at || 0));
       this.tasks = sorted;
+
+      // After updating tasks, ensure selection is still valid
+      if (this.selected && !this.contains(this.selected)) {
+        this.setSelected("");
+      }
     } catch (e) {
       console.error("tasks-store.applyTasks failed", e);
       this.tasks = [];

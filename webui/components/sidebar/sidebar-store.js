@@ -15,13 +15,22 @@ const model = {
   // Initialize the store by setting up a resize listener
   init() {
     this.handleResize();
-    window.addEventListener("resize", () => this.handleResize());
+    this.resizeHandler = () => this.handleResize();
+    window.addEventListener("resize", this.resizeHandler);
     
     // Load version info from global scope
     const gi = (globalThis && globalThis.gitinfo) ? globalThis.gitinfo : null;
     if (gi && gi.version && gi.commit_time) {
       this.versionNo = gi.version;
       this.commitTime = gi.commit_time;
+    }
+  },
+
+  // Cleanup method for lifecycle management
+  destroy() {
+    if (this.resizeHandler) {
+      window.removeEventListener("resize", this.resizeHandler);
+      this.resizeHandler = null;
     }
   },
 
