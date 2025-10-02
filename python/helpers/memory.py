@@ -89,9 +89,14 @@ class Memory:
             )
 
     @staticmethod
-    async def get_by_subdir(memory_subdir: str, log_item: LogItem | None = None, preload_knowledge: bool = True):
+    async def get_by_subdir(
+        memory_subdir: str,
+        log_item: LogItem | None = None,
+        preload_knowledge: bool = True,
+    ):
         if not Memory.index.get(memory_subdir):
             import initialize
+
             agent_config = initialize.initialize_agent()
             model_config = agent_config.embeddings_model
             db, _created = Memory.initialize(
@@ -312,6 +317,9 @@ class Memory:
 
         return index
 
+    def get_document_by_id(self, id: str) -> Document | None:
+        return self.db.get_by_ids(id)[0]
+
     async def search_similarity_threshold(
         self, query: str, limit: int, threshold: float, filter: str = ""
     ):
@@ -392,15 +400,21 @@ class Memory:
             self._save_db()  # persist
         return ids
 
+    async def update_documents(self, docs: list[Document]):
+        ids = [doc.metadata["id"] for doc in docs]
+        await self.db.adelete(ids=ids)  # delete originals
+        ins = await self.db.aadd_documents(documents=docs, ids=ids)  # add updated
+        self._save_db()  # persist
+        return ins
+
     def _save_db(self):
         Memory._save_db_file(self.db, self.memory_subdir)
 
     def _generate_doc_id(self):
         while True:
-            doc_id = guids.generate_id(10) # random ID
-            if not self.db.get_by_ids(doc_id): # check if exists
+            doc_id = guids.generate_id(10)  # random ID
+            if not self.db.get_by_ids(doc_id):  # check if exists
                 return doc_id
-            
 
     @staticmethod
     def _save_db_file(db: MyFaiss, memory_subdir: str):

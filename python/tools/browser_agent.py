@@ -57,7 +57,7 @@ class State:
                 chromium_sandbox=False,
                 accept_downloads=True,
                 downloads_path=files.get_abs_path("tmp/downloads"),
-                allowed_domains=["*"],
+                allowed_domains=["*", "http://*", "https://*"],
                 executable_path=pw_binary,
                 keep_alive=True,
                 minimum_wait_page_load_time=1.0,

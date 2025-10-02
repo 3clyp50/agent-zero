@@ -169,6 +169,17 @@ docker run -p 50001:80 agent0ai/agent-zero
 
 ## 🎯 Changelog
 
+### v0.9.6 - Memory Dashboard
+[Release video](https://youtu.be/sizjAq2-d9s)
+- Memory Management Dashboard
+- Kali update
+- Python update + dual installation
+- Browser Use update
+- New login screen
+- LiteLLM retry on temporary errors
+- Github Copilot provider support
+
+
 ### v0.9.5 - Secrets
 [Release video](https://www.youtube.com/watch?v=VqxUdt7pjd8)
 - Secrets management - agent can use credentials without seeing them

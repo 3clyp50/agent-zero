@@ -26,13 +26,15 @@ const memoryDashboardStore = {
   // Memory subdirectories
   memorySubdirs: [],
   selectedMemorySubdir: "default",
-  memoryInitialized: {},  // Track which subdirs have been initialized
+  memoryInitialized: {}, // Track which subdirs have been initialized
 
   // Search and filters
   searchQuery: "",
   areaFilter: "",
-  threshold: parseFloat(localStorage.getItem('memoryDashboard_threshold') || '0.6'),
-  limit: parseInt(localStorage.getItem('memoryDashboard_limit') || '1000'),
+  threshold: parseFloat(
+    localStorage.getItem("memoryDashboard_threshold") || "0.6"
+  ),
+  limit: parseInt(localStorage.getItem("memoryDashboard_limit") || "1000"),
 
   // Stats
   totalCount: 0,
@@ -43,13 +45,27 @@ const memoryDashboardStore = {
 
   // Memory detail modal (standard modal approach)
   detailMemory: null,
+  editMode: false,
+  editMemoryBackup: null,
 
   // Polling
   pollingInterval: null,
   pollingEnabled: false,
 
-  init(){
+  async openModal() {
+    await openModal("settings/memory/memory-dashboard.html");
+  },
+
+  init() {
     this.initialize();
+  },
+
+  async onOpen() {
+    await this.getCurrentMemorySubdir();
+    await this.loadMemorySubdirs();
+    await this.searchMemories();
+    // Start polling for live updates as soon as dashboard is open
+    this.startPolling();
   },
 
   async initialize() {
@@ -58,25 +74,26 @@ const memoryDashboardStore = {
     this.searchQuery = "";
     this.areaFilter = "";
 
-    // Get current memory subdirectory from application context
-    await this.getCurrentMemorySubdir();
+    // // Get current memory subdirectory from application context
+    // await this.getCurrentMemorySubdir();
 
-    await this.loadMemorySubdirs();
+    // await this.loadMemorySubdirs();
 
-    // Automatically search with selected subdirectory
-    if (this.selectedMemorySubdir) {
-      await this.searchMemories();
-    }
+    // // Automatically search with selected subdirectory
+    // if (this.selectedMemorySubdir) {
+    //   await this.searchMemories();
+    // }
 
-    // Start polling for live updates as soon as dashboard is open
-    this.startPolling();
+    // // Start polling for live updates as soon as dashboard is open
+    // this.startPolling();
   },
 
   async getCurrentMemorySubdir() {
     try {
       // Try to get current memory subdirectory from the backend
       const response = await API.callJsonApi("memory_dashboard", {
-        action: "get_current_memory_subdir"
+        action: "get_current_memory_subdir",
+        context_id: getContext(),
       });
 
       if (response.success && response.memory_subdir) {
@@ -97,14 +114,14 @@ const memoryDashboardStore = {
 
     try {
       const response = await API.callJsonApi("memory_dashboard", {
-        action: "get_memory_subdirs"
+        action: "get_memory_subdirs",
       });
 
-            if (response.success) {
+      if (response.success) {
         let subdirs = response.subdirs || ["default"];
 
         // Sort alphabetically but ensure "default" is always first
-        subdirs = subdirs.filter(dir => dir !== "default").sort();
+        subdirs = subdirs.filter((dir) => dir !== "default").sort();
         if (response.subdirs && response.subdirs.includes("default")) {
           subdirs.unshift("default");
         } else {
@@ -137,8 +154,11 @@ const memoryDashboardStore = {
 
   async searchMemories(silent = false) {
     // Save limit to localStorage for persistence
-    localStorage.setItem('memoryDashboard_limit', this.limit.toString());
-    localStorage.setItem('memoryDashboard_threshold', this.threshold.toString());
+    localStorage.setItem("memoryDashboard_limit", this.limit.toString());
+    localStorage.setItem(
+      "memoryDashboard_threshold",
+      this.threshold.toString()
+    );
 
     if (!silent) {
       this.loading = true;
@@ -158,15 +178,15 @@ const memoryDashboardStore = {
         area: this.areaFilter,
         search: this.searchQuery,
         limit: this.limit,
-        threshold: this.threshold
+        threshold: this.threshold,
       });
 
-        if (response.success) {
+      if (response.success) {
         // Preserve existing selections when updating memories during polling
         const existingSelections = {};
         if (silent && this.memories) {
           // Build a map of existing selections by memory ID
-          this.memories.forEach(memory => {
+          this.memories.forEach((memory) => {
             if (memory.selected) {
               existingSelections[memory.id] = true;
             }
@@ -174,9 +194,9 @@ const memoryDashboardStore = {
         }
 
         // Add selected property to each memory item for mass selection
-        this.memories = (response.memories || []).map(memory => ({
+        this.memories = (response.memories || []).map((memory) => ({
           ...memory,
-          selected: existingSelections[memory.id] || false
+          selected: existingSelections[memory.id] || false,
         }));
         this.totalCount = response.total_count || 0;
         this.totalDbCount = response.total_db_count || 0;
@@ -268,7 +288,7 @@ const memoryDashboardStore = {
 
   // Mass selection
   get selectedMemories() {
-    return this.memories.filter(memory => memory.selected);
+    return this.memories.filter((memory) => memory.selected);
   },
 
   get selectedCount() {
@@ -276,24 +296,25 @@ const memoryDashboardStore = {
   },
 
   get allSelected() {
-    return this.memories.length > 0 && this.memories.every(memory => memory.selected);
+    return (
+      this.memories.length > 0 &&
+      this.memories.every((memory) => memory.selected)
+    );
   },
 
   get someSelected() {
-    return this.memories.some(memory => memory.selected);
+    return this.memories.some((memory) => memory.selected);
   },
 
   toggleSelectAll() {
     const shouldSelectAll = !this.allSelected;
-    this.memories.forEach(memory => {
+    this.memories.forEach((memory) => {
       memory.selected = shouldSelectAll;
     });
   },
 
-
-
   clearSelection() {
-    this.memories.forEach(memory => {
+    this.memories.forEach((memory) => {
       memory.selected = false;
     });
   },
@@ -311,17 +332,23 @@ const memoryDashboardStore = {
       const response = await API.callJsonApi("memory_dashboard", {
         action: "bulk_delete",
         memory_subdir: this.selectedMemorySubdir,
-        memory_ids: selectedMemories.map(memory => memory.id)
+        memory_ids: selectedMemories.map((memory) => memory.id),
       });
 
       if (response.success) {
-        justToast(`Successfully deleted ${selectedMemories.length} memories`, "success");
+        justToast(
+          `Successfully deleted ${selectedMemories.length} memories`,
+          "success"
+        );
 
         // Let polling refresh the data instead of manual manipulation
         // Trigger an immediate refresh to get updated state from backend
         await this.searchMemories(true); // silent refresh
       } else {
-        justToast(response.error || "Failed to delete selected memories", "error");
+        justToast(
+          response.error || "Failed to delete selected memories",
+          "error"
+        );
       }
     } catch (error) {
       justToast(error.message || "Failed to delete selected memories", "error");
@@ -335,15 +362,22 @@ const memoryDashboardStore = {
     let formatted = `=== Memory ID: ${memory.id} ===
 Area: ${memory.area}
 Timestamp: ${this.formatTimestamp(memory.timestamp)}
-Source: ${memory.knowledge_source ? 'Knowledge' : 'Conversation'}
-${memory.source_file ? `File: ${memory.source_file}` : ''}
-${memory.tags && memory.tags.length > 0 ? `Tags: ${memory.tags.join(', ')}` : ''}`;
+Source: ${memory.knowledge_source ? "Knowledge" : "Conversation"}
+${memory.source_file ? `File: ${memory.source_file}` : ""}
+${
+  memory.tags && memory.tags.length > 0 ? `Tags: ${memory.tags.join(", ")}` : ""
+}`;
 
     // Add custom metadata if present
-    if (memory.metadata && typeof memory.metadata === 'object' && Object.keys(memory.metadata).length > 0) {
-      formatted += '\n\nMetadata:';
+    if (
+      memory.metadata &&
+      typeof memory.metadata === "object" &&
+      Object.keys(memory.metadata).length > 0
+    ) {
+      formatted += "\n\nMetadata:";
       for (const [key, value] of Object.entries(memory.metadata)) {
-        const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+        const displayValue =
+          typeof value === "object" ? JSON.stringify(value, null, 2) : value;
         formatted += `\n${key}: ${displayValue}`;
       }
     }
@@ -359,10 +393,15 @@ ${memory.content_full}
     const selectedMemories = this.selectedMemories;
     if (selectedMemories.length === 0) return;
 
-    const content = selectedMemories.map(memory => this.formatMemoryForCopy(memory)).join('\n');
+    const content = selectedMemories
+      .map((memory) => this.formatMemoryForCopy(memory))
+      .join("\n");
 
-    this.copyToClipboard(content);
-    justToast(`Copied ${selectedMemories.length} memories with metadata to clipboard`, "success");
+    this.copyToClipboard(content, false);
+    justToast(
+      `Copied ${selectedMemories.length} memories with metadata to clipboard`,
+      "success"
+    );
   },
 
   bulkExportMemories() {
@@ -373,7 +412,7 @@ ${memory.content_full}
       export_timestamp: new Date().toISOString(),
       memory_subdir: this.selectedMemorySubdir,
       total_memories: selectedMemories.length,
-      memories: selectedMemories.map(memory => ({
+      memories: selectedMemories.map((memory) => ({
         id: memory.id,
         area: memory.area,
         timestamp: memory.timestamp,
@@ -381,18 +420,18 @@ ${memory.content_full}
         tags: memory.tags || [],
         knowledge_source: memory.knowledge_source,
         source_file: memory.source_file || null,
-        metadata: memory.metadata || {}
-      }))
+        metadata: memory.metadata || {},
+      })),
     };
 
     const jsonString = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
+    const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
-    const timestamp = new Date().toISOString().split('T')[0];
+    const timestamp = new Date().toISOString().split("T")[0];
     const filename = `memories_${this.selectedMemorySubdir}_selected_${selectedMemories.length}_${timestamp}.json`;
 
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
@@ -400,12 +439,17 @@ ${memory.content_full}
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    justToast(`Exported ${selectedMemories.length} selected memories to ${filename}`, "success");
+    justToast(
+      `Exported ${selectedMemories.length} selected memories to ${filename}`,
+      "success"
+    );
   },
 
   // Memory detail modal (standard approach)
   showMemoryDetails(memory) {
     this.detailMemory = memory;
+    this.editMode = false;
+    this.editMemoryBackup = null;
     // Use global modal system
     openModal("settings/memory/memory-detail-modal.html");
   },
@@ -427,25 +471,33 @@ ${memory.content_full}
 
     if (compact) {
       // For table display: MM/DD HH:mm
-      return date.toLocaleDateString("en-US", {
-        month: "2-digit",
-        day: "2-digit",
-      }) + " " + date.toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit"
-      });
+      return (
+        date.toLocaleDateString("en-US", {
+          month: "2-digit",
+          day: "2-digit",
+        }) +
+        " " +
+        date.toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
     } else {
       // For details: Full format
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }) + " at " + date.toLocaleTimeString("en-US", {
-        hour12: true,
-        hour: "numeric",
-        minute: "2-digit"
-      });
+      return (
+        date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }) +
+        " at " +
+        date.toLocaleTimeString("en-US", {
+          hour12: true,
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      );
     }
   },
 
@@ -456,28 +508,32 @@ ${memory.content_full}
 
   getAreaColor(area) {
     const colors = {
-      "main": "#3b82f6",
-      "fragments": "#10b981",
-      "solutions": "#8b5cf6",
-      "instruments": "#f59e0b"
+      main: "#3b82f6",
+      fragments: "#10b981",
+      solutions: "#8b5cf6",
+      instruments: "#f59e0b",
     };
     return colors[area] || "#6c757d";
   },
 
-  copyToClipboard(text) {
+  copyToClipboard(text, toastSuccess = true) {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(() => {
-        justToast("Copied to clipboard!", "success");
-      }).catch(err => {
-        console.error("Clipboard copy failed:", err);
-        this.fallbackCopyToClipboard(text);
-      });
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          if(toastSuccess)
+            justToast("Copied to clipboard!", "success");
+        })
+        .catch((err) => {
+          console.error("Clipboard copy failed:", err);
+          this.fallbackCopyToClipboard(text, toastSuccess);
+        });
     } else {
-      this.fallbackCopyToClipboard(text);
+      this.fallbackCopyToClipboard(text, toastSuccess);
     }
   },
 
-  fallbackCopyToClipboard(text) {
+  fallbackCopyToClipboard(text, toastSuccess = true) {
     const textArea = document.createElement("textarea");
     textArea.value = text;
     textArea.style.position = "fixed";
@@ -487,8 +543,9 @@ ${memory.content_full}
     textArea.focus();
     textArea.select();
     try {
-      document.execCommand('copy');
-      justToast("Copied to clipboard!", "success");
+      document.execCommand("copy");
+      if(toastSuccess)
+        justToast("Copied to clipboard!", "success");
     } catch (err) {
       console.error("Fallback clipboard copy failed:", err);
       justToast("Failed to copy to clipboard", "error");
@@ -496,19 +553,24 @@ ${memory.content_full}
     document.body.removeChild(textArea);
   },
 
-    async deleteMemory(memory) {
-    if (!confirm(`Are you sure you want to delete this memory from ${memory.area}?`)) {
+  async deleteMemory(memory) {
+    if (
+      !confirm(
+        `Are you sure you want to delete this memory from ${memory.area}?`
+      )
+    ) {
       return;
     }
 
     try {
       // Check if this is the memory currently being viewed in detail modal
-      const isViewingThisMemory = this.detailMemory && this.detailMemory.id === memory.id;
+      const isViewingThisMemory =
+        this.detailMemory && this.detailMemory.id === memory.id;
 
       const response = await API.callJsonApi("memory_dashboard", {
         action: "delete",
         memory_subdir: this.selectedMemorySubdir,
-        memory_id: memory.id
+        memory_id: memory.id,
       });
 
       if (response.success) {
@@ -545,22 +607,24 @@ ${memory.content_full}
         total_memories: this.memories.length,
         search_query: this.searchQuery,
         area_filter: this.areaFilter,
-        memories: this.memories.map(memory => ({
+        memories: this.memories.map((memory) => ({
           id: memory.id,
           area: memory.area,
           timestamp: memory.timestamp,
           content: memory.content_full,
-          metadata: memory.metadata
-        }))
+          metadata: memory.metadata,
+        })),
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: 'application/json'
+        type: "application/json",
       });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `memory-export-${this.selectedMemorySubdir}-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `memory-export-${this.selectedMemorySubdir}-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -573,7 +637,7 @@ ${memory.content_full}
     }
   },
 
-    startPolling() {
+  startPolling() {
     if (!this.pollingEnabled || this.pollingInterval) {
       return; // Already polling or disabled
     }
@@ -605,9 +669,43 @@ ${memory.content_full}
     this.areasCount = {};
     this.message = null;
     this.currentPage = 1;
+    this.editMemoryBackup;
   },
 
+  enableEditMode() {
+    this.editMode = true;
+    this.editMemoryBackup = JSON.stringify(this.detailMemory); // store backup
+  },
 
+  cancelEditMode() {
+    this.editMode = false;
+    this.detailMemory = JSON.parse(this.editMemoryBackup); // restore backup
+  },
+
+  async confirmEditMode() {
+    try {
+
+      const response = await API.callJsonApi("memory_dashboard", {
+        action: "update",
+        memory_subdir: this.selectedMemorySubdir,
+        original: JSON.parse(this.editMemoryBackup),
+        edited: this.detailMemory,
+      });
+
+      if(response.success){
+        justToast("Memory updated successfully", "success");
+        await this.searchMemories(true); // silent refresh
+      }else{
+        justToast(`Failed to update memory: ${response.error}`, "error");
+      }
+
+      this.editMode = false;
+      this.editMemoryBackup = null; // discard backup
+    } catch (error) {
+      console.error("Error confirming edit mode:", error);
+      justToast("Failed to save memory changes.", "error");
+    }
+  },
 };
 
 const store = createStore("memoryDashboardStore", memoryDashboardStore);

@@ -2,6 +2,7 @@ from python.helpers.api import ApiHandler, Request, Response
 from python.helpers.memory import Memory
 from python.helpers import files
 from models import ModelConfig, ModelType
+from langchain_core.documents import Document
 
 
 class MemoryDashboard(ApiHandler):
@@ -12,13 +13,15 @@ class MemoryDashboard(ApiHandler):
             if action == "get_memory_subdirs":
                 return await self._get_memory_subdirs()
             elif action == "get_current_memory_subdir":
-                return await self._get_current_memory_subdir(request)
+                return await self._get_current_memory_subdir(input)
             elif action == "search":
                 return await self._search_memories(input)
             elif action == "delete":
                 return await self._delete_memory(input)
             elif action == "bulk_delete":
                 return await self._bulk_delete_memories(input)
+            elif action == "update":
+                return await self._update_memory(input)
             else:
                 return {
                     "success": False,
@@ -101,11 +104,11 @@ class MemoryDashboard(ApiHandler):
                 "error": f"Failed to bulk delete memories: {str(e)}",
             }
 
-    async def _get_current_memory_subdir(self, request: Request) -> dict:
+    async def _get_current_memory_subdir(self, input: dict) -> dict:
         """Get the current memory subdirectory from the active context."""
         try:
             # Try to get the context from the request
-            context_id = getattr(request, "context_id", None)
+            context_id = input.get("context_id", None)
             if not context_id:
                 # Fallback to default if no context available
                 return {"success": True, "memory_subdir": "default"}
@@ -135,7 +138,7 @@ class MemoryDashboard(ApiHandler):
         """Get available memory subdirectories."""
         try:
             # Get subdirectories from memory folder
-            subdirs = files.get_subdirectories("memory")
+            subdirs = files.get_subdirectories("memory", exclude="embeddings")
 
             # Ensure 'default' is always available
             if "default" not in subdirs:
@@ -192,27 +195,7 @@ class MemoryDashboard(ApiHandler):
                     memories = memories[:limit]
 
             # Format memories for the dashboard
-            formatted_memories: list[dict] = []
-            for m in memories:
-                metadata = m.metadata
-
-                # Extract key information
-                memory_data = {
-                    "id": metadata.get("id", "unknown"),
-                    "area": metadata.get("area", "unknown"),
-                    "timestamp": metadata.get("timestamp", "unknown"),
-                    "content_preview": m.page_content[:200]
-                    + ("..." if len(m.page_content) > 200 else ""),
-                    "content_full": m.page_content,
-                    "knowledge_source": metadata.get("knowledge_source", False),
-                    "source_file": metadata.get("source_file", ""),
-                    "file_type": metadata.get("file_type", ""),
-                    "consolidation_action": metadata.get("consolidation_action", ""),
-                    "tags": metadata.get("tags", []),
-                    "metadata": metadata,  # Include full metadata for advanced users
-                }
-
-                formatted_memories.append(memory_data)
+            formatted_memories = [self._format_memory_for_dashboard(m) for m in memories]
 
             # Get summary statistics
             total_memories = len(formatted_memories)
@@ -238,3 +221,44 @@ class MemoryDashboard(ApiHandler):
 
         except Exception as e:
             return {"success": False, "error": str(e), "memories": [], "total_count": 0}
+
+    def _format_memory_for_dashboard(self, m: Document) -> dict:
+        """Format a memory document for the dashboard."""
+        metadata = m.metadata
+        return {
+            "id": metadata.get("id", "unknown"),
+            "area": metadata.get("area", "unknown"),
+            "timestamp": metadata.get("timestamp", "unknown"),
+            # "content_preview": m.page_content[:200]
+            # + ("..." if len(m.page_content) > 200 else ""),
+            "content_full": m.page_content,
+            "knowledge_source": metadata.get("knowledge_source", False),
+            "source_file": metadata.get("source_file", ""),
+            "file_type": metadata.get("file_type", ""),
+            "consolidation_action": metadata.get("consolidation_action", ""),
+            "tags": metadata.get("tags", []),
+            "metadata": metadata,  # Include full metadata for advanced users
+        }
+
+    async def _update_memory(self, input: dict) -> dict:
+        try:
+            memory_subdir = input.get("memory_subdir")
+            original = input.get("original")
+            edited = input.get("edited")
+
+            if not memory_subdir or not original or not edited:
+                return {"success": False, "error": "Missing required parameters"}
+
+            doc = Document(
+                page_content=edited["content_full"],
+                metadata=edited["metadata"],
+            )
+
+            memory = await Memory.get_by_subdir(memory_subdir, preload_knowledge=False)
+            id = (await memory.update_documents([doc]))[0]
+            doc = memory.get_document_by_id(id)
+            formatted_doc = self._format_memory_for_dashboard(doc) if doc else None
+
+            return {"success": formatted_doc is not None, "memory": formatted_doc}
+        except Exception as e:
+            return {"success": False, "error": str(e), "memory": None}
