@@ -1,14 +1,16 @@
 <html>
 <head>
-  <!-- No additional scripts required; uses global functions and stores -->
+  <script type="module">
+    import { store } from "/components/sidebar/chats/chats-store.js";
+  </script>
 </head>
 <body>
   <div class="config-section" x-data>
-    <button class="config-button" id="resetChat" @click="resetChat()">Reset Chat</button>
-    <button class="config-button" id="newChat" @click="newChat()">New Chat</button>
-    <button class="config-button" id="loadChats" @click="loadChats()">Load Chat</button>
-    <button class="config-button" id="loadChat" @click="saveChat()">Save Chat</button>
-    <button class="config-button" id="restart" @click="restart()">Restart</button>
+    <button class="config-button" id="resetChat" @click="$store.chats.resetChat()">Reset Chat</button>
+    <button class="config-button" id="newChat" @click="$store.chats.newChat()">New Chat</button>
+    <button class="config-button" id="loadChats" @click="$store.chats.loadChats()">Load Chat</button>
+    <button class="config-button" id="loadChat" @click="$store.chats.saveChat()">Save Chat</button>
+    <button class="config-button" id="restart" @click="$store.chats.restart()">Restart</button>
     <button class="config-button" id="settings" @click="settingsModalProxy.openModal()"><svg
         xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-5.0 -17.0 110.0 135.0" fill="currentColor"
         width="24" height="24">

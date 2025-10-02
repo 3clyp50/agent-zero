@@ -2,6 +2,7 @@
 <head>
   <script type="module">
     import { store as sidebarStore } from "/components/sidebar/sidebar-store.js";
+    import { store as tabsStore } from "/components/sidebar/tabs-store.js";
   </script>
   <!-- Wrapper composes existing sidebar components -->
 </head>
@@ -15,12 +16,12 @@
       <x-component path="sidebar/tabs.html"></x-component>
 
       <!-- Chats List -->
-      <div class="config-section" id="chats-section" x-data x-show="$store.chats?.contexts?.length > 0 || true">
+      <div class="config-section" id="chats-section" x-data x-show="$store.tabs && $store.tabs.activeTab === 'chats'">
         <x-component path="sidebar/chats/chats-list.html"></x-component>
       </div>
 
       <!-- Tasks List -->
-      <div class="config-section" id="tasks-section" x-data style="display: none;">
+      <div class="config-section" id="tasks-section" x-data x-show="$store.tabs && $store.tabs.activeTab === 'tasks'">
         <x-component path="sidebar/tasks/tasks-list.html"></x-component>
       </div>
     </div>

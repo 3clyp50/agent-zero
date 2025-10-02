@@ -5,11 +5,17 @@
   </script>
 </head>
 <body>
-  <div class="tabs-container">
-    <div class="tabs">
-      <div class="tab active" id="chats-tab">Chats</div>
-      <div class="tab" id="tasks-tab">Tasks</div>
-    </div>
+  <div class="tabs-container" x-data>
+    <template x-if="$store.tabs">
+      <div class="tabs">
+        <div class="tab" id="chats-tab" 
+             :class="{'active': $store.tabs.activeTab === 'chats'}"
+             @click="$store.tabs.activateTab('chats')">Chats</div>
+        <div class="tab" id="tasks-tab"
+             :class="{'active': $store.tabs.activeTab === 'tasks'}"
+             @click="$store.tabs.activateTab('tasks')">Tasks</div>
+      </div>
+    </template>
   </div>
 
   <script>

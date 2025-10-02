@@ -12,11 +12,11 @@
           <template x-for="context in $store.chats.contexts" :key="context.id">
             <li>
               <div :class="{'chat-list-button': true, 'font-bold': context.id === $store.chats.selected}"
-                   @click="$store.chats.selected = context.id; selectChat(context.id)">
+                   @click="$store.chats.selectChat(context.id)">
                 <span class="chat-name" :title="context.name ? context.name : 'Chat #' + context.no"
                       x-text="context.name ? context.name : 'Chat #' + context.no"></span>
               </div>
-              <button class="edit-button" @click.stop="killChat(context.id)">X</button>
+              <button class="edit-button" @click.stop="$store.chats.killChat(context.id)">X</button>
             </li>
           </template>
         </ul>

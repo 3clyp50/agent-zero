@@ -133,6 +133,9 @@
     <script type="module" src="js/tunnel.js"></script>
     <script type="module">
         import { store as sidebarStore } from "/components/sidebar/sidebar-store.js";
+        import { store as chatsStore } from "/components/sidebar/chats/chats-store.js";
+        import { store as tasksStore } from "/components/sidebar/tasks/tasks-store.js";
+        import { store as tabsStore } from "/components/sidebar/tabs-store.js";
     </script>
     <script>
         // Expose git info for sidebar component
@@ -143,7 +146,7 @@
 <body class="dark-mode device-pointer">
     <div class="container">
         <!-- Sidebar Overlay -->
-        <div id="sidebar-overlay" class="sidebar-overlay" :class="{'visible': $store.sidebar.isOpen && $store.sidebar.isMobile()}" @click="$store.sidebar.close()"></div>
+        <div id="sidebar-overlay" class="sidebar-overlay" x-data :class="{'visible': $store.sidebar.isOpen && $store.sidebar.isMobile()}" @click="$store.sidebar.close()"></div>
         <!-- Sidebar Header (Logo and Hamburger icon) -->
         <x-component path="sidebar/top-section/header-icons.html"></x-component>
         <!-- Left Sidebar (Quick Actions, Tabs, Chats List, Tasks List) -->
