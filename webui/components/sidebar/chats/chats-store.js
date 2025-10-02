@@ -27,37 +27,24 @@ const model = {
     const currentContext = globalThis.getContext?.();
     if (id === currentContext) return; // already selected
     
-    // Check if we need to switch tabs
-    const tabSwitched = this.ensureProperTabSelection(id);
+    // Check if we need to switch tabs by deferring to the tabs store
+    const tabsStore = globalThis.Alpine?.store('tabs');
+    if (tabsStore?.ensureProperTabSelection(id)) {
+      if (globalThis.updateAfterScroll) globalThis.updateAfterScroll();
+      return; // Tab was switched, logic stops here.
+    }
     
-    if (!tabSwitched) {
-      // Switch to the new context
-      if (globalThis.setContext) {
-        globalThis.setContext(id);
-      }
-      
-      // Update selection state
-      this.selected = id;
-      localStorage.setItem("lastSelectedChat", id);
-      
-      // Also update tasks store selection
-      const tasksStore = globalThis.Alpine?.store('tasks');
-      if (tasksStore) {
-        tasksStore.setSelected(id);
-      }
-      
-      // Store selection based on active tab
-      const activeTab = localStorage.getItem("activeTab") || "chats";
-      if (activeTab === "chats") {
-        localStorage.setItem("lastSelectedChat", id);
-      } else if (activeTab === "tasks") {
-        localStorage.setItem("lastSelectedTask", id);
-      }
-      
-      // Trigger immediate poll
-      if (globalThis.poll) {
-        globalThis.poll();
-      }
+    // If no tab switch was needed, proceed with context selection
+    if (globalThis.setContext) {
+      globalThis.setContext(id);
+    }
+    
+    // Update selection state (will also persist to localStorage)
+    this.setSelected(id);
+    
+    // Trigger immediate poll
+    if (globalThis.poll) {
+      globalThis.poll();
     }
     
     // Update scroll
@@ -66,36 +53,8 @@ const model = {
     }
   },
 
-  // Ensure proper tab selection based on context type
-  ensureProperTabSelection(contextId) {
-    const activeTab = localStorage.getItem("activeTab") || "chats";
-    const tasksStore = globalThis.Alpine?.store('tasks');
-    let isTask = false;
-    
-    if (tasksStore) {
-      isTask = tasksStore.contains(contextId);
-    }
-    
-    // If selecting a task but in chats tab, switch to tasks
-    if (isTask && activeTab === "chats") {
-      localStorage.setItem("lastSelectedTask", contextId);
-      if (globalThis.activateTab) {
-        globalThis.activateTab("tasks");
-      }
-      return true;
-    }
-    
-    // If selecting a chat but in tasks tab, switch to chats
-    if (!isTask && activeTab === "tasks") {
-      localStorage.setItem("lastSelectedChat", contextId);
-      if (globalThis.activateTab) {
-        globalThis.activateTab("chats");
-      }
-      return true;
-    }
-    
-    return false;
-  },
+  // Ensure proper tab selection based on context type - MOVED TO TABS-STORE.JS
+  /* ensureProperTabSelection(contextId) { ... } */
 
   // Delete a chat
   async killChat(id) {

@@ -528,8 +528,8 @@ export const setContext = function (id) {
     const chatsStore = Alpine.store('chats');
     const tasksStore = Alpine.store('tasks');
     
-    if (chatsStore) chatsStore.selected = id;
-    if (tasksStore) tasksStore.selected = id;
+    if (chatsStore) chatsStore.setSelected(id);
+    if (tasksStore) tasksStore.setSelected(id);
   }
 
   //skip one speech if enabled when switching context

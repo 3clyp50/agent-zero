@@ -86,6 +86,31 @@ const model = {
     this.activeTab = tabName;
     try { localStorage.setItem("activeTab", tabName); } catch {}
   },
+
+  ensureProperTabSelection(contextId) {
+    const tasksStore = globalThis.Alpine?.store('tasks');
+    let isTask = false;
+    
+    if (tasksStore) {
+      isTask = tasksStore.contains(contextId);
+    }
+    
+    // If selecting a task but in chats tab, switch to tasks
+    if (isTask && this.activeTab === "chats") {
+      localStorage.setItem("lastSelectedTask", contextId);
+      this.activateTab("tasks");
+      return true;
+    }
+    
+    // If selecting a chat but in tasks tab, switch to chats
+    if (!isTask && this.activeTab === "tasks") {
+      localStorage.setItem("lastSelectedChat", contextId);
+      this.activateTab("chats");
+      return true;
+    }
+    
+    return false;
+  },
 };
 
 export const store = createStore("tabs", model);
