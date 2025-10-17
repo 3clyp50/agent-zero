@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Container Desktop</title>
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <h1>Container Desktop</h1>
+        <p class="app__subtitle">Monitor Docker or Podman resources directly from your desktop.</p>
+      </header>
+
+      <section class="resource" id="section-images">
+        <div class="resource__header">
+          <h2>Images</h2>
+          <span class="resource__status" data-section="images"></span>
+        </div>
+        <div class="resource__body">
+          <p class="resource__empty" data-section="images-empty">Loading container images…</p>
+          <ul class="resource__list" data-section="images-list" hidden></ul>
+        </div>
+      </section>
+
+      <section class="resource" id="section-containers">
+        <div class="resource__header">
+          <h2>Containers</h2>
+          <span class="resource__status" data-section="containers"></span>
+        </div>
+        <div class="resource__body">
+          <p class="resource__empty" data-section="containers-empty">Loading containers…</p>
+          <ul class="resource__list" data-section="containers-list" hidden></ul>
+        </div>
+      </section>
+
+      <section class="resource" id="section-volumes">
+        <div class="resource__header">
+          <h2>Volumes</h2>
+          <span class="resource__status" data-section="volumes"></span>
+        </div>
+        <div class="resource__body">
+          <p class="resource__empty" data-section="volumes-empty">Loading volumes…</p>
+          <ul class="resource__list" data-section="volumes-list" hidden></ul>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
