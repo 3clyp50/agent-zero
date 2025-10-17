@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Zero Desktop</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Agent Zero Docker Control</h1>
+        <button id="refresh" class="secondary">Refresh Status</button>
+      </header>
+      <section class="status-panel">
+        <div class="status-card">
+          <h2>Image</h2>
+          <p id="image-status" class="status-value">Checking...</p>
+          <p id="image-details" class="status-details"></p>
+        </div>
+        <div class="status-card">
+          <h2>Container</h2>
+          <p id="container-status" class="status-value">Checking...</p>
+          <p id="container-details" class="status-details"></p>
+        </div>
+      </section>
+      <section class="actions">
+        <button id="pull" class="primary">Pull Image</button>
+        <button id="start" class="primary">Start Container</button>
+        <button id="stop">Stop Container</button>
+        <button id="remove" class="danger">Remove</button>
+      </section>
+      <section id="progress-section" class="progress hidden">
+        <div class="progress-header">
+          <div class="spinner" id="spinner"></div>
+          <h2 id="progress-title">Activity</h2>
+        </div>
+        <pre id="progress-log"></pre>
+      </section>
+      <section id="error-section" class="error hidden"></section>
+      <section id="instructions" class="instructions hidden">
+        <h2>Docker Desktop Required</h2>
+        <p>
+          Docker Desktop must be installed and running to manage the Agent Zero container. Download it from
+          <a href="https://www.docker.com/products/docker-desktop/" target="_blank" rel="noreferrer">docker.com</a> and
+          launch the application before retrying.
+        </p>
+      </section>
+    </div>
+    <script type="module" src="index.js"></script>
+  </body>
+</html>
