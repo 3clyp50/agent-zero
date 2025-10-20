@@ -1251,6 +1251,47 @@ def convert_out(settings: Settings) -> SettingsOutput:
         "tab": "backup",
     }
 
+    infrastructure_fields: list[SettingsField] = []
+
+    infrastructure_fields.append(
+        {
+            "id": "storage_overview",
+            "title": "Docker Storage Overview",
+            "description": "Detect bound folders and Docker volumes that keep Agent Zero data persistent. "
+            "Use this to verify which paths you should keep when updating containers.",
+            "type": "html",
+            "value": "<x-component path='/settings/infrastructure/storage-overview.html' />",
+        }
+    )
+
+    infrastructure_fields.append(
+        {
+            "id": "content_sync",
+            "title": "Prompts & Knowledge Sync",
+            "description": "Copy user prompts and knowledge files to or from a mounted host folder.",
+            "type": "html",
+            "value": "<x-component path='/settings/infrastructure/content-sync.html' />",
+        }
+    )
+
+    infrastructure_fields.append(
+        {
+            "id": "host_mount_planner",
+            "title": "Host Mount Planner",
+            "description": "Plan volume mappings before launching Agent Zero to keep user data across updates.",
+            "type": "html",
+            "value": "<x-component path='/settings/infrastructure/host-mount-planner.html' />",
+        }
+    )
+
+    infrastructure_section: SettingsSection = {
+        "id": "infrastructure",
+        "title": "Container Infrastructure",
+        "description": "Tools to keep Agent Zero data persistent when running inside Docker.",
+        "fields": infrastructure_fields,
+        "tab": "infrastructure",
+    }
+
     # Add the section to the result
     result: SettingsOutput = {
         "sections": [
@@ -1270,6 +1311,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             a2a_section,
             external_api_section,
             backup_section,
+            infrastructure_section,
             dev_section,
             # code_exec_section,
         ]

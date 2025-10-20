@@ -1,0 +1,250 @@
+<html>
+<head>
+    <title>Docker Storage Overview</title>
+    <script type="module">
+        import { store } from "/components/settings/infrastructure/storage-store.js";
+    </script>
+</head>
+<body>
+<div x-data>
+    <template x-if="$store.containerStorage">
+        <div class="infra-card" x-init="$store.containerStorage.refresh()">
+            <div class="infra-card__header">
+                <button class="btn slim" @click="$store.containerStorage.refresh()"
+                        :disabled="$store.containerStorage.loading">
+                    <span x-show="!$store.containerStorage.loading">Rescan Docker</span>
+                    <span x-show="$store.containerStorage.loading">Scanning…</span>
+                </button>
+                <span class="infra-card__timestamp"
+                      x-text="$store.containerStorage.lastUpdated ? `Last updated: ${new Date($store.containerStorage.lastUpdated).toLocaleString()}` : ''"></span>
+            </div>
+
+            <template x-if="$store.containerStorage.error">
+                <div class="infra-alert infra-alert--error" x-text="$store.containerStorage.error"></div>
+            </template>
+
+            <template x-if="$store.containerStorage.snapshot && $store.containerStorage.snapshot.success">
+                <div class="infra-grid">
+                    <div>
+                        <h4>Agent Zero Containers</h4>
+                        <p class="infra-subtext">Each mount should be preserved when updating or recreating the container.</p>
+                        <template x-if="($store.containerStorage.snapshot.containers || []).length === 0">
+                            <p class="infra-empty">No Agent Zero containers were found.</p>
+                        </template>
+                        <template x-for="container in $store.containerStorage.snapshot.containers" :key="container.id">
+                            <div class="infra-panel">
+                                <div class="infra-panel__header">
+                                    <div>
+                                        <strong x-text="container.name"></strong>
+                                        <div class="infra-subtext" x-text="`Image: ${container.image}`"></div>
+                                    </div>
+                                    <span class="infra-status" :class="{'is-running': container.status === 'running'}"
+                                          x-text="container.status"></span>
+                                </div>
+                                <div class="infra-panel__body">
+                                    <template x-if="(container.mounts || []).length === 0">
+                                        <p class="infra-empty">No bind mounts or volumes detected.</p>
+                                    </template>
+                                    <ul class="infra-list">
+                                        <template x-for="mount in container.mounts" :key="mount.destination + mount.source">
+                                            <li>
+                                                <code x-text="mount.source || mount.name"></code>
+                                                <span class="infra-arrow">→</span>
+                                                <code x-text="mount.destination"></code>
+                                                <span class="infra-tag" x-text="mount.type"></span>
+                                                <span class="infra-tag" x-text="mount.rw ? 'rw' : 'ro'"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                    <div>
+                        <h4>Docker Volumes</h4>
+                        <p class="infra-subtext">Volumes listed here are safe locations for backups from inside the container.</p>
+                        <template x-if="($store.containerStorage.snapshot.volumes || []).length === 0">
+                            <p class="infra-empty">No dedicated volumes detected.</p>
+                        </template>
+                        <template x-for="volume in $store.containerStorage.snapshot.volumes" :key="volume.name">
+                            <div class="infra-panel">
+                                <div class="infra-panel__header">
+                                    <strong x-text="volume.name"></strong>
+                                    <span class="infra-subtext" x-text="volume.driver || 'local'"></span>
+                                </div>
+                                <div class="infra-panel__body">
+                                    <dl class="infra-definition">
+                                        <div>
+                                            <dt>Mountpoint</dt>
+                                            <dd><code x-text="volume.mountpoint || 'n/a'"></code></dd>
+                                        </div>
+                                        <div>
+                                            <dt>References</dt>
+                                            <dd x-text="volume.ref_count ?? 'n/a'"></dd>
+                                        </div>
+                                    </dl>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="infra-callout">
+                    <h4>Container Update Checklist</h4>
+                    <ol>
+                        <li>Record the mount pairs above (host path → container path) for every running container.</li>
+                        <li>Stop the existing container: <code>docker stop agent-zero</code></li>
+                        <li>Remove the old container but keep volumes: <code>docker rm agent-zero</code></li>
+                        <li>Launch the new container with the same <code>-v</code> mappings. Example:<br>
+                            <code>
+                                docker run -d --name agent-zero \<br>
+                                &nbsp;&nbsp;-p 50080:80 \<br>
+                                &nbsp;&nbsp;-v /your/host/path:/a0 \<br>
+                                &nbsp;&nbsp;agent0ai/agent-zero:latest
+                            </code><br>
+                            Replace <code>/your/host/path</code> with the host folders captured above.
+                        </li>
+                        <li>Verify persistence by reopening this overview after the update.</li>
+                    </ol>
+                    <p class="infra-subtext">
+                        Recommended container paths to persist:
+                        <template x-for="path in $store.containerStorage.snapshot.recommended_mounts" :key="path">
+                            <span class="infra-tag" x-text="path"></span>
+                        </template>
+                    </p>
+                </div>
+            </template>
+        </div>
+    </template>
+</div>
+
+<style>
+    .infra-card {
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 1rem;
+        background: var(--color-bg-secondary);
+    }
+    .infra-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+    .infra-card__timestamp {
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+    }
+    .infra-alert {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    .infra-alert--error {
+        background: var(--color-error-bg);
+        color: var(--color-error);
+    }
+    .infra-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .infra-panel {
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 0.75rem;
+        background: var(--color-bg-primary);
+    }
+    .infra-panel__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .infra-panel__body {
+        margin-top: 0.75rem;
+    }
+    .infra-status {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: var(--color-text-secondary);
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        padding: 0.15rem 0.6rem;
+    }
+    .infra-status.is-running {
+        border-color: var(--color-success);
+        color: var(--color-success);
+    }
+    .infra-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .infra-list li {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+        font-family: var(--font-mono, monospace);
+        font-size: 0.85rem;
+    }
+    .infra-arrow {
+        color: var(--color-text-secondary);
+    }
+    .infra-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0 0.4rem;
+        border-radius: 999px;
+        background: var(--color-bg-secondary);
+        color: var(--color-text-secondary);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+    .infra-subtext {
+        color: var(--color-text-secondary);
+        font-size: 0.85rem;
+    }
+    .infra-empty {
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+    }
+    .infra-definition {
+        display: grid;
+        gap: 0.35rem;
+        margin: 0;
+    }
+    .infra-definition dt {
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    .infra-definition dd {
+        margin: 0;
+        font-size: 0.85rem;
+        font-family: var(--font-mono, monospace);
+    }
+    .infra-callout {
+        margin-top: 1.5rem;
+        border: 1px solid var(--color-border-strong);
+        border-radius: 6px;
+        padding: 1rem;
+        background: var(--color-bg-primary);
+    }
+    .infra-callout ol {
+        margin: 0.5rem 0 0.75rem;
+        padding-left: 1.1rem;
+    }
+    .infra-callout code {
+        font-size: 0.85rem;
+        display: inline-block;
+        margin-top: 0.35rem;
+    }
+</style>
+</body>
+</html>

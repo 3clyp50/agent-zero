@@ -1,0 +1,170 @@
+<html>
+<head>
+    <title>Host Mount Planner</title>
+    <script type="module">
+        import "/components/settings/infrastructure/storage-store.js";
+        const toast = globalThis.toast;
+        globalThis.hostMountPlanner = function () {
+            return {
+                containerName: "agent-zero",
+                portBindings: "50080:80",
+                mappings: [],
+
+                addMapping(host = "", container = "") {
+                    this.mappings.push({ host, container });
+                },
+                removeMapping(index) {
+                    this.mappings.splice(index, 1);
+                },
+                clearMappings() {
+                    this.mappings = [];
+                },
+                detectedMounts() {
+                    const store = globalThis.Alpine?.store("containerStorage");
+                    const mounts = [];
+                    for (const container of store?.snapshot?.containers || []) {
+                        for (const mount of container.mounts || []) {
+                            if (mount.destination) {
+                                const host = mount.source || mount.name || "";
+                                mounts.push({ host, container: mount.destination });
+                            }
+                        }
+                    }
+                    return mounts;
+                },
+                recommendedContainerPaths() {
+                    const store = globalThis.Alpine?.store("containerStorage");
+                    return store?.snapshot?.recommended_mounts || [
+                        "/a0/knowledge",
+                        "/a0/prompts",
+                        "/a0/memory",
+                        "/a0/tmp",
+                        "/a0/logs",
+                    ];
+                },
+                ensureMapping(host, container) {
+                    if (!container) return;
+                    const exists = this.mappings.some((m) => m.container === container);
+                    if (!exists) {
+                        this.mappings.push({ host, container });
+                    }
+                },
+                applyDetected() {
+                    const mounts = this.detectedMounts();
+                    if (mounts.length === 0) {
+                        if (toast) toast("No mounts detected yet. Open the storage overview first.", "info");
+                        return;
+                    }
+                    for (const mount of mounts) {
+                        this.ensureMapping(mount.host, mount.container);
+                    }
+                },
+                applyRecommended() {
+                    for (const containerPath of this.recommendedContainerPaths()) {
+                        const host = `~/agent-zero${containerPath.replace('/a0', '')}`;
+                        this.ensureMapping(host, containerPath);
+                    }
+                },
+                dockerRunCommand() {
+                    const lines = [
+                        `docker run -d --name ${this.containerName}`,
+                        `  -p ${this.portBindings}`,
+                    ];
+                    for (const mapping of this.mappings) {
+                        if (mapping.host && mapping.container) {
+                            lines.push(`  -v ${mapping.host}:${mapping.container}`);
+                        }
+                    }
+                    lines.push("  agent0ai/agent-zero:latest");
+                    return lines
+                        .map((line, index) => (index < lines.length - 1 ? `${line} \\` : line))
+                        .join("\n");
+                },
+                async copyCommand() {
+                    try {
+                        await navigator.clipboard.writeText(this.dockerRunCommand());
+                        if (toast) toast("docker run command copied to clipboard", "success");
+                    } catch (error) {
+                        if (toast) toast("Unable to copy command", "error");
+                    }
+                },
+            };
+        };
+    </script>
+</head>
+<body>
+<div x-data="hostMountPlanner()">
+    <div class="infra-card">
+        <div class="infra-card__header">
+            <h4>Plan your volume mappings</h4>
+        </div>
+        <p class="infra-subtext">
+            Configure host ↔ container paths before launching Agent Zero. Reuse the same configuration whenever
+            you update the container to keep persistent data intact.
+        </p>
+
+        <div class="infra-field">
+            <label>Container name</label>
+            <input type="text" x-model="containerName">
+        </div>
+
+        <div class="infra-field">
+            <label>Port bindings (<code>-p</code>)</label>
+            <input type="text" x-model="portBindings">
+        </div>
+
+        <div class="infra-field">
+            <label>Volume mappings</label>
+            <template x-if="mappings.length === 0">
+                <p class="infra-empty">No mappings configured yet.</p>
+            </template>
+            <template x-for="(mapping, index) in mappings" :key="index">
+                <div class="infra-mapping-row">
+                    <input type="text" placeholder="/path/on/host" x-model="mapping.host">
+                    <span class="infra-arrow">→</span>
+                    <input type="text" placeholder="/a0/data" x-model="mapping.container">
+                    <button class="btn slim" type="button" @click="removeMapping(index)">Remove</button>
+                </div>
+            </template>
+            <button class="btn slim" type="button" @click="addMapping()">Add mapping</button>
+        </div>
+
+        <div class="infra-actions">
+            <button class="btn slim" type="button" @click="applyDetected()">Use detected mounts</button>
+            <button class="btn slim" type="button" @click="applyRecommended()">Add recommended paths</button>
+            <button class="btn slim" type="button" @click="clearMappings()">Clear all</button>
+        </div>
+
+        <div class="infra-field">
+            <label>docker run preview</label>
+            <pre class="infra-pre" x-text="dockerRunCommand()"></pre>
+            <button class="btn slim" type="button" @click="copyCommand()">Copy command</button>
+        </div>
+
+        <p class="infra-subtext">
+            <strong>docker-compose:</strong> copy the <code>host:container</code> pairs into the <code>volumes</code> section of
+            your service definition.
+        </p>
+    </div>
+</div>
+
+<style>
+    .infra-mapping-row {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto;
+        gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .infra-pre {
+        background: var(--color-bg-primary);
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        padding: 0.75rem;
+        font-family: var(--font-mono, monospace);
+        font-size: 0.85rem;
+        white-space: pre;
+    }
+</style>
+</body>
+</html>
