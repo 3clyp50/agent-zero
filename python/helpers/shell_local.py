@@ -5,6 +5,8 @@ import sys
 from typing import Optional, Tuple
 from python.helpers import tty_session
 from python.helpers.shell_ssh import clean_string
+import platform
+_IS_WIN = platform.system() == "Windows"
 
 class LocalInteractiveSession:
     def __init__(self):
@@ -12,7 +14,7 @@ class LocalInteractiveSession:
         self.full_output = ''
 
     async def connect(self):
-        self.session = tty_session.TTYSession("/bin/bash")
+        self.session = tty_session.TTYSession("powershell.exe" if _IS_WIN else "/bin/bash")
         await self.session.start()
         await self.session.read_full_until_idle(idle_timeout=1, total_timeout=1)
 
