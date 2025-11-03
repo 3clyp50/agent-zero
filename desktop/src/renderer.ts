@@ -26,10 +26,27 @@ const getSectionElements = (key: SectionKey): SectionElements => {
   return { status, empty, list };
 };
 
-const sections: Record<SectionKey, SectionElements> = {
-  images: getSectionElements('images'),
-  containers: getSectionElements('containers'),
-  volumes: getSectionElements('volumes'),
+// Lazily initialized after DOM is ready to avoid null querySelector results
+let sections: Record<SectionKey, SectionElements> | null = null;
+
+const initSections = (): Record<SectionKey, SectionElements> => {
+  if (sections) {
+    return sections;
+  }
+  const initialized: Record<SectionKey, SectionElements> = {
+    images: getSectionElements('images'),
+    containers: getSectionElements('containers'),
+    volumes: getSectionElements('volumes'),
+  };
+  sections = initialized;
+  return initialized;
+};
+
+const getSections = (): Record<SectionKey, SectionElements> => {
+  if (!sections) {
+    throw new Error('Sections not initialized. Call initSections() after DOMContentLoaded.');
+  }
+  return sections;
 };
 
 const runtimeLabel = (runtime: RuntimeListResponse<unknown>['runtime']): string => {
@@ -126,9 +143,7 @@ const renderVolumes = (volumes: RuntimeVolume[]): DocumentFragment => {
 
     meta.textContent = metaParts.join(' • ');
     item.append(title);
-    if (metaParts.length > 0) {
-      item.append(meta);
-    }
+    item.append(meta);
     fragment.append(item);
   });
 
@@ -141,9 +156,9 @@ const applyResponse = <T>(
   renderItems: (items: T[]) => DocumentFragment,
   emptyMessage: string,
 ): void => {
-  const { status, empty, list } = sections[key];
+  const { status, empty, list } = getSections()[key];
 
-  status.textContent = runtimeLabel(response);
+  status.textContent = runtimeLabel(response.runtime);
 
   if (response.error) {
     empty.textContent = response.error;
@@ -167,11 +182,14 @@ const applyResponse = <T>(
 };
 
 const loadDashboard = async (): Promise<void> => {
+  // Ensure required DOM sections are available
+  initSections();
   const api = window.containerRuntime;
   if (!api) {
     const message = 'Secure runtime bridge is unavailable. Check preload configuration.';
-    (Object.keys(sections) as SectionKey[]).forEach((key) => {
-      const { status, empty, list } = sections[key];
+    const s = getSections();
+    (Object.keys(s) as SectionKey[]).forEach((key) => {
+      const { status, empty, list } = s[key];
       status.textContent = 'Unavailable';
       empty.textContent = message;
       empty.hidden = false;

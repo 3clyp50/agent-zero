@@ -52,17 +52,24 @@ const detectRuntime = async (): Promise<ContainerRuntime> => {
 type ExecResult<T> = RuntimeListResponse<T>;
 
 const parseJsonLines = <TRow>(input: string): TRow[] => {
-  return input
+  const items: TRow[] = [];
+  const errors: string[] = [];
+  input
     .split(/\r?\n/g)
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => {
+    .forEach((line) => {
       try {
-        return JSON.parse(line) as TRow;
+        items.push(JSON.parse(line) as TRow);
       } catch (error) {
-        throw new Error(`Failed to parse CLI output: ${(error as Error).message}`);
+        errors.push((error as Error).message);
       }
     });
+  if (errors.length) {
+    // Optionally log; caller can decide how to surface partial parse
+    console.warn(`parseJsonLines: ${errors.length} lines failed to parse`);
+  }
+  return items;
 };
 
 const asErrorResponse = <T>(runtime: ContainerRuntime | null, error: unknown): ExecResult<T> => ({
@@ -74,7 +81,11 @@ const asErrorResponse = <T>(runtime: ContainerRuntime | null, error: unknown): E
 const listImages = async (): Promise<ExecResult<RuntimeImage>> => {
   try {
     const runtime = await detectRuntime();
-    const { stdout } = await execFileAsync(runtime, ['images', '--format', '{{json .}}']);
+    const { stdout } = await execFileAsync(
+      runtime,
+      ['images', '--format', '{{json .}}'],
+      { timeout: 30_000, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }
+    );
 
     type RawImage = {
       Repository?: string;
@@ -101,7 +112,11 @@ const listImages = async (): Promise<ExecResult<RuntimeImage>> => {
 const listContainers = async (): Promise<ExecResult<RuntimeContainer>> => {
   try {
     const runtime = await detectRuntime();
-    const { stdout } = await execFileAsync(runtime, ['ps', '--all', '--format', '{{json .}}']);
+    const { stdout } = await execFileAsync(
+      runtime,
+      ['ps', '--all', '--format', '{{json .}}'],
+      { timeout: 30_000, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }
+    );
 
     type RawContainer = {
       ID?: string;
@@ -130,7 +145,11 @@ const listContainers = async (): Promise<ExecResult<RuntimeContainer>> => {
 const listVolumes = async (): Promise<ExecResult<RuntimeVolume>> => {
   try {
     const runtime = await detectRuntime();
-    const { stdout } = await execFileAsync(runtime, ['volume', 'ls', '--format', '{{json .}}']);
+    const { stdout } = await execFileAsync(
+      runtime,
+      ['volume', 'ls', '--format', '{{json .}}'],
+      { timeout: 30_000, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }
+    );
 
     type RawVolume = {
       Name?: string;
@@ -150,10 +169,44 @@ const listVolumes = async (): Promise<ExecResult<RuntimeVolume>> => {
   }
 };
 
+let inflightImages: Promise<ExecResult<RuntimeImage>> | null = null;
+let inflightContainers: Promise<ExecResult<RuntimeContainer>> | null = null;
+let inflightVolumes: Promise<ExecResult<RuntimeVolume>> | null = null;
+
 const registerIpcHandlers = (): void => {
-  ipcMain.handle('runtime:list-images', () => listImages());
-  ipcMain.handle('runtime:list-containers', () => listContainers());
-  ipcMain.handle('runtime:list-volumes', () => listVolumes());
+  ipcMain.handle('runtime:list-images', () => {
+    if (inflightImages) {
+      return inflightImages;
+    }
+    const p = listImages();
+    inflightImages = p;
+    p.finally(() => {
+      inflightImages = null;
+    });
+    return p;
+  });
+  ipcMain.handle('runtime:list-containers', () => {
+    if (inflightContainers) {
+      return inflightContainers;
+    }
+    const p = listContainers();
+    inflightContainers = p;
+    p.finally(() => {
+      inflightContainers = null;
+    });
+    return p;
+  });
+  ipcMain.handle('runtime:list-volumes', () => {
+    if (inflightVolumes) {
+      return inflightVolumes;
+    }
+    const p = listVolumes();
+    inflightVolumes = p;
+    p.finally(() => {
+      inflightVolumes = null;
+    });
+    return p;
+  });
 };
 
 const createWindow = (): void => {
