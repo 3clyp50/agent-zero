@@ -1,7 +1,8 @@
 import time
 import docker
 import atexit
-from typing import Optional
+from typing import Optional, Iterable
+from docker.errors import DockerException
 from python.helpers.files import get_abs_path
 from python.helpers.errors import format_error
 from python.helpers.print_style import PrintStyle
@@ -97,3 +98,139 @@ class DockerContainerManager:
             PrintStyle.standard(f"Started container with ID: {self.container.id}")
             if self.logger: self.logger.log(type="info", content=f"Started container with ID: {self.container.id}")
             time.sleep(5) # this helps to get SSH ready
+
+
+def _is_agent_zero_container(container, name_filters: Iterable[str]) -> bool:
+    """Heuristically determine if a docker container belongs to Agent Zero."""
+    name = container.name.lower()
+    image_tags = []
+    try:
+        image_tags = [tag.lower() for tag in (container.image.tags or [])]
+    except Exception:
+        pass
+    labels = {}
+    try:
+        labels = container.attrs.get("Config", {}).get("Labels", {}) or {}
+    except Exception:
+        labels = {}
+
+    haystack = " ".join(
+        [
+            name,
+            " ".join(image_tags),
+            " ".join(f"{k}={v}" for k, v in labels.items()),
+        ]
+    )
+    return any(filter_val in haystack for filter_val in name_filters)
+
+
+def get_agent_zero_volume_snapshot(name_filters: Optional[Iterable[str]] = None) -> dict:
+    """Inspect docker for Agent Zero related containers and their storage mounts."""
+
+    filters = [val.lower() for val in (name_filters or ("agent-zero", "agentzero", "agent0", "a0"))]
+
+    try:
+        client = docker.from_env()
+    except DockerException as exc:
+        return {
+            "success": False,
+            "error": f"Unable to connect to Docker: {exc}",
+        }
+
+    containers_info: list[dict] = []
+    referenced_volumes: set[str] = set()
+
+    try:
+        for container in client.containers.list(all=True):
+            if not _is_agent_zero_container(container, filters):
+                continue
+
+            mounts = []
+            try:
+                container_mounts = container.attrs.get("Mounts", [])
+            except Exception:
+                container_mounts = []
+
+            for mount in container_mounts:
+                mount_type = mount.get("Type")
+                source = mount.get("Name") or mount.get("Source")
+                destination = mount.get("Destination")
+                if mount_type in {"bind", "volume"} and destination:
+                    mounts.append(
+                        {
+                            "type": mount_type,
+                            "source": mount.get("Source"),
+                            "name": mount.get("Name"),
+                            "destination": destination,
+                            "mode": mount.get("Mode"),
+                            "rw": bool(mount.get("RW", False)),
+                        }
+                    )
+                    if mount_type == "volume" and source:
+                        referenced_volumes.add(source)
+
+            image_name = ""
+            try:
+                image_tags = container.image.tags or []
+                image_name = image_tags[0] if image_tags else container.image.short_id
+            except Exception:
+                image_name = "unknown"
+
+            containers_info.append(
+                {
+                    "id": container.short_id,
+                    "name": container.name,
+                    "status": container.status,
+                    "image": image_name,
+                    "mounts": mounts,
+                }
+            )
+
+        volume_details: list[dict] = []
+        for volume in client.volumes.list():
+            name = getattr(volume, "name", "")
+            low_name = name.lower() if isinstance(name, str) else ""
+            if not name:
+                continue
+
+            if referenced_volumes and name not in referenced_volumes and not any(
+                filt in low_name for filt in filters
+            ):
+                continue
+
+            attrs = {}
+            try:
+                attrs = volume.attrs or {}
+            except Exception:
+                attrs = {}
+
+            usage_data = attrs.get("UsageData", {}) or {}
+            volume_details.append(
+                {
+                    "name": name,
+                    "mountpoint": attrs.get("Mountpoint"),
+                    "driver": attrs.get("Driver"),
+                    "ref_count": usage_data.get("RefCount"),
+                    "labels": attrs.get("Labels") or {},
+                }
+            )
+
+        recommended_mounts = [
+            "/a0/knowledge",
+            "/a0/prompts",
+            "/a0/memory",
+            "/a0/tmp",
+            "/a0/logs",
+        ]
+
+        return {
+            "success": True,
+            "containers": containers_info,
+            "volumes": volume_details,
+            "recommended_mounts": recommended_mounts,
+        }
+    except DockerException as exc:
+        return {
+            "success": False,
+            "error": f"Docker error while inspecting volumes: {exc}",
+        }

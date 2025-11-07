@@ -1,0 +1,152 @@
+<html>
+<head>
+    <title>Content Sync</title>
+    <script type="module">
+        import { store } from "/components/settings/infrastructure/content-sync-store.js";
+        import "/components/settings/infrastructure/storage-store.js";
+    </script>
+</head>
+<body>
+<div x-data>
+    <template x-if="$store.contentSync">
+        <div class="infra-card" x-init="$store.contentSync.init()">
+            <div class="infra-card__header">
+                <h4>Synchronize Prompts & Knowledge</h4>
+            </div>
+            <p class="infra-subtext">
+                Choose a mounted host folder to keep your custom prompts and knowledge safe during container updates.
+            </p>
+
+            <div class="infra-field">
+                <label>Mounted folder inside the container</label>
+                <div class="infra-input-row">
+                    <input type="text" x-model="$store.contentSync.targetPath" placeholder="/data/agent-zero"
+                           :disabled="$store.contentSync.busy">
+                    <button class="btn slim" @click="$store.contentSync.init()" type="button">Use detected</button>
+                </div>
+                <template x-if="$store.contentSync.detectedHostPaths().length">
+                    <div class="infra-suggestions">
+                        <span>Detected mounts:</span>
+                        <template x-for="path in $store.contentSync.detectedHostPaths()" :key="path">
+                            <button class="infra-chip" type="button"
+                                    @click="$store.contentSync.targetPath = path" x-text="path"></button>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
+            <div class="infra-field">
+                <label>Content to include</label>
+                <div class="infra-checkboxes">
+                    <label><input type="checkbox" x-model="$store.contentSync.includePrompts"> Prompts</label>
+                    <label><input type="checkbox" x-model="$store.contentSync.includeKnowledge"> Knowledge</label>
+                    <button class="btn slim" type="button"
+                            @click="$store.contentSync.toggleAll(true)">Select both</button>
+                    <button class="btn slim" type="button"
+                            @click="$store.contentSync.toggleAll(false)">Clear</button>
+                </div>
+            </div>
+
+            <div class="infra-field">
+                <label><input type="checkbox" x-model="$store.contentSync.cleanDestination">
+                    Clean destination before copying</label>
+                <p class="infra-subtext">
+                    When enabled, files (except defaults) are removed from the destination before copying.
+                    Use this if you want the backup folder to mirror the container exactly.
+                </p>
+            </div>
+
+            <div class="infra-actions">
+                <button class="btn slim" :disabled="$store.contentSync.busy"
+                        @click="$store.contentSync.sync('backup')">Backup to folder</button>
+                <button class="btn slim" :disabled="$store.contentSync.busy"
+                        @click="$store.contentSync.sync('restore')">Restore from folder</button>
+            </div>
+
+            <template x-if="$store.contentSync.error">
+                <div class="infra-alert infra-alert--error" x-text="$store.contentSync.error"></div>
+            </template>
+
+            <template x-if="$store.contentSync.lastResult && $store.contentSync.lastResult.success">
+                <div class="infra-alert infra-alert--success">
+                    <strong x-text="$store.contentSync.lastResult.direction === 'backup' ? 'Backup complete.' : 'Restore complete.'"></strong>
+                    <div class="infra-subtext" x-text="`Target: ${$store.contentSync.lastResult.target_path}`"></div>
+                </div>
+            </template>
+
+            <template x-if="$store.contentSync.log.length">
+                <div class="infra-log">
+                    <h5>Activity log</h5>
+                    <ul>
+                        <template x-for="(line, index) in $store.contentSync.log" :key="index">
+                            <li x-text="line"></li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
+        </div>
+    </template>
+</div>
+
+<style>
+    .infra-field {
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .infra-field label {
+        font-weight: 600;
+    }
+    .infra-input-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .infra-input-row input[type="text"] {
+        flex: 1;
+    }
+    .infra-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--color-text-secondary);
+    }
+    .infra-chip {
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        background: var(--color-bg-primary);
+        cursor: pointer;
+    }
+    .infra-checkboxes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+    .infra-actions {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .infra-alert--success {
+        background: var(--color-success-bg, rgba(16, 185, 129, 0.1));
+        color: var(--color-success, #10b981);
+        border-radius: 4px;
+        padding: 0.75rem;
+        margin-top: 0.75rem;
+    }
+    .infra-log {
+        margin-top: 1rem;
+    }
+    .infra-log ul {
+        margin: 0;
+        padding-left: 1.2rem;
+        font-size: 0.85rem;
+    }
+</style>
+</body>
+</html>
