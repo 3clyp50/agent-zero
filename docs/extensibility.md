@@ -99,6 +99,19 @@ When a tool is called, it goes through the following lifecycle:
 3. `execute` method (main functionality)
 4. `after_execution` method
 
+### Instruments
+Instruments are reusable scripts that **do not** live in the system prompt. They are recalled on demand by the agent and are ideal for utilities that shouldn't inflate prompt tokens.
+
+**Key differences from tools:**
+- **Tools** are always listed in the system prompt and must be concise.
+- **Instruments** live in `/a0/instruments/custom` and are recalled when needed.
+
+**Creating an instrument:**
+1. Create a folder in `/a0/instruments/custom/<instrument_name>/`
+2. Add a Markdown description file (explains usage and parameters)
+3. Add the executable script (e.g., `.sh`, `.py`)
+4. Ask the agent to use or create the instrument in conversations
+
 ### API Endpoints
 API endpoints expose Agent Zero functionality to external systems or the user interface. They are modular and can be extended or replaced.
 
@@ -118,7 +131,7 @@ Prompts define the instructions and context provided to the LLM. They are highly
 
 Prompts are located in:
 - Default prompts: `/prompts/`
-- Agent-specific prompts: `/agents/{agent_profile}/prompts/`
+- Agent-specific overrides: `/a0/agents/<agent_name>/` (only the files you override)
 
 #### Prompt Features
 Agent Zero's prompt system supports several powerful features:
@@ -186,7 +199,7 @@ Prompts can include content from other prompt files using the `{{ include "path/
 ```
 
 #### Prompt Override Logic
-Similar to extensions and tools, prompts follow an override pattern. When the agent reads a prompt, it first checks for its existence in the agent-specific prompts directory. If found, that version is used. If not found, it falls back to the default prompts directory.
+Similar to extensions and tools, prompts follow an override pattern. When the agent reads a prompt, it first checks the active agent profile directory (`/a0/agents/<agent_name>/`). If found, that version is used. If not found, it falls back to `/prompts/`.
 
 **Example of a prompt override:**
 
@@ -212,7 +225,7 @@ Agent Zero supports creating specialized subagents with customized behavior. The
 2. Override or extend default components by mirroring the structure in the root directories:
    - `/agents/{agent_profile}/extensions/` - for custom extensions
    - `/agents/{agent_profile}/tools/` - for custom tools
-   - `/agents/{agent_profile}/prompts/` - for custom prompts
+   - `/agents/{agent_profile}/` - for custom prompt overrides (same filenames as in `/prompts/`)
    - `/agents/{agent_profile}/settings.json` - for agent-specific configuration overrides
 
 The `settings.json` file for an agent uses the same structure as `tmp/settings.json`, but you only need to specify the fields you want to override. Any field omitted from the agent-specific `settings.json` will continue to use the global value.
@@ -226,8 +239,7 @@ This allows power users to, for example, change the AI model, context window siz
 ├── extensions/
 │   └── agent_init/
 │       └── _10_example_extension.py
-├── prompts/
-│   └── ...
+├── agent.system.main.role.md
 ├── tools/
 │   ├── example_tool.py
 │   └── response.py
@@ -242,7 +254,7 @@ In this example:
 
 ## Projects
 
-Projects provide isolated workspaces for individual chats, keeping prompts, memory, knowledge, files, and secrets scoped to a specific use case.
+Projects provide isolated workspaces for individual chats, keeping prompts, memory, knowledge, files, and secrets scoped to a specific use case. Each project can maintain **its own agents/subagents and context windows**, enabling true context separation between workflows.
 
 ### Project Location and Structure
 
@@ -293,6 +305,9 @@ Projects are the recommended way to create specialized workflows in Agent Zero w
 - Isolate file context, knowledge, and memory for a particular task or client
 - Keep passwords and other secrets scoped to a single workspace
 - Run multiple independent flows side by side under the same Agent Zero installation
+
+> [!TIP]
+> Projects pair well with scheduled **Tasks**. Assign a task to a project so each run inherits the project’s instructions, memory, and knowledge without polluting other workspaces.
 
 ## Best Practices
 - Keep extensions focused on a single responsibility

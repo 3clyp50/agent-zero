@@ -59,6 +59,9 @@ Access the chat history in JSON format
   - View the conversation as processed by the LLM
   - Useful for debugging and understanding agent behavior
 
+> [!NOTE]
+> Chat history files live in `/a0/tmp/chats/`. This is helpful when you need to inspect or migrate logs manually.
+
 ![History](res/ui-history.png)
 
 * **Nudge:** Restart the agent's last process
@@ -102,6 +105,9 @@ Agent Zero's power comes from its ability to use [tools](architecture.md#tools).
 
 - **Understand Tools:** Agent Zero includes default tools like knowledge (powered by SearXNG), code execution, and communication. Understand the capabilities of these tools and how to invoke them.
 
+> [!CAUTION]
+> The built-in browser agent is currently unstable due to dependency issues. For reliable browser automation, use MCP servers such as **Browser OS**, **Chrome DevTools**, or **Playwright**. See the [MCP setup guide](mcp_setup.md) for configuration details.
+
 ## Example of Tools Usage: Web Search and Code Execution
 Let's say you want Agent Zero to perform some financial analysis tasks. Here's a possible prompt:
 
@@ -128,6 +134,23 @@ One of Agent Zero's unique features is multi-agent cooperation.
 
 ![](res/physics.png)
 ![](res/physics-2.png)
+
+## Projects & Tasks
+Projects and Tasks provide the best way to keep work separated and automate recurring workflows.
+
+### Projects (Context Separation)
+- Each Project has its **own context**, instructions, knowledge, and optional memory scope.
+- Projects are ideal for client work, long-running research threads, or parallel workflows that should never cross-contaminate.
+- Subagents spawned inside a Project inherit the Project context and settings.
+
+See [Projects in Extensibility](extensibility.md#projects) for structure details and how project instructions/knowledge are loaded.
+
+### Tasks & Scheduling
+- You can schedule tasks either by **asking the agent** or via **Settings → Tasks Scheduler**.
+- Scheduled tasks spawn a dedicated chat at the configured time, which is useful for monitoring, reporting, or periodic cleanup.
+
+> [!TIP]
+> Pair **Tasks + Projects + Notifications** to build “always-on” workflows (e.g., scheduled email checks or daily reports). See [Notifications](notifications.md) for event hooks and UI alerts.
 
 ## Prompt Engineering
 Effective prompt engineering is crucial for getting the most out of Agent Zero. Here are some tips and techniques:
@@ -188,6 +211,8 @@ Configure STT settings in the Settings page:
 > All STT and TTS functionalities operate locally within the Docker container,
 > ensuring that no data is transmitted to external servers or OpenAI APIs. This
 > enhances user privacy while maintaining functionality.
+
+## Mathematical Expressions
 
 
 * **Complex Mathematics:** Supports full KaTeX syntax for:
@@ -258,7 +283,7 @@ By default, Agent Zero backs up your most important data:
 * **Knowledge Base**: Your custom knowledge files and documents
 * **Memory System**: Agent memories and learned information
 * **Chat History**: All your conversations and interactions
-* **Configuration Files**: Settings, API keys, and system preferences
+* **Configuration Files**: Settings and system preferences (secrets in `/a0/tmp/secrets.env` are not included)
 * **Custom Instruments**: Any tools you've added or modified
 * **Uploaded Files**: Documents and files you've worked with
 
@@ -327,7 +352,7 @@ Optionally clean up existing files before restoring:
 * **Test Restores**: Occasionally test restoring backups to ensure they work
 
 #### Security Considerations
-* **API Keys**: Backups include your API keys and sensitive configuration
+* **Secrets**: Backups do **not** include `/a0/tmp/secrets.env`. Copy this file manually if you rely on secrets.
 * **Secure Storage**: Store backup files securely and don't share them
 * **Clean Systems**: When restoring on new systems, verify all configurations
 

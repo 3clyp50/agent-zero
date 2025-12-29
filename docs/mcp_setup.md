@@ -2,6 +2,9 @@
 
 This guide explains how to configure and utilize external tool providers through the Model Context Protocol (MCP) with Agent Zero. This allows Agent Zero to leverage tools hosted by separate local or remote MCP-compliant servers.
 
+> [!NOTE]
+> Agent Zero can act as **both** an MCP client (this guide) and an MCP server. For exposing Agent Zero to external MCP clients, see [MCP Server Connectivity](connectivity.md#mcp-server-connectivity).
+
 ## What are MCP Servers?
 
 MCP servers are external processes or services that expose a set of tools that Agent Zero can use. Agent Zero acts as an MCP *client*, consuming tools made available by these servers. The integration supports three main types of MCP servers:
@@ -18,7 +21,7 @@ Agent Zero discovers and integrates MCP tools dynamically:
 2.  **Saving Settings**: When you save your settings via the UI, Agent Zero updates the `tmp/settings.json` file, specifically the `"mcp_servers"` key.
 3.  **Automatic Installation (on Restart)**: After saving your settings and restarting Agent Zero, the system will attempt to automatically install any MCP server packages defined with `command: "npx"` and the `--package` argument in their configuration (this process is managed by `initialize.py`). You can monitor the application logs (e.g., Docker logs) for details on this installation attempt.
 4.  **Tool Discovery**: Upon initialization (or when settings are updated), Agent Zero connects to each configured and enabled MCP server and queries it for the list of available tools, their descriptions, and expected parameters.
-5.  **Dynamic Prompting**: The information about these discovered tools is then dynamically injected into the agent's system prompt. A placeholder like `{{tools}}` in a system prompt template (e.g., `prompts/default/agent.system.mcp_tools.md`) is replaced with a formatted list of all available MCP tools. This allows the agent's underlying Language Model (LLM) to know which external tools it can request.
+5.  **Dynamic Prompting**: The information about these discovered tools is then dynamically injected into the agent's system prompt. A placeholder like `{{tools}}` in a system prompt template (e.g., `prompts/agent.system.mcp_tools.md`) is replaced with a formatted list of all available MCP tools. This allows the agent's underlying Language Model (LLM) to know which external tools it can request.
 6.  **Tool Invocation**: When the LLM decides to use an MCP tool, Agent Zero's `process_tools` method (handled by `mcp_handler.py`) identifies it as an MCP tool and routes the request to the appropriate `MCPConfig` helper, which then communicates with the designated MCP server to execute the tool.
 
 ## Configuration
@@ -144,3 +147,20 @@ Once configured, successfully installed (if applicable, e.g., for `npx` based se
 *   **Execution Flow**: Agent Zero's `process_tools` method (with logic in `python/helpers/mcp_handler.py`) prioritizes looking up the tool name in the `MCPConfig`. If found, the execution is delegated to the corresponding MCP server. If not found as an MCP tool, it then attempts to find a local/built-in tool with that name.
 
 This setup provides a flexible way to extend Agent Zero's capabilities by integrating with various external tool providers without modifying its core codebase.
+
+## Recommended MCP Servers & Patterns
+
+### Browser Automation (Preferred Right Now)
+The built-in browser agent currently has dependency issues. MCP alternatives are more stable:
+- **Browser OS MCP**
+- **Chrome DevTools MCP**
+- **Playwright MCP**
+
+These provide a reliable browser surface while the native browser agent is being stabilized.
+
+### Automation & Integrations
+- **n8n MCP**: Community members use n8n to orchestrate workflows, triggers, and integrations.
+- **Gmail MCP**: Pair with Tasks to poll inboxes and send scheduled summaries.
+
+> [!TIP]
+> When running MCP servers on your host machine, remember Agent Zero is in Docker. You may need to expose ports, or place both containers on the same Docker network.

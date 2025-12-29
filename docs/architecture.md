@@ -46,7 +46,8 @@ This architecture ensures:
 | `/knowledge` | Knowledge base storage |
 | `/logs` | HTML CLI-style chat logs |
 | `/memory` | Persistent agent memory storage |
-| `/prompts` | System and tool prompts |
+| `/prompts` | Default system and tool prompts |
+| `/agents` | Agent profiles (custom prompts, tools, extensions, settings) |
 | `/python` | Core Python codebase: |
 | `/api` | API endpoints and interfaces |
 | `/extensions` | Modular extensions |
@@ -140,11 +141,11 @@ In cases where SearXNG might not return satisfactory results, Agent Zero can be 
 > retrieval system.
 
 #### Custom Tools
-Users can create custom tools to extend Agent Zero's capabilities. Custom tools can be integrated into the framework by defining a tool specification, which includes the tool's prompt to be placed in `/prompts/$FOLDERNAME/agent.system.tool.$TOOLNAME.md`, as detailed below.
+Users can create custom tools to extend Agent Zero's capabilities. Tool prompts are loaded from the default `/prompts/` directory, and **overrides** live in the active agent profile directory (`/a0/agents/<agent_name>/`).
 
-1. Create `agent.system.tool.$TOOL_NAME.md` in `prompts/$SUBDIR`
-2. Add reference in `agent.system.tools.md`
-3. If needed, implement tool class in `python/tools` using `Tool` base class
+1. Create `agent.system.tool.<tool_name>.md` in `/a0/agents/<agent_name>/`
+2. Add reference in `agent.system.tools.md` (also in the agent profile if you override it)
+3. If needed, implement the tool class in `python/tools` using the `Tool` base class
 4. Follow existing patterns for consistency
 
 > [!NOTE]
@@ -154,6 +155,9 @@ Users can create custom tools to extend Agent Zero's capabilities. Custom tools 
 
 ### 3. Memory System
 The memory system is a critical component of Agent Zero, enabling the agent to learn and adapt from past interactions. It operates on a hybrid model where part of the memory is managed automatically by the framework while users can also manually input and extract information.
+
+> [!NOTE]
+> Embeddings are computed locally using a lightweight model, while memory extraction and summarization rely on the configured **utility LLM**. Ensure the utility model is capable enough for reliable memory distillation.
 
 #### Memory Structure
 The memory is categorized into four distinct areas:
@@ -193,7 +197,7 @@ By dynamically adjusting context windows and summarizing past interactions, Agen
 > To maximize the effectiveness of context summarization, users should provide clear and specific instructions during interactions. This helps Agent Zero understand which details are most important to retain.
 
 ### 4. Prompts
-The `prompts` directory contains various Markdown files that control agent behavior and communication. The most important file is `agent.system.main.md`, which acts as a central hub, referencing other prompt files.
+The `/prompts` directory contains the **default** Markdown files that control agent behavior and communication. The most important file is `agent.system.main.md`, which acts as a central hub, referencing other prompt files.
 
 #### Core Prompt Files
 | Prompt File | Description |
@@ -208,16 +212,16 @@ The `prompts` directory contains various Markdown files that control agent behav
 | agent.system.tool.*.md | Individual tool prompt files |
 
 #### Prompt Organization
-- **Default Prompts**: Located in `prompts/default/`, serve as the base configuration
-- **Custom Prompts**: Can be placed in custom subdirectories (e.g., `prompts/my-custom/`)
+- **Default Prompts**: Stored in `/prompts/` and shipped with the image
+- **Custom Prompts (Overrides)**: Place only the files you want to override in `/a0/agents/<agent_name>/`
 - **Behavior Files**: Stored in memory as `behaviour.md`, containing dynamic rules
 - **Tool Prompts**: Organized in tool-specific files for modularity
 
 #### Custom Prompts
-1. Create directory in `prompts/` (e.g., `my-custom-prompts`)
-2. Copy and modify needed files from `prompts/default/`
-3. Agent Zero will merge your custom files with the default ones
-4. Select your custom prompts in the Settings page (Agent Config section)
+1. Create or select an agent profile in `/a0/agents/<agent_name>/`
+2. Copy **only** the prompt files you want to override from `/prompts/`
+3. Agent Zero will merge your overrides with the defaults automatically
+4. Select the agent profile in the Settings page (Agent Config section)
 
 #### Dynamic Behavior System
 - **Behavior Adjustment**: 
@@ -244,9 +248,8 @@ The `prompts` directory contains various Markdown files that control agent behav
   - Changes are applied without disrupting other components
   - Maintains separation between core functionality and behavioral rules
 
-> [!NOTE]  
-> You can customize any of these files. Agent Zero will use the files in your custom `prompts_subdir` 
-> if they exist, otherwise, it will fall back to the files in `prompts/default`.
+> [!NOTE]
+> You can customize any prompt file. Agent Zero will use the override from `/a0/agents/<agent_name>/` when present, otherwise it falls back to `/prompts/`.
 
 > [!TIP]
 > The behavior system allows for dynamic adjustments without modifying the base prompt files.
@@ -267,13 +270,17 @@ Knowledge refers to the user-provided information and data that agents can lever
   - Supports RAG-augmented tasks
 
 ### 6. Instruments
-Instruments provide a way to add custom functionalities to Agent Zero without adding to the token count of the system prompt:
+Instruments provide a way to add **reusable scripts** without adding extra tokens to the system prompt:
 - Stored in long-term memory of Agent Zero
 - Unlimited number of instruments available
 - Recalled when needed by the agent
 - Can modify agent behavior by introducing new procedures
 - Function calls or scripts to integrate with other systems
 - Scripts are run inside the Docker Container
+
+> [!TIP]
+> **Tools** are listed in the system prompt and are always visible to the model.  
+> **Instruments** are only recalled when needed, so they are ideal for reusable utilities that you don’t want in every prompt.
 
 #### Adding Instruments
 1. Create folder in `instruments/custom` (no spaces in name)

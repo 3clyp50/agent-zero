@@ -546,6 +546,10 @@ It provides two endpoint types:
 - **SSE (`/mcp/sse`):** For clients that support Server-Sent Events.
 - **Streamable HTTP (`/mcp/http/`):** For clients that use streamable HTTP requests.
 
+> [!NOTE]
+> Enable the MCP server in **Settings → MCP Server** before connecting external clients.
+> See [MCP Setup](mcp_setup.md) for the client-side configuration details.
+
 ### Example MCP Server Configuration
 
 Below is an example of a `mcp.json` configuration file that a client could use to connect to the Agent Zero MCP server. 
@@ -583,3 +587,10 @@ To connect another agent to your Agent Zero instance, use the following URL form
 ```
 YOUR_AGENT_ZERO_URL/a2a/t-YOUR_API_TOKEN
 ```
+
+### Practical A2A Patterns
+- **Context separation:** Run two Agent Zero instances and connect them via A2A so each handles distinct tasks or clients.
+- **Delegation pipelines:** Use a “coordinator” agent to offload sub-tasks to another instance (e.g., research vs. coding).
+
+> [!TIP]
+> A2A is a good alternative when a single instance’s Projects or subagents are not enough for strict isolation.
