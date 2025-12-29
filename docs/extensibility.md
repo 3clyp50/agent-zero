@@ -99,6 +99,9 @@ When a tool is called, it goes through the following lifecycle:
 3. `execute` method (main functionality)
 4. `after_execution` method
 
+> [!TIP]
+> Prefer **Instruments** for reusable scripts that should not bloat the system prompt. Tools are always present in the prompt; instruments are recalled on demand.
+
 ### API Endpoints
 API endpoints expose Agent Zero functionality to external systems or the user interface. They are modular and can be extended or replaced.
 
@@ -119,6 +122,9 @@ Prompts define the instructions and context provided to the LLM. They are highly
 Prompts are located in:
 - Default prompts: `/prompts/`
 - Agent-specific prompts: `/agents/{agent_profile}/prompts/`
+
+> [!IMPORTANT]
+> Custom prompt overrides now live in `/agents/<agent_profile>/prompts/`. Only add the files you want to override; everything else is loaded from `/prompts/`.
 
 #### Prompt Features
 Agent Zero's prompt system supports several powerful features:
@@ -205,6 +211,9 @@ This example overrides the default role definition in `/prompts/agent.system.mai
 
 ## Subagent Customization
 Agent Zero supports creating specialized subagents with customized behavior. The `_example` agent in the `/agents/_example/` directory demonstrates this pattern.
+
+> [!NOTE]
+> The `hacker` profile ships with the default Docker image. You can select it in **Settings → Agent Config**.
 
 ### Creating a Subagent
 
@@ -293,6 +302,9 @@ Projects are the recommended way to create specialized workflows in Agent Zero w
 - Isolate file context, knowledge, and memory for a particular task or client
 - Keep passwords and other secrets scoped to a single workspace
 - Run multiple independent flows side by side under the same Agent Zero installation
+
+> [!TIP]
+> Projects pair well with the Task Scheduler. You can schedule tasks inside a project to keep context and memory isolated while still automating recurring work.
 
 ## Best Practices
 - Keep extensions focused on a single responsibility

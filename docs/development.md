@@ -132,6 +132,9 @@ My Dockerized instance:
 My VS Code instance:
 ![VS Code instance](res/dev/devinst-13.png)
 
+## RFC Notes (Windows & Host Execution)
+Agent Zero runs code inside the container by default. If you need to execute code **directly on your Windows host**, configure RFC in Settings → Development and point it to a running Agent Zero container. This routes code execution through SSH/RFC to the container while keeping the UI and agent loop on your host IDE.
+
 
 # 🎉 Congratulations! 🚀
 

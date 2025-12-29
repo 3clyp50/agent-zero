@@ -538,6 +538,14 @@ attachmentWorkflow();
 
 ---
 
+## MCP Client Connectivity
+
+Agent Zero can consume external MCP servers (stdio, SSE, or streaming HTTP). Configure MCP clients in **Settings → External Services → MCP Client**.
+
+See [MCP Client Setup](mcp_setup.md) for configuration formats, examples, and recommended MCP servers.
+
+---
+
 ## MCP Server Connectivity
 
 Agent Zero includes an MCP Server that allows other MCP-compatible clients to connect to it. The server runs on the same URL and port as the Web UI.
@@ -583,3 +591,6 @@ To connect another agent to your Agent Zero instance, use the following URL form
 ```
 YOUR_AGENT_ZERO_URL/a2a/t-YOUR_API_TOKEN
 ```
+
+> [!TIP]
+> A2A is useful when you want two isolated Agent Zero instances (or other FastA2A agents) to collaborate while keeping separate contexts.

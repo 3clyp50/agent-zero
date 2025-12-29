@@ -101,6 +101,7 @@ Agent Zero supports direct file attachments in the chat interface for seamless f
 Agent Zero's power comes from its ability to use [tools](architecture.md#tools). Here's how to leverage them effectively:
 
 - **Understand Tools:** Agent Zero includes default tools like knowledge (powered by SearXNG), code execution, and communication. Understand the capabilities of these tools and how to invoke them.
+- **MCP Tools:** Once configured, MCP tools appear alongside built-in tools and can be called by name. See [MCP Client Setup](mcp_setup.md).
 
 ## Example of Tools Usage: Web Search and Code Execution
 Let's say you want Agent Zero to perform some financial analysis tasks. Here's a possible prompt:
@@ -136,6 +137,55 @@ Effective prompt engineering is crucial for getting the most out of Agent Zero. 
 * **Provide Context:** If necessary, provide background information or context to help the agent understand the task better. This might include relevant details, constraints, or desired format for the response.
 * **Break Down Complex Tasks:**  For complex tasks, break them down into smaller, more manageable sub-tasks.  This makes it easier for the agent to reason through the problem and generate a solution.
 * **Iterative Refinement:** Don't expect perfect results on the first try.  Experiment with different prompts, refine your instructions based on the agent's responses, and iterate until you achieve the desired outcome. To achieve a full-stack, web-app development task, for example, you might need to iterate for a few hours for 100% success.
+
+## Projects
+Projects provide isolated workspaces with their own instructions, memory, knowledge, secrets, and files. They are ideal for separating clients, long-running tasks, or separate research tracks.
+
+**What Projects give you:**
+- Context separation across chats and agents
+- Project-specific memory and knowledge imports
+- Project-scoped secrets and variables
+- A dedicated project folder for files
+
+> [!TIP]
+> Projects pair especially well with Tasks and Notifications. You can schedule tasks to run inside a project and get notified when they finish.
+
+See [Projects](extensibility.md#projects) for structure details and the project folder layout.
+
+## Secrets and Variables
+Use secrets for sensitive values (API keys, passwords) and variables for non-sensitive settings. The agent can reference these values by alias in prompts.
+
+- **Global secrets:** stored in `/a0/tmp/secrets.env`
+- **Project secrets:** stored in `/a0/usr/projects/<project>/.a0proj/secrets.env`
+
+> [!TIP]
+> For login automation, store credentials in secrets and instruct the agent to select the matching alias when prompted.
+
+## Tasks and Scheduling
+Agent Zero includes a built-in task scheduler. You can create tasks in two ways:
+
+- **Via UI:** Settings → Tasks Scheduler (schedule a task and choose a target agent/profile).
+- **Via prompts:** Ask the agent to schedule a task for a future time.
+
+Tasks can automatically open a chat at the scheduled time and run with dedicated context. This is particularly powerful when combined with Projects (project-specific context) and Notifications (status updates).
+
+## Notifications
+Agent Zero can display real-time notifications for task progress, errors, and system events.
+
+- Use notifications to track long-running tasks.
+- Combine with scheduled tasks to get “done” alerts without keeping a tab open.
+
+See the [Notifications guide](notifications.md) for code-level and UI usage.
+
+## Browser Agent Status
+The built-in browser agent currently has dependency issues on some systems. If you encounter failures, use MCP browser servers instead.
+
+Recommended alternatives:
+- **BrowserOS MCP**
+- **Chrome DevTools MCP**
+- **Playwright MCP**
+
+See [MCP Client Setup](mcp_setup.md) for configuration details.
 
 ## Voice Interface
 Agent Zero provides both Text-to-Speech (TTS) and Speech-to-Text (STT) capabilities for natural voice interaction:
@@ -190,6 +240,7 @@ Configure STT settings in the Settings page:
 > enhances user privacy while maintaining functionality.
 
 
+## Mathematical Expressions
 * **Complex Mathematics:** Supports full KaTeX syntax for:
   - Fractions, exponents, and roots
   - Matrices and arrays
@@ -330,6 +381,9 @@ Optionally clean up existing files before restoring:
 * **API Keys**: Backups include your API keys and sensitive configuration
 * **Secure Storage**: Store backup files securely and don't share them
 * **Clean Systems**: When restoring on new systems, verify all configurations
+
+> [!IMPORTANT]
+> Secrets are stored in `/a0/tmp/secrets.env`. If secrets are missing after a restore, copy this file manually.
 
 ### Common Use Cases
 

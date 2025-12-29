@@ -30,10 +30,9 @@ This architecture ensures:
 - Flexible deployment options for advanced users
 
 > [!NOTE]
-> The legacy approach of running Agent Zero directly on the host system (using Python, Conda, etc.) 
-> is still possible but requires Remote Function Calling (RFC) configuration through the Settings 
-> page. See [Full Binaries Installation](installation.md#in-depth-guide-for-full-binaries-installation) 
-> for detailed instructions.
+> The legacy approach of running Agent Zero directly on the host system (using Python, Conda, etc.)
+> is still possible but requires Remote Function Calling (RFC) configuration through the Settings
+> page. See the [development guide](development.md) for detailed instructions.
 
 ## Implementation Details
 
@@ -42,17 +41,19 @@ This architecture ensures:
 | --- | --- |
 | `/docker` | Docker-related files for runtime container |
 | `/docs` | Documentation files and guides |
+| `/agents` | Agent profiles (prompts, tools, extensions per profile) |
 | `/instruments` | Custom scripts and tools for runtime environment |
 | `/knowledge` | Knowledge base storage |
 | `/logs` | HTML CLI-style chat logs |
 | `/memory` | Persistent agent memory storage |
-| `/prompts` | System and tool prompts |
+| `/prompts` | Default system/tool prompt templates |
 | `/python` | Core Python codebase: |
 | `/api` | API endpoints and interfaces |
 | `/extensions` | Modular extensions |
 | `/helpers` | Utility functions |
 | `/tools` | Tool implementations |
 | `/tmp` | Temporary runtime data |
+| `/usr/projects` | Project workspaces and metadata |
 | `/webui` | Web interface components: |
 | `/css` | Stylesheets |
 | `/js` | JavaScript modules |
@@ -74,8 +75,7 @@ This architecture ensures:
 | `run_ui.py` | Web UI launcher |
 
 > [!NOTE]
-> When using the Docker runtime container, these directories are mounted 
-> within the `/a0` volume for data persistence until the container is restarted or deleted.
+> When using the Docker runtime container, these directories live under `/a0`. Persist data via Backup & Restore instead of mounting the entire `/a0` folder.
 
 ## Core Components
 Agent Zero's architecture revolves around the following key components:
@@ -122,6 +122,9 @@ Agent Zero comes with a set of built-in tools designed to help agents perform ta
 | response_tool | Allows agents to output a response |
 | memory_tool | Enables agents to save, load, delete and forget information from memory |
 
+#### MCP Tools
+Agent Zero can also consume tools provided by external MCP servers. Once configured, MCP tools appear to the agent just like built-in tools and are referenced by name (e.g., `server_name.tool_name`). See [MCP Client Setup](mcp_setup.md).
+
 #### SearXNG Integration
 Agent Zero has integrated SearXNG as its primary search tool, replacing the previous knowledge tools (Perplexity and DuckDuckGo). This integration enhances the agent's ability to retrieve information while ensuring user privacy and customization.
 
@@ -148,6 +151,9 @@ Users can create custom tools to extend Agent Zero's capabilities. Custom tools 
 4. Follow existing patterns for consistency
 
 > [!NOTE]
+> To scope a custom tool to a specific agent profile, place the tool prompt under `/agents/<agent_profile>/prompts/` and implement the tool under `/agents/<agent_profile>/tools/`.
+
+> [!NOTE]
 > Tools are always present in system prompt, so you should keep them to minimum. 
 > To save yourself some tokens, use the [Instruments module](#adding-instruments) 
 > to call custom scripts or functions.
@@ -161,6 +167,13 @@ The memory is categorized into four distinct areas:
 - **Fragments**: Contains pieces of information from previous conversations, updated automatically
 - **Solutions**: Stores successful solutions from past interactions for future reference
 - **Metadata**: Each memory entry includes metadata (IDs, timestamps), enabling efficient filtering and searching based on specific criteria
+
+> [!NOTE]
+> Embeddings are generated locally by default using a small on-disk model. On low-end hardware, embedding can still add noticeable overhead.
+
+#### Memory Management Tips
+- After long sessions, ask the agent to **“memorize learning opportunities from the current session.”**
+- For stable, reusable knowledge, distill it into custom prompts or project instructions.
 
 #### Messages History and Summarization
 
@@ -208,16 +221,16 @@ The `prompts` directory contains various Markdown files that control agent behav
 | agent.system.tool.*.md | Individual tool prompt files |
 
 #### Prompt Organization
-- **Default Prompts**: Located in `prompts/default/`, serve as the base configuration
-- **Custom Prompts**: Can be placed in custom subdirectories (e.g., `prompts/my-custom/`)
+- **Default Prompts**: Located in `/prompts`, serve as the base configuration
+- **Agent Profile Overrides**: Place overrides in `/agents/<agent_profile>/prompts/`
 - **Behavior Files**: Stored in memory as `behaviour.md`, containing dynamic rules
 - **Tool Prompts**: Organized in tool-specific files for modularity
 
 #### Custom Prompts
-1. Create directory in `prompts/` (e.g., `my-custom-prompts`)
-2. Copy and modify needed files from `prompts/default/`
-3. Agent Zero will merge your custom files with the default ones
-4. Select your custom prompts in the Settings page (Agent Config section)
+1. Choose or create an agent profile under `/agents/<agent_profile>/`
+2. Add a `prompts/` folder inside that profile
+3. Copy **only** the prompt files you want to override from `/prompts/`
+4. Select the profile in **Settings → Agent Config → Default agent profile**
 
 #### Dynamic Behavior System
 - **Behavior Adjustment**: 
@@ -245,8 +258,8 @@ The `prompts` directory contains various Markdown files that control agent behav
   - Maintains separation between core functionality and behavioral rules
 
 > [!NOTE]  
-> You can customize any of these files. Agent Zero will use the files in your custom `prompts_subdir` 
-> if they exist, otherwise, it will fall back to the files in `prompts/default`.
+> You can override any prompt file by placing it under `/agents/<agent_profile>/prompts/`.
+> Files that do not exist in the profile fallback to `/prompts/`.
 
 > [!TIP]
 > The behavior system allows for dynamic adjustments without modifying the base prompt files.
@@ -274,6 +287,10 @@ Instruments provide a way to add custom functionalities to Agent Zero without ad
 - Can modify agent behavior by introducing new procedures
 - Function calls or scripts to integrate with other systems
 - Scripts are run inside the Docker Container
+
+**Tools vs Instruments:**
+- **Tools** are always injected into the system prompt and available every turn.
+- **Instruments** are retrieved on-demand from memory, keeping the prompt smaller while still enabling reusable scripts.
 
 #### Adding Instruments
 1. Create folder in `instruments/custom` (no spaces in name)

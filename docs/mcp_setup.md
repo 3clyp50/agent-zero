@@ -2,6 +2,9 @@
 
 This guide explains how to configure and utilize external tool providers through the Model Context Protocol (MCP) with Agent Zero. This allows Agent Zero to leverage tools hosted by separate local or remote MCP-compliant servers.
 
+> [!NOTE]
+> Agent Zero can act as both an MCP **client** (this guide) and an MCP **server**. For server setup, see [Connectivity](connectivity.md#mcp-server-connectivity).
+
 ## What are MCP Servers?
 
 MCP servers are external processes or services that expose a set of tools that Agent Zero can use. Agent Zero acts as an MCP *client*, consuming tools made available by these servers. The integration supports three main types of MCP servers:
@@ -144,3 +147,14 @@ Once configured, successfully installed (if applicable, e.g., for `npx` based se
 *   **Execution Flow**: Agent Zero's `process_tools` method (with logic in `python/helpers/mcp_handler.py`) prioritizes looking up the tool name in the `MCPConfig`. If found, the execution is delegated to the corresponding MCP server. If not found as an MCP tool, it then attempts to find a local/built-in tool with that name.
 
 This setup provides a flexible way to extend Agent Zero's capabilities by integrating with various external tool providers without modifying its core codebase.
+
+## Recommended MCP Servers
+
+Community-tested MCP options include:
+- **BrowserOS MCP** (browser automation)
+- **Chrome DevTools MCP** (browser automation)
+- **Playwright MCP** (browser automation)
+- **n8n MCP integrations** (workflow automation)
+
+> [!TIP]
+> If Agent Zero is running in Docker, remote MCP servers (SSE or streaming HTTP) are often easier than stdio servers running on the host.

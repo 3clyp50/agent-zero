@@ -1,39 +1,42 @@
 # Quick Start
 This guide provides a quick introduction to using Agent Zero. We'll cover launching the web UI, starting a new chat, and running a simple task.
 
-## Launching the Web UI
-1. Make sure you have Agent Zero installed and your environment set up correctly (refer to the [Installation guide](installation.md) if needed).
-2. Open a terminal in the Agent Zero directory and activate your conda environment (if you're using one).
-3. Run the following command:
+## Launching the Web UI (Docker)
+1. Pull the latest image:
 
 ```bash
-python run_ui.py
+docker pull agent0ai/agent-zero:latest
 ```
 
-4.  A message similar to this will appear in your terminal, indicating the Web UI is running:
+2. Run the container and let Docker assign a port:
 
-![](res/flask_link.png)
+```bash
+docker run -p 0:80 agent0ai/agent-zero:latest
+```
 
-5. Open your web browser and navigate to the URL shown in the terminal (usually `http://127.0.0.1:50001`). You should see the Agent Zero Web UI.
+3. Find the mapped port:
+   - **Docker Desktop**: look under the container for `<PORT>:80`
+   - **CLI**: run `docker ps` and check the Ports column
 
-![New Chat](res/ui_newchat1.png)
+4. Open the Web UI in your browser:
+
+```
+http://localhost:<PORT>
+```
+
+5. Open **Settings** and configure your API keys and models.
 
 > [!TIP]
-> As you can see, the Web UI has four distinct buttons for easy chat management: 
-> `New Chat`, `Reset Chat`, `Save Chat`, and `Load Chat`.
-> Chats can be saved and loaded individually in `json` format and are stored in the
-> `/tmp/chats` directory.
+> If you are developing locally (not Docker), use `python run_ui.py` instead and follow the [development guide](development.md).
 
-    ![Chat Management](res/ui_chat_management.png)
+![New Chat](res/ui_newchat1.png)
 
 ## Running a Simple Task
 Let's ask Agent Zero to download a YouTube video. Here's how:
 
-1.  Type "Download a YouTube video for me" in the chat input field and press Enter or click the send button.
-
-2. Agent Zero will process your request.  You'll see its "thoughts" and the actions it takes displayed in the UI. It will find a default already existing solution, that implies using the `code_execution_tool` to run a simple Python script to perform the task.
-
-3. The agent will then ask you for the URL of the YouTube video you want to download.
+1. Type "Download a YouTube video for me" in the chat input field and press Enter or click the send button.
+2. Agent Zero will process your request. You'll see its thought process and tool calls in the UI.
+3. The agent will ask you for the URL of the YouTube video you want to download.
 
 ## Example Interaction
 Here's an example of what you might see in the Web UI at step 3:
@@ -49,6 +52,8 @@ Now that you've run a simple task, you can experiment with more complex requests
 * Create or modify files
 
 > [!TIP]
-> The [Usage Guide](usage.md) provides more in-depth information on using Agent 
-> Zero's various features, including prompt engineering, tool usage, and multi-agent 
-> cooperation.
+> The [Usage Guide](usage.md) provides more in-depth information on using Agent
+> Zero's various features, including prompt engineering, tool usage, projects, and scheduling.
+
+> [!NOTE]
+> Chat history is stored in `/a0/tmp/chats/` inside the container.

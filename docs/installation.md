@@ -4,7 +4,7 @@ Click to open a video to learn how to install Agent Zero:
 
 [![Easy Installation guide](/docs/res/easy_ins_vid.png)](https://www.youtube.com/watch?v=w5v5Kjx51hs)
 
-The following user guide provides instructions for installing and running Agent Zero using Docker, which is the primary runtime environment for the framework. For developers and contributors, we also provide instructions for setting up the [full development environment](#in-depth-guide-for-full-binaries-installation).
+The following user guide provides instructions for installing and running Agent Zero using Docker, which is the primary runtime environment for the framework. For developers and contributors, follow the [development guide](development.md) to set up a hybrid local + Docker workflow.
 
 
 ## Windows, macOS and Linux Setup Guide
@@ -58,7 +58,7 @@ The following user guide provides instructions for installing and running Agent 
 
 2. **Run Agent Zero:**
 
-- Note: Agent Zero also offers a Hacking Edition based on Kali linux with modified prompts for cybersecurity tasks. The setup is the same as the regular version, just use the agent0ai/agent-zero:hacking image instead of agent0ai/agent-zero.
+- Note: The Hacker Edition profile is included in the main Docker image. After first launch, select the `hacker` profile in **Settings → Agent Config → Default agent profile**.
 
 2.1. Pull the Agent Zero Docker image:
 - Search for `agent0ai/agent-zero` in Docker Desktop
@@ -74,27 +74,19 @@ The following user guide provides instructions for installing and running Agent 
 > docker pull agent0ai/agent-zero
 > ```
 
-2.2. OPTIONAL - Create a data directory for persistence:
+2.2. OPTIONAL - Create a host folder for working files:
 
 > [!CAUTION]
-> Preferred way of persisting Agent Zero data is to use the backup and restore feature.
-> By mapping the whole `/a0` directory to a local directory, you will run into problems when upgrading Agent Zero to a newer version.
+> The recommended way to persist Agent Zero data across upgrades is **Backup & Restore** in the Settings UI.
+> Do **not** map the entire `/a0` directory. It contains the application code and will cause upgrade conflicts.
 
-- Choose or create a directory on your machine where you want to store Agent Zero's data
-- This can be any location you prefer (e.g., `C:/agent-zero-data` or `/home/user/agent-zero-data`)
-- You can map individual subfolders of `/a0` to a local directory or the full `/a0` directory (not recommended).
-- This directory will contain all your Agent Zero files, like the legacy root folder structure:
-  - `/agents` - Specialized agents with their prompts and tools
-  - `/memory` - Agent's memory and learned information
-  - `/knowledge` - Knowledge base
-  - `/instruments` - Instruments and functions
-  - `/prompts` - Prompt files
-  - `.env` - Your API keys
-  - `/tmp/settings.json` - Your Agent Zero settings
+- If you want the agent to work with files from your host machine without attaching them, map **one specific folder**.
+- Examples:
+  - Map a working folder: `-v /path/to/your/data:/root/data`
+  - Map project files: `-v /path/to/your/projects:/a0/usr/projects`
 
 > [!TIP]
-> Choose a location that's easy to access and backup. All your Agent Zero data 
-> will be directly accessible in this directory.
+> Keep host mappings narrow and purpose-driven. Use Backup & Restore for settings, memories, and knowledge.
 
 2.3. Run the container:
 - In Docker Desktop, go back to the "Images" tab
@@ -102,13 +94,16 @@ The following user guide provides instructions for installing and running Agent 
 - Open the "Optional settings" menu
 - Set the web port (80) to desired host port number in the second "Host port" field or set to `0` for automatic port assignment
 
+> [!IMPORTANT]
+> The Web UI is served on container port **80**. You must map at least one host port to container port 80 (or set host to `0` for a random port) to access the UI.
+
 Optionally you can map local folders for file persistence:
 > [!CAUTION]
 > Preferred way of persisting Agent Zero data is to use the backup and restore feature.
 > By mapping the whole `/a0` directory to a local directory, you will run into problems when upgrading Agent Zero to a newer version.
 - OPTIONAL: Under "Volumes", configure your mapped folders, if needed:
-  - Example host path: Your chosen directory (e.g., `C:\agent-zero\memory`)
-  - Example container path: `/a0/memory`
+  - Example host path: Your chosen directory (e.g., `C:\agent-zero-data`)
+  - Example container path: `/root/data` or `/a0/usr/projects`
 
 
 - Click the `Run` button in the "Images" tab.
@@ -123,7 +118,7 @@ Optionally you can map local folders for file persistence:
 > [!TIP]
 > Alternatively, run the following command in your terminal:
 > ```bash
-> docker run -p $PORT:80 -v /path/to/your/data:/a0 agent0ai/agent-zero
+> docker run -p $PORT:80 -v /path/to/your/data:/root/data agent0ai/agent-zero
 > ```
 > - Replace `$PORT` with the port you want to use (e.g., `50080`)
 > - Replace `/path/to/your/data` with your chosen directory path
@@ -143,9 +138,7 @@ Optionally you can map local folders for file persistence:
 > You can also access the Web UI by clicking the ports right under the container ID in Docker Desktop.
 
 > [!NOTE]
-> After starting the container, you'll find all Agent Zero files in your chosen 
-> directory. You can access and edit these files directly on your machine, and 
-> the changes will be immediately reflected in the running container.
+> If you mapped a host folder (for example `/root/data` or `/a0/usr/projects`), you can access and edit those files directly on your machine. Changes are reflected immediately inside the running container.
 
 3. Configure Agent Zero
 - Refer to the following sections for a full guide on how to configure Agent Zero.
@@ -154,9 +147,12 @@ Optionally you can map local folders for file persistence:
 Agent Zero provides a comprehensive settings interface to customize various aspects of its functionality. Access the settings by clicking the "Settings"button with a gear icon in the sidebar.
 
 ### Agent Configuration
-- **Prompts Subdirectory:** Choose the subdirectory within `/prompts` for agent behavior customization. The 'default' directory contains the standard prompts.
+- **Default Agent Profile:** Select which profile under `/agents` the main agent should use (e.g., `agent0`, `hacker`, `researcher`).
 - **Memory Subdirectory:** Select the subdirectory for agent memory storage, allowing separation between different instances.
 - **Knowledge Subdirectory:** Specify the location of custom knowledge files to enhance the agent's understanding.
+
+> [!TIP]
+> Custom prompt overrides live in `/a0/agents/<agent_profile>/prompts/`. Place only the files you want to override; everything else falls back to the defaults in `/a0/prompts/`.
 
 ![settings](res/setup/settings/1-agentConfig.png)
 
@@ -176,6 +172,8 @@ Agent Zero provides a comprehensive settings interface to customize various aspe
 ### Embedding Model Settings
 - **Provider:** Choose the embedding model provider (e.g., OpenAI)
 - **Model Name:** Select the specific embedding model (e.g., text-embedding-3-small)
+> [!NOTE]
+> Agent Zero defaults to a small local embedding model. You can swap to OpenAI (`text-embedding-3-small` or `text-embedding-3-large`) if you prefer.
 
 ### Speech to Text Options
 - **Model Size:** Choose the speech recognition model size
@@ -185,6 +183,12 @@ Agent Zero provides a comprehensive settings interface to customize various aspe
 ### API Keys
 - Configure API keys for various service providers directly within the Web UI
 - Click `Save` to confirm your settings
+
+> [!TIP]
+> For OpenAI-compatible providers (including custom endpoints), add the key under **External Services → Other OpenAI Compatible API keys** and then select **OpenAI Compatible** as the provider for your model.
+
+> [!NOTE]
+> OpenAI Plus subscriptions do **not** include API credits. You must use an API key from the OpenAI API dashboard.
 
 > [!CAUTION]
 > **GitHub Copilot Provider:** When using the GitHub Copilot provider, after selecting the model and entering your first prompt, the OAuth login procedure will begin. You'll find the authentication code and link in the output logs. Complete the authentication process by following the provided link and entering the code, then you may continue using Agent Zero.
@@ -204,7 +208,7 @@ Agent Zero provides a comprehensive settings interface to customize various aspe
 ### Development Settings
 - **RFC Parameters (local instances only):** configure URLs and ports for remote function calls between instances
 - **RFC Password:** Configure password for remote function calls
-Learn more about Remote Function Calls and their purpose [here](#7-configure-agent-zero-rfc).
+Learn more about Remote Function Calls (RFC) in the [development guide](development.md).
 
 > [!IMPORTANT]
 > Always keep your API keys and passwords secure.
@@ -224,6 +228,28 @@ The Settings page is the control center for selecting the Large Language Models 
 3. Click "Save" to apply the changes.
 
 ## Important Considerations
+
+### Model Naming by Provider
+Make sure the model name matches the selected provider. A common error is using an OpenRouter-prefixed model name with a native provider.
+
+| Provider | Model Name Format | Example |
+| --- | --- | --- |
+| OpenAI | Model name only | `gpt-4.1` |
+| OpenRouter | Provider prefix required | `openai/gpt-4.1` |
+| Venice | Model name only (supports inline params) | `qwen3-235b:disable_thinking=true` |
+| Ollama | Model name only | `llama3.2` |
+
+> [!IMPORTANT]
+> Remove `openai/` from the model name when using the **OpenAI** provider. That prefix is for **OpenRouter** only.
+
+### Utility Model Sizing
+Utility models handle memory extraction and summarization. Very small models (e.g., 4B) are **not** reliable for memory extraction. Use a strong utility model (70B+ recommended) or a high-quality hosted model like Gemini Flash, GPT mini, or Grok Fast.
+
+### Context Window Tuning
+Set the **total context length** first (e.g., 100k), then adjust **Context Window Space** for how much of that should be reserved for chat history. The remaining space is used for system prompts, RAG, and responses. If you set a huge context window, even small proportions can still be massive (e.g., 0.3 of 1M = 300k).
+
+### Reasoning / Thinking Models
+Some reasoning models are slower and can overthink. If responses feel slow or get worse, try disabling reasoning or switching to a non-thinking variant.
 
 ## Installing and Using Ollama (Local Models)
 If you're interested in Ollama, which is a powerful tool that allows you to run various large language models locally, here's how to install and use it:
@@ -247,7 +273,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 ```
 
 **Finding Model Names:**
-Visit the [Ollama model library](https://ollama.com/library) for a list of available models and their corresponding names.  The format is usually `provider/model-name` (or just `model-name` in some cases).
+Visit the [Ollama model library](https://ollama.com/library) for a list of available models and their corresponding names. Use the model name exactly as listed (e.g., `llama3.2`, `qwen2.5:7b`).
 
 #### Second step: pulling the model
 **On Windows, macOS, and Linux:**
@@ -266,7 +292,9 @@ ollama pull <model-name>
 
 3. Write your model code as expected by Ollama, in the format `llama3.2` or `qwen2.5:7b`
 
-4. Provide your API base URL to your ollama API endpoint, usually `http://host.docker.internal:11434`
+4. Provide your API base URL to your Ollama API endpoint, usually `http://host.docker.internal:11434`
+   - If Ollama runs in another Docker container, put both containers on the same Docker network and use `http://<container_name>:11434`
+   - If Ollama runs on your host, ensure port **11434** is reachable from the Agent Zero container
 
 5. Click `Save` to confirm your settings.
 
@@ -293,7 +321,7 @@ Once you've downloaded some models, you might want to check which ones you have 
 Agent Zero's Web UI is accessible from any device on your network through the Docker container:
 
 > [!NOTE]
-> In settings, External Services tab, you can enable Cloudflare Tunnel to expose your Agent Zero instance to the internet.
+> In settings, External Services tab, you can enable Cloudflare Tunnel to expose your Agent Zero instance to the internet. See the [Tunnel guide](tunnel.md) for details.
 > ⚠️ Do not forget to set username and password in the settings Authentication tab to secure your instance on the internet.
 
 1. The Docker container automatically exposes the Web UI on all network interfaces
@@ -313,68 +341,43 @@ Agent Zero's Web UI is accessible from any device on your network through the Do
 > If you're running Agent Zero directly on your system (legacy approach) instead of 
 > using Docker, you'll need to configure the host manually in `run_ui.py` to run on all interfaces using `host="0.0.0.0"`.
 
-For developers or users who need to run Agent Zero directly on their system,see the [In-Depth Guide for Full Binaries Installation](#in-depth-guide-for-full-binaries-installation).
+For developers who need to run Agent Zero directly on their system, see the [development guide](development.md).
 
 # How to update Agent Zero
 
 > [!NOTE]
-> Since v0.9, Agent Zero has a Backup and Restore feature, so you don't need to backup the files manually.
-> In Settings, Backup and Restore tab will guide you through the process.
+> The safest upgrade path is to use **Backup & Restore** in the Settings UI.
+> Avoid mapping the entire `/a0` directory when upgrading.
 
-1. **If you come from the previous version of Agent Zero:**
-- Your data is safely stored across various directories and files inside the Agent Zero folder.
-- To update to the new Docker runtime version, you might want to backup the following files and directories:
-  - `/memory` - Agent's memory
-  - `/knowledge` - Custom knowledge base (if you imported any custom knowledge files)
-  - `/instruments` - Custom instruments and functions (if you created any custom)
-  - `/tmp/settings.json` - Your Agent Zero settings
-  - `/tmp/chats/` - Your chat history
-- Once you have saved these files and directories, you can proceed with the Docker runtime [installation instructions above](#windows-macos-and-linux-setup-guide) setup guide.
-- Reach for the folder where you saved your data and copy it to the new Agent Zero folder set during the installation process.
-- Agent Zero will automatically detect your saved data and use it across memory, knowledge, instruments, prompts and settings.
+## Recommended update flow (Docker Desktop or Docker CLI)
 
-> [!IMPORTANT]
-> If you have issues loading your settings, you can try to delete the `/tmp/settings.json` file and let Agent Zero generate a new one.
-> The same goes for chats in `/tmp/chats/`, they might be incompatible with the new version
-
-2. **Update Process (Docker Desktop)**
-- Go to Docker Desktop and stop the container from the "Containers" tab
-- Right-click and select "Remove" to remove the container
-- Go to "Images" tab and remove the `agent0ai/agent-zero` image or click the three dots to pull the difference and update the Docker image.
-
-![docker delete image](res/setup/docker-delete-image-1.png)
-
-- Search and pull the new image if you chose to remove it
-- Run the new container with the same volume settings as the old one
-
-> [!IMPORTANT]
-> Make sure to use the same volume mount path when running the new
-> container to preserve your data. The exact path depends on where you stored
-> your Agent Zero data directory (the chosen directory on your machine).
+1. **Create a backup** on your current instance: **Settings → Backup & Restore**.
+2. **Start a new container** with the latest image (keep the old container running until restore succeeds).
+3. **Restore the backup** in the new instance.
+4. **Copy secrets manually (if needed):**
+   - Secrets are stored in `/a0/tmp/secrets.env`.
+   - If secrets are missing after restore, copy this file to the new container.
 
 > [!TIP]
-> Alternatively, run the following commands in your terminal:
->
-> ```bash
-> # Stop the current container
-> docker stop agent-zero
->
-> # Remove the container (data is safe in the folder)
-> docker rm agent-zero
->
-> # Remove the old image
-> docker rmi agent0ai/agent-zero
->
-> # Pull the latest image
-> docker pull agent0ai/agent-zero
->
-> # Run new container with the same volume mount
-> docker run -p $PORT:80 -v /path/to/your/data:/a0 agent0ai/agent-zero
-> ```
+> Chat history is stored in `/a0/tmp/chats/`. If you need manual access for audits, that is the location.
+
+## CLI update example (Linux/VPS)
+
+```bash
+export IMAGE="agent0ai/agent-zero:latest"
+
+# Stop containers based on the image
+docker ps -a -q --filter ancestor=$IMAGE | xargs -r docker stop
+
+# Remove stopped containers
+docker ps -a -q --filter ancestor=$IMAGE | xargs -r docker rm
+
+# Pull latest image
+docker pull $IMAGE
+```
 
       
 ### Conclusion
 After following the instructions for your specific operating system, you should have Agent Zero successfully installed and running. You can now start exploring the framework's capabilities and experimenting with creating your own intelligent agents. 
 
 If you encounter any issues during the installation process, please consult the [Troubleshooting section](troubleshooting.md) of this documentation or refer to the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community for assistance.
-
