@@ -2,6 +2,9 @@
 
 This guide explains how to configure and utilize external tool providers through the Model Context Protocol (MCP) with Agent Zero. This allows Agent Zero to leverage tools hosted by separate local or remote MCP-compliant servers.
 
+> [!NOTE]
+> This guide covers Agent Zero as an MCP **client**. To expose Agent Zero as an MCP **server**, see [Connectivity → MCP Server](connectivity.md#mcp-server-connectivity).
+
 ## What are MCP Servers?
 
 MCP servers are external processes or services that expose a set of tools that Agent Zero can use. Agent Zero acts as an MCP *client*, consuming tools made available by these servers. The integration supports three main types of MCP servers:
@@ -20,6 +23,26 @@ Agent Zero discovers and integrates MCP tools dynamically:
 4.  **Tool Discovery**: Upon initialization (or when settings are updated), Agent Zero connects to each configured and enabled MCP server and queries it for the list of available tools, their descriptions, and expected parameters.
 5.  **Dynamic Prompting**: The information about these discovered tools is then dynamically injected into the agent's system prompt. A placeholder like `{{tools}}` in a system prompt template (e.g., `prompts/default/agent.system.mcp_tools.md`) is replaced with a formatted list of all available MCP tools. This allows the agent's underlying Language Model (LLM) to know which external tools it can request.
 6.  **Tool Invocation**: When the LLM decides to use an MCP tool, Agent Zero's `process_tools` method (handled by `mcp_handler.py`) identifies it as an MCP tool and routes the request to the appropriate `MCPConfig` helper, which then communicates with the designated MCP server to execute the tool.
+
+## Recommended MCP Servers
+Community-tested MCP servers include:
+
+- **Browser OS MCP** (browser automation)
+- **Chrome DevTools MCP** (browser automation)
+- **Playwright MCP** (browser automation)
+- **n8n MCP** (workflow automation)
+- **Gmail MCP** (email workflows)
+
+> [!TIP]
+> The built-in browser agent can be unreliable; MCP-based browser tools are the recommended alternative.
+
+## Docker Networking Notes
+If Agent Zero runs in Docker and your MCP server runs on the host:
+
+- Use `host.docker.internal` when available (macOS/Windows).
+- On Linux, run the MCP server in the same Docker network and reference it by container name.
+
+If your MCP server is remote, use its HTTPS URL in the configuration.
 
 ## Configuration
 

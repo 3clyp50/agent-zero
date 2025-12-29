@@ -2,14 +2,20 @@
 # Agent Zero Documentation
 To begin with Agent Zero, follow the links below for detailed guides on various topics:
 
+- **[Quickstart](quickstart.md):** Launch the UI and run a first task.
 - **[Installation](installation.md):** Set up (or [update](installation.md#how-to-update-agent-zero)) Agent Zero on your system.
-- **[Usage Guide](usage.md):** Explore GUI features and usage scenarios.
-- **[Development](development.md):** Set up a development environment for Agent Zero.
-- **[Extensibility](extensibility.md):** Learn how to create custom extensions for Agent Zero.
-- **[Connectivity](connectivity.md):** Learn how to connect to Agent Zero from other applications.
+- **[Usage Guide](usage.md):** Explore GUI features, projects, tasks, and workflows.
 - **[Architecture Overview](architecture.md):** Understand the internal workings of the framework.
+- **[Extensibility](extensibility.md):** Learn how to create custom extensions, tools, instruments, and prompts.
+- **[Connectivity](connectivity.md):** Learn how to connect to Agent Zero from other applications.
+- **[MCP Setup](mcp_setup.md):** Configure Agent Zero as an MCP client for external tools.
+- **[Notifications](notifications.md):** Use the notification system in the UI and backend.
+- **[Tunnel](tunnel.md):** Expose your instance securely with Cloudflare tunnels.
+- **[Development](development.md):** Set up a development environment for Agent Zero.
 - **[Contributing](contribution.md):** Learn how to contribute to the Agent Zero project.
 - **[Troubleshooting and FAQ](troubleshooting.md):** Find answers to common issues and questions.
+- **[Design Specs](designs/):** Technical specifications for larger features.
+- **[Documentation Audit](audit-report.md):** Current documentation audit and update plan.
 
 ### Your experience with Agent Zero starts now!
 
@@ -31,6 +37,7 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
   - [Using Agent Zero on Mobile](installation.md#using-agent-zero-on-your-mobile-device)
   - [How to Update Agent Zero](installation.md#how-to-update-agent-zero)
   - [Full Binaries Installation](installation.md#in-depth-guide-for-full-binaries-installation)
+- [Quickstart](quickstart.md)
 - [Usage Guide](usage.md)
   - [Basic Operations](usage.md#basic-operations)
     - [Restart Framework](usage.md#restart-framework)
@@ -39,7 +46,10 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
   - [Tool Usage](usage.md#tool-usage)
   - [Example of Tools Usage](usage.md#example-of-tools-usage-web-search-and-code-execution)
   - [Multi-Agent Cooperation](usage.md#multi-agent-cooperation)
+  - [Projects](usage.md#projects)
+  - [Tasks & Scheduling](usage.md#tasks--scheduling)
   - [Prompt Engineering](usage.md#prompt-engineering)
+  - [Secrets & Variables](usage.md#secrets--variables)
   - [Voice Interface](usage.md#voice-interface)
   - [Mathematical Expressions](usage.md#mathematical-expressions)
   - [File Browser](usage.md#file-browser)
@@ -53,7 +63,7 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
     - [Tools](architecture.md#2-tools)
     - [SearXNG Integration](architecture.md#searxng-integration)
     - [Memory System](architecture.md#3-memory-system)
-    - [Messages History and Summarization](archicture.md#messages-history-and-summarization)
+    - [Messages History and Summarization](architecture.md#messages-history-and-summarization)
     - [Prompts](architecture.md#4-prompts)
     - [Knowledge](architecture.md#5-knowledge)
     - [Instruments](architecture.md#6-instruments)
@@ -66,3 +76,12 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
 - [Troubleshooting and FAQ](troubleshooting.md)
   - [Frequently Asked Questions](troubleshooting.md#frequently-asked-questions)
   - [Troubleshooting](troubleshooting.md#troubleshooting)
+- [Connectivity](connectivity.md)
+- [MCP Setup](mcp_setup.md)
+- [Notifications](notifications.md)
+- [Tunnel](tunnel.md)
+- [Development](development.md)
+- [Extensibility](extensibility.md)
+- [Contributing](contribution.md)
+- [Design Specs](designs/)
+- [Documentation Audit](audit-report.md)

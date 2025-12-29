@@ -99,6 +99,18 @@ When a tool is called, it goes through the following lifecycle:
 3. `execute` method (main functionality)
 4. `after_execution` method
 
+### Instruments
+Instruments are reusable scripts and procedures stored on disk and indexed in memory. They are **not** always present in the system prompt, making them lighter-weight than tools for specialized workflows.
+
+- **When to use tools:** core capabilities you want always available in the prompt
+- **When to use instruments:** repeatable scripts or procedures that can be recalled on demand
+
+#### Creating Instruments
+1. Create a folder in `instruments/custom/` (no spaces in name)
+2. Add a `.md` description file explaining inputs/outputs
+3. Add a script (`.sh`, `.py`, etc.) with the implementation
+4. Restart or reload so the agent indexes the instrument
+
 ### API Endpoints
 API endpoints expose Agent Zero functionality to external systems or the user interface. They are modular and can be extended or replaced.
 
@@ -119,6 +131,9 @@ Prompts define the instructions and context provided to the LLM. They are highly
 Prompts are located in:
 - Default prompts: `/prompts/`
 - Agent-specific prompts: `/agents/{agent_profile}/prompts/`
+
+> [!NOTE]
+> Since v0.9.7, custom prompts should be placed under `agents/<agent_profile>/prompts/` instead of a shared `prompts` subdirectory.
 
 #### Prompt Features
 Agent Zero's prompt system supports several powerful features:
@@ -244,6 +259,8 @@ In this example:
 
 Projects provide isolated workspaces for individual chats, keeping prompts, memory, knowledge, files, and secrets scoped to a specific use case.
 
+Projects are ideal for multi-client or multi-domain work because each project can have **its own agent/subagents and context windows**, preventing context mixing. They are especially powerful when combined with the Tasks scheduler.
+
 ### Project Location and Structure
 
 - Projects are located under `/a0/usr/projects/`
@@ -293,6 +310,8 @@ Projects are the recommended way to create specialized workflows in Agent Zero w
 - Isolate file context, knowledge, and memory for a particular task or client
 - Keep passwords and other secrets scoped to a single workspace
 - Run multiple independent flows side by side under the same Agent Zero installation
+
+See [Usage → Tasks & Scheduling](usage.md#tasks--scheduling) for how to pair projects with scheduled tasks.
 
 ## Best Practices
 - Keep extensions focused on a single responsibility

@@ -102,6 +102,15 @@ Agent Zero's power comes from its ability to use [tools](architecture.md#tools).
 
 - **Understand Tools:** Agent Zero includes default tools like knowledge (powered by SearXNG), code execution, and communication. Understand the capabilities of these tools and how to invoke them.
 
+### Browser Agent Status & MCP Alternatives
+The built-in browser agent currently has dependency issues on some systems. If web automation is critical, prefer MCP-based browser tools instead:
+
+- **Browser OS MCP**
+- **Chrome DevTools MCP**
+- **Playwright MCP**
+
+See [MCP Setup](mcp_setup.md) for configuration guidance and recommended servers.
+
 ## Example of Tools Usage: Web Search and Code Execution
 Let's say you want Agent Zero to perform some financial analysis tasks. Here's a possible prompt:
 
@@ -129,6 +138,25 @@ One of Agent Zero's unique features is multi-agent cooperation.
 ![](res/physics.png)
 ![](res/physics-2.png)
 
+## Projects
+Projects create isolated workspaces with their own context, instructions, memory, and secrets. This prevents context bleed between unrelated tasks or clients.
+
+- Project files live under `/a0/usr/projects/<project_name>/`
+- Project instructions are automatically injected from `.a0proj/instructions/`
+- Project memory and knowledge are stored separately from global memory
+
+See [Projects in Extensibility](extensibility.md#projects) for structure details and file locations.
+
+## Tasks & Scheduling
+Tasks allow Agent Zero to spawn scheduled or on-demand work in separate contexts.
+
+- **Schedule from UI:** Settings → Tasks Scheduler can run a task at a specified time.
+- **Schedule from chat:** ask the agent to create a task for a future time.
+- **Dedicated context:** each task runs in its own chat context, which pairs well with Projects.
+
+> [!TIP]
+> Combine **Projects + Tasks + Notifications** for recurring, scoped workflows (e.g., daily inbox summaries). See [Notifications](notifications.md) for alerts.
+
 ## Prompt Engineering
 Effective prompt engineering is crucial for getting the most out of Agent Zero. Here are some tips and techniques:
 
@@ -136,6 +164,17 @@ Effective prompt engineering is crucial for getting the most out of Agent Zero. 
 * **Provide Context:** If necessary, provide background information or context to help the agent understand the task better. This might include relevant details, constraints, or desired format for the response.
 * **Break Down Complex Tasks:**  For complex tasks, break them down into smaller, more manageable sub-tasks.  This makes it easier for the agent to reason through the problem and generate a solution.
 * **Iterative Refinement:** Don't expect perfect results on the first try.  Experiment with different prompts, refine your instructions based on the agent's responses, and iterate until you achieve the desired outcome. To achieve a full-stack, web-app development task, for example, you might need to iterate for a few hours for 100% success.
+
+## Secrets & Variables
+Use the Settings → **Secrets** and **Variables** fields to store credentials and non-sensitive configuration values.
+
+- **Secrets** (sensitive): API keys, passwords, tokens
+- **Variables** (non-sensitive): URLs, usernames, flags
+
+You can reference these values in prompts by name. For example, store `MY_GMAIL` as a secret and instruct the agent to use it when prompted.
+
+> [!IMPORTANT]
+> Secrets are stored in `/a0/tmp/secrets.env`. Keep a manual copy if you rely on backups, as secrets are not always preserved by Backup & Restore.
 
 ## Voice Interface
 Agent Zero provides both Text-to-Speech (TTS) and Speech-to-Text (STT) capabilities for natural voice interaction:
@@ -189,7 +228,7 @@ Configure STT settings in the Settings page:
 > ensuring that no data is transmitted to external servers or OpenAI APIs. This
 > enhances user privacy while maintaining functionality.
 
-
+## Mathematical Expressions
 * **Complex Mathematics:** Supports full KaTeX syntax for:
   - Fractions, exponents, and roots
   - Matrices and arrays
@@ -261,6 +300,9 @@ By default, Agent Zero backs up your most important data:
 * **Configuration Files**: Settings, API keys, and system preferences
 * **Custom Instruments**: Any tools you've added or modified
 * **Uploaded Files**: Documents and files you've worked with
+
+> [!NOTE]
+> Chat history is stored at `/a0/tmp/chats/` inside the container.
 
 #### Customizing Backup Content
 Before creating a backup, you can customize what to include:

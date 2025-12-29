@@ -3,37 +3,54 @@ This page addresses frequently asked questions (FAQ) and provides troubleshootin
 
 ## Frequently Asked Questions
 **1. How do I ask Agent Zero to work directly on my files or dirs?**
--   Place the files/dirs in the `work_dir` directory. Agent Zero will be able to perform tasks on them. The `work_dir` directory is located in the root directory of the Docker Container.
+- Place the files/dirs in `/a0/work_dir`. Agent Zero will be able to perform tasks on them.
 
 **2. When I input something in the chat, nothing happens. What's wrong?**
--   Check if you have set up API keys in the Settings page. If not, the application will not be able to communicate with the endpoints it needs to run LLMs and to perform tasks.
+- Check if you have set up API keys in the Settings page. If not, the application cannot call LLM providers.
 
-**3. How do I integrate open-source models with Agent Zero?**
-Refer to the [Choosing your LLMs](installation.md#installing-and-using-ollama-local-models) section of the documentation for detailed instructions and examples for configuring different LLMs. Local models can be run using Ollama or LM Studio.
+**3. I get “Invalid model ID.” What does that mean?**
+- Verify the **provider** and **model naming**. For example, `openai/gpt-4.1` is correct for OpenRouter, but **incorrect** for the native OpenAI provider.
+
+**4. Does ChatGPT Plus include API access?**
+- No. ChatGPT Plus does not include API credits. You must provide an OpenAI API key in Settings.
+
+**5. Where is chat history stored?**
+- Chat history lives at `/a0/tmp/chats/` inside the container.
+
+**6. How do I integrate open-source models with Agent Zero?**
+Refer to the [Choosing your LLMs](installation.md#installing-and-using-ollama-local-models) section for configuring local models (Ollama, LM Studio, etc.).
 
 > [!TIP]
-> Some LLM providers offer free usage of their APIs, for example Groq, Mistral, SambaNova or CometAPI.
+> Some LLM providers offer free usage tiers, for example Groq, Mistral, SambaNova, or CometAPI.
 
-**6. How can I make Agent Zero retain memory between sessions?**
-Refer to the [How to update Agent Zero](installation.md#how-to-update-agent-zero) section of the documentation for instructions on how to update Agent Zero while retaining memory and data.
+**7. How can I make Agent Zero retain memory between sessions?**
+Use **Settings → Backup & Restore** and avoid mapping the entire `/a0` directory. See [How to update Agent Zero](installation.md#how-to-update-agent-zero).
 
-**7. Where can I find more documentation or tutorials?**
--   Join the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community for support and discussions.
+**8. My browser agent fails or is unreliable. What now?**
+The built-in browser agent is currently unstable on some systems. Use MCP alternatives such as Browser OS, Chrome DevTools, or Playwright. See [MCP Setup](mcp_setup.md).
 
-**8. How do I adjust API rate limits?**
+**9. My secrets disappeared after a backup restore.**
+Secrets are stored in `/a0/tmp/secrets.env` and are not always included in backup archives. Copy them manually.
+
+**10. Where can I find more documentation or tutorials?**
+- Join the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community.
+
+**11. How do I adjust API rate limits?**
 Modify the `rate_limit_seconds` and `rate_limit_requests` parameters in the `AgentConfig` class within `initialize.py`.
 
-**9. My code_execution_tool doesn't work, what's wrong?**
--   Ensure you have Docker installed and running.  If using Docker Desktop on macOS, grant it access to your project files in Docker Desktop's settings.  Check the [Installation guide](installation.md#4-install-docker-docker-desktop-application) for more details.
--   Verify that the Docker image is updated.
+**12. My `code_execution_tool` doesn't work, what's wrong?**
+- Ensure Docker is installed and running.
+- On macOS, grant Docker Desktop access to your project files.
+- Verify that the Docker image is updated.
 
-**10. Can Agent Zero interact with external APIs or services (e.g., WhatsApp)?**
-Extending Agent Zero to interact with external APIs is possible by creating custom tools or solutions. Refer to the documentation on creating them. 
+**13. Can Agent Zero interact with external APIs or services (e.g., WhatsApp)?**
+Yes, by creating custom tools or using MCP servers. See [Extensibility](extensibility.md) and [MCP Setup](mcp_setup.md).
 
 ## Troubleshooting
 
 **Installation**
 - **Docker Issues:** If Docker containers fail to start, consult the Docker documentation and verify your Docker installation and configuration.  On macOS, ensure you've granted Docker access to your project files in Docker Desktop's settings as described in the [Installation guide](installation.md#4-install-docker-docker-desktop-application). Verify that the Docker image is updated.
+- **Web UI not reachable:** Ensure at least one host port is mapped to container port `80`. If you used `0:80`, check the assigned port in Docker Desktop.
 
 **Usage**
 

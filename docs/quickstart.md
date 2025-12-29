@@ -1,6 +1,9 @@
 # Quick Start
 This guide provides a quick introduction to using Agent Zero. We'll cover launching the web UI, starting a new chat, and running a simple task.
 
+> [!NOTE]
+> The recommended runtime is Docker. If you want the simplest setup, follow the [Installation guide](installation.md). This quickstart is aimed at local/dev runs.
+
 ## Launching the Web UI
 1. Make sure you have Agent Zero installed and your environment set up correctly (refer to the [Installation guide](installation.md) if needed).
 2. Open a terminal in the Agent Zero directory and activate your conda environment (if you're using one).
