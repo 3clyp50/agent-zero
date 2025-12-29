@@ -2,43 +2,47 @@
 This page addresses frequently asked questions (FAQ) and provides troubleshooting steps for common issues encountered while using Agent Zero.
 
 ## Frequently Asked Questions
-**1. How do I ask Agent Zero to work directly on my files or dirs?**
--   Place the files/dirs in the `work_dir` directory. Agent Zero will be able to perform tasks on them. The `work_dir` directory is located in the root directory of the Docker Container.
+
+**1. How do I ask Agent Zero to work directly on my files or directories?**
+- Place the files/dirs in `/a0/work_dir` (or map that folder from your host). Agent Zero will operate inside this working directory by default.
 
 **2. When I input something in the chat, nothing happens. What's wrong?**
--   Check if you have set up API keys in the Settings page. If not, the application will not be able to communicate with the endpoints it needs to run LLMs and to perform tasks.
+- Check that API keys are configured in **Settings → External Services**. Without valid keys, Agent Zero cannot call LLM providers.
 
 **3. How do I integrate open-source models with Agent Zero?**
-Refer to the [Choosing your LLMs](installation.md#installing-and-using-ollama-local-models) section of the documentation for detailed instructions and examples for configuring different LLMs. Local models can be run using Ollama or LM Studio.
+- Refer to [Installing and Using Ollama](installation.md#installing-and-using-ollama-local-models) for local model setup. LM Studio can also be used via OpenAI-compatible APIs.
 
-> [!TIP]
-> Some LLM providers offer free usage of their APIs, for example Groq, Mistral, SambaNova or CometAPI.
+**4. Where is chat history stored?**
+- Chat history JSON files live in `/a0/tmp/chats/` inside the container.
 
-**6. How can I make Agent Zero retain memory between sessions?**
-Refer to the [How to update Agent Zero](installation.md#how-to-update-agent-zero) section of the documentation for instructions on how to update Agent Zero while retaining memory and data.
+**5. How do I retain memory and settings between updates?**
+- Use **Settings → Backup & Restore** to export and restore data between versions.
 
-**7. Where can I find more documentation or tutorials?**
--   Join the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community for support and discussions.
+**6. I lost secrets after a backup/restore.**
+- Secrets are stored in `/a0/tmp/secrets.env` and are **not** included in backups. Copy this file manually.
 
-**8. How do I adjust API rate limits?**
-Modify the `rate_limit_seconds` and `rate_limit_requests` parameters in the `AgentConfig` class within `initialize.py`.
-
-**9. My code_execution_tool doesn't work, what's wrong?**
--   Ensure you have Docker installed and running.  If using Docker Desktop on macOS, grant it access to your project files in Docker Desktop's settings.  Check the [Installation guide](installation.md#4-install-docker-docker-desktop-application) for more details.
--   Verify that the Docker image is updated.
-
-**10. Can Agent Zero interact with external APIs or services (e.g., WhatsApp)?**
-Extending Agent Zero to interact with external APIs is possible by creating custom tools or solutions. Refer to the documentation on creating them. 
+**7. Why does OpenAI say I have no credits even though I have Plus?**
+- OpenAI Plus subscriptions do **not** include API credits. You need a separate API key.
 
 ## Troubleshooting
 
-**Installation**
-- **Docker Issues:** If Docker containers fail to start, consult the Docker documentation and verify your Docker installation and configuration.  On macOS, ensure you've granted Docker access to your project files in Docker Desktop's settings as described in the [Installation guide](installation.md#4-install-docker-docker-desktop-application). Verify that the Docker image is updated.
+### Installation & Docker
+- **Web UI not reachable:** Ensure at least one host port is mapped to container port `80` (e.g., `0:80` for random).
+- **Ollama connection issues:** Expose port `11434` and use `http://host.docker.internal:11434` or `http://containerName:11434` if on the same Docker network.
 
-**Usage**
+### Models & Providers
+- **Invalid model ID:** Make sure the model name format matches the provider. Remove `openai/` prefix for OpenAI; use it for OpenRouter.
+- **Context window errors:** Set total context length first (e.g., `100k`), then set the history ratio. Very high total sizes can cause confusion.
+- **Temperature parameter errors:** If a provider rejects `temperature=0`, remove the custom parameter from all model configs.
 
-- **Terminal commands not executing:** Ensure the Docker container is running and properly configured.  Check SSH settings if applicable. Check if the Docker image is updated by removing it from Docker Desktop app, and subsequently pulling it again.
+### Browser Agent
+- **Browser agent failing or unstable:** This is a known issue. Prefer MCP alternatives such as Browser OS, Chrome DevTools MCP, or Playwright MCP. See [MCP Setup](mcp_setup.md).
 
-* **Error Messages:** Pay close attention to the error messages displayed in the Web UI or terminal.  They often provide valuable clues for diagnosing the issue. Refer to the specific error message in online searches or community forums for potential solutions.
+### UI & Responses
+- **Large responses appear truncated:** The UI stores responses longer than ~500 characters in files to prevent freezing. Ask the agent to open the file or check the file browser.
 
-* **Performance Issues:** If Agent Zero is slow or unresponsive, it might be due to resource limitations, network latency, or the complexity of your prompts and tasks, especially when using local models.
+### Performance
+- **Agent is slow with local models:** Remember that Docker adds overhead. Consider reducing context length or using a stronger model for utility/memory tasks.
+
+> [!TIP]
+> If the agent gets stuck after changing settings, start a **new chat**. It’s often easier to reset than to convince an agent to change course mid-session.

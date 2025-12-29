@@ -550,7 +550,10 @@ It provides two endpoint types:
 
 Below is an example of a `mcp.json` configuration file that a client could use to connect to the Agent Zero MCP server. 
 
-**Note:** You can find your personalized connection URLs under `Settings > MCP Server > MCP Server`.
+**Note:** You can find your personalized connection URLs under `Settings > MCP Server`.
+
+> [!TIP]
+> If you want Agent Zero to consume tools from external MCP servers (client mode), see [MCP Setup](mcp_setup.md).
 
 ```json
 {
@@ -573,6 +576,9 @@ Below is an example of a `mcp.json` configuration file that a client could use t
 ## A2A (Agent-to-Agent) Connectivity
 
 Agent Zero's A2A Server enables communication with other agents using the FastA2A protocol. Other agents can connect to your instance using the connection URL.
+
+> [!NOTE]
+> For context separation *within* a single instance, consider [Projects](usage.md#projects). A2A is best when connecting separate Agent Zero instances or external agents.
 
 ### A2A Connection URL
 

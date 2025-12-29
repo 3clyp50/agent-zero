@@ -2,14 +2,19 @@
 # Agent Zero Documentation
 To begin with Agent Zero, follow the links below for detailed guides on various topics:
 
+- **[Quickstart](quickstart.md):** Launch the Web UI quickly (Docker-first).
 - **[Installation](installation.md):** Set up (or [update](installation.md#how-to-update-agent-zero)) Agent Zero on your system.
 - **[Usage Guide](usage.md):** Explore GUI features and usage scenarios.
 - **[Development](development.md):** Set up a development environment for Agent Zero.
 - **[Extensibility](extensibility.md):** Learn how to create custom extensions for Agent Zero.
 - **[Connectivity](connectivity.md):** Learn how to connect to Agent Zero from other applications.
+- **[MCP Setup](mcp_setup.md):** Configure Agent Zero as an MCP client for external tools.
+- **[Notifications](notifications.md):** Configure notifications and delivery channels.
+- **[Tunnel Setup](tunnel.md):** Expose Agent Zero safely with Cloudflare Tunnel.
 - **[Architecture Overview](architecture.md):** Understand the internal workings of the framework.
 - **[Contributing](contribution.md):** Learn how to contribute to the Agent Zero project.
 - **[Troubleshooting and FAQ](troubleshooting.md):** Find answers to common issues and questions.
+- **[Design Specifications](designs/backup-specification-frontend.md):** Reference UI/UX specs for core systems.
 
 ### Your experience with Agent Zero starts now!
 
@@ -23,6 +28,7 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
 - [Welcome to the Agent Zero Documentation](#agent-zero-documentation)
   - [Your Experience with Agent Zero](#your-experience-with-agent-zero-starts-now)
   - [Table of Contents](#table-of-contents)
+- [Quickstart](quickstart.md)
 - [Installation Guide](installation.md)
   - [Windows, macOS and Linux Setup](installation.md#windows-macos-and-linux-setup-guide)
   - [Settings Configuration](installation.md#settings-configuration)
@@ -44,6 +50,10 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
   - [Mathematical Expressions](usage.md#mathematical-expressions)
   - [File Browser](usage.md#file-browser)
   - [Backup & Restore](usage.md#backup--restore)
+- [MCP Setup](mcp_setup.md)
+- [Connectivity](connectivity.md)
+- [Notifications](notifications.md)
+- [Tunnel](tunnel.md)
 - [Architecture Overview](architecture.md)
   - [System Architecture](architecture.md#system-architecture)
   - [Runtime Architecture](architecture.md#runtime-architecture)
@@ -53,7 +63,7 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
     - [Tools](architecture.md#2-tools)
     - [SearXNG Integration](architecture.md#searxng-integration)
     - [Memory System](architecture.md#3-memory-system)
-    - [Messages History and Summarization](archicture.md#messages-history-and-summarization)
+    - [Messages History and Summarization](architecture.md#messages-history-and-summarization)
     - [Prompts](architecture.md#4-prompts)
     - [Knowledge](architecture.md#5-knowledge)
     - [Instruments](architecture.md#6-instruments)
@@ -66,3 +76,4 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
 - [Troubleshooting and FAQ](troubleshooting.md)
   - [Frequently Asked Questions](troubleshooting.md#frequently-asked-questions)
   - [Troubleshooting](troubleshooting.md#troubleshooting)
+- [Design Specifications](designs/backup-specification-frontend.md)

@@ -99,6 +99,13 @@ When a tool is called, it goes through the following lifecycle:
 3. `execute` method (main functionality)
 4. `after_execution` method
 
+### Instruments
+Instruments are reusable scripts or procedures that live outside the system prompt. They are meant for repeatable workflows without inflating the prompt token budget.
+
+- **Location:** `/a0/instruments/custom/<instrument_name>/`
+- **Files:** an `.md` description + an executable script (shell, Python, etc.)
+- **Usage:** ask the agent to create or use the instrument; it is stored and recalled when needed
+
 ### API Endpoints
 API endpoints expose Agent Zero functionality to external systems or the user interface. They are modular and can be extended or replaced.
 
@@ -117,8 +124,8 @@ Helpers are located in:
 Prompts define the instructions and context provided to the LLM. They are highly extensible and can be customized for different agents.
 
 Prompts are located in:
-- Default prompts: `/prompts/`
-- Agent-specific prompts: `/agents/{agent_profile}/prompts/`
+- Default prompts: `/a0/prompts/default/`
+- Agent-specific overrides: `/a0/agents/{agent_profile}/prompts/`
 
 #### Prompt Features
 Agent Zero's prompt system supports several powerful features:
@@ -169,7 +176,7 @@ Then in your `agent.system.tools.md` prompt file, you can use:
 {{tools}}
 ```
 
-This approach allows for highly dynamic prompts that can adapt based on available extensions, configurations, or runtime conditions. See existing examples in the `/prompts/` directory for reference implementations.
+This approach allows for highly dynamic prompts that can adapt based on available extensions, configurations, or runtime conditions. See existing examples in the `/a0/prompts/` directory for reference implementations.
 
 ##### File Includes
 Prompts can include content from other prompt files using the `{{ include "path/to/file.md" }}` syntax. This allows for modular prompt design and reuse.
@@ -193,7 +200,7 @@ Similar to extensions and tools, prompts follow an override pattern. When the ag
 ```markdown
 > !!!
 > This is an example prompt file redefinition.
-> The original file is located at /prompts.
+> The original file is located at /a0/prompts/default.
 > Only copy and modify files you need to change, others will stay default.
 > !!!
 
@@ -201,28 +208,31 @@ Similar to extensions and tools, prompts follow an override pattern. When the ag
 You are Agent Zero, a sci-fi character from the movie "Agent Zero".
 ```
 
-This example overrides the default role definition in `/prompts/agent.system.main.role.md` with a custom one for a specific agent profile.
+This example overrides the default role definition in `/a0/prompts/default/agent.system.main.role.md` with a custom one for a specific agent profile.
 
 ## Subagent Customization
 Agent Zero supports creating specialized subagents with customized behavior. The `_example` agent in the `/agents/_example/` directory demonstrates this pattern.
 
 ### Creating a Subagent
 
-1. Create a directory in `/agents/{agent_profile}/`
+1. Create a directory in `/a0/agents/{agent_profile}/`
 2. Override or extend default components by mirroring the structure in the root directories:
-   - `/agents/{agent_profile}/extensions/` - for custom extensions
-   - `/agents/{agent_profile}/tools/` - for custom tools
-   - `/agents/{agent_profile}/prompts/` - for custom prompts
-   - `/agents/{agent_profile}/settings.json` - for agent-specific configuration overrides
+   - `/a0/agents/{agent_profile}/extensions/` - for custom extensions
+   - `/a0/agents/{agent_profile}/tools/` - for custom tools
+   - `/a0/agents/{agent_profile}/prompts/` - for custom prompt overrides (only files you change)
+   - `/a0/agents/{agent_profile}/settings.json` - for agent-specific configuration overrides
 
 The `settings.json` file for an agent uses the same structure as `tmp/settings.json`, but you only need to specify the fields you want to override. Any field omitted from the agent-specific `settings.json` will continue to use the global value.
 
 This allows power users to, for example, change the AI model, context window size, or other settings for a single agent without affecting the rest of the system.
 
+> [!NOTE]
+> The **hacker** profile ships in the main Docker image. Select it in Settings → Agent Configuration to enable the cybersecurity-focused prompt set.
+
 ### Example Subagent Structure
 
 ```
-/agents/_example/
+/a0/agents/_example/
 ├── extensions/
 │   └── agent_init/
 │       └── _10_example_extension.py
@@ -243,6 +253,8 @@ In this example:
 ## Projects
 
 Projects provide isolated workspaces for individual chats, keeping prompts, memory, knowledge, files, and secrets scoped to a specific use case.
+
+Projects are designed for **context separation**: each project can maintain its own memory and instructions without leaking into other workspaces. This is especially useful for multiple clients or parallel initiatives.
 
 ### Project Location and Structure
 
