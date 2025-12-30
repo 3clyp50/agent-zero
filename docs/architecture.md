@@ -32,8 +32,7 @@ This architecture ensures:
 > [!NOTE]
 > The legacy approach of running Agent Zero directly on the host system (using Python, Conda, etc.) 
 > is still possible but requires Remote Function Calling (RFC) configuration through the Settings 
-> page. See [Full Binaries Installation](installation.md#in-depth-guide-for-full-binaries-installation) 
-> for detailed instructions.
+> page. See the [development guide](development.md) for detailed instructions.
 
 ## Implementation Details
 
@@ -47,33 +46,36 @@ This architecture ensures:
 | `/knowledge` | Knowledge base storage |
 | `/logs` | HTML CLI-style chat logs |
 | `/memory` | Persistent agent memory storage |
-| `/prompts` | System and tool prompts |
-| `/python` | Core Python codebase: |
-| `/api` | API endpoints and interfaces |
-| `/extensions` | Modular extensions |
-| `/helpers` | Utility functions |
-| `/tools` | Tool implementations |
+| `/prompts` | Default system and tool prompt templates |
+| `/python` | Core Python codebase |
+| `/python/api` | API endpoints and interfaces |
+| `/python/extensions` | Modular extensions |
+| `/python/helpers` | Utility functions |
+| `/python/tools` | Tool implementations |
 | `/tmp` | Temporary runtime data |
+| `/tmp/chats` | Saved chat history (JSON) |
+| `/tmp/secrets.env` | Secrets store (not always included in backups) |
 | `/usr/projects` | Project workspaces and `.a0proj` metadata |
-| `/webui` | Web interface components: |
-| `/css` | Stylesheets |
-| `/js` | JavaScript modules |
-| `/public` | Static assets |
-| `/work_dir` | Working directory |
+| `/webui` | Web interface components |
+| `/webui/css` | Stylesheets |
+| `/webui/js` | JavaScript modules |
+| `/webui/public` | Static assets |
+| `/work_dir` | Working directory (inside Docker: `/a0/work_dir`) |
 
 ### Key Files
 | File | Description |
 | --- | --- |
-| `.env` | Environment configuration |
+| `tmp/settings.json` | Main runtime settings (written by the Settings UI) |
+| `tmp/secrets.env` | Secrets store (managed via Settings -> Secrets) |
+| `conf/model_providers.yaml` | Model provider defaults and settings |
 | `agent.py` | Core agent implementation |
-| `example.env` | Configuration template |
 | `initialize.py` | Framework initialization |
 | `models.py` | Model providers and configs |
 | `preload.py` | Pre-initialization routines |
 | `prepare.py` | Environment preparation |
 | `requirements.txt` | Python dependencies |
-| `run_cli.py` | CLI launcher |
 | `run_ui.py` | Web UI launcher |
+| `run_tunnel.py` | Tunnel launcher |
 
 > [!NOTE]
 > In the Docker runtime, the framework lives under `/a0` inside the container. Data persists as long as the container exists. For upgrades, prefer **Backup & Restore** instead of mapping the full `/a0` directory.
@@ -143,7 +145,7 @@ In cases where SearXNG might not return satisfactory results, Agent Zero can be 
 #### Custom Tools
 Users can create custom tools to extend Agent Zero's capabilities. Custom tools can be integrated into the framework by defining a tool specification, which includes the tool's prompt. Place these prompt overrides in your agent profile:
 
-1. Create `agent.system.tool.$TOOL_NAME.md` in `agents/<agent_profile>/prompts/` (or in `prompts/default/` for global defaults)
+1. Create `agent.system.tool.$TOOL_NAME.md` in `agents/<agent_profile>/prompts/` (or in `prompts/` for global defaults)
 2. Add the reference in `agent.system.tools.md` within the same prompt scope
 3. If needed, implement tool class in `python/tools` using `Tool` base class
 4. Follow existing patterns for consistency
@@ -217,7 +219,7 @@ The `prompts` directory contains various Markdown files that control agent behav
 | agent.system.tool.*.md | Individual tool prompt files |
 
 #### Prompt Organization
-- **Default Prompts**: Located in `prompts/default/`, serve as the base configuration
+- **Default Prompts**: Located in `prompts/`, serve as the base configuration
 - **Custom Prompts (v0.9.7+)**: Place overrides in `agents/<agent_profile>/prompts/`
 - **Behavior Files**: Stored in memory as `behaviour.md`, containing dynamic rules
 - **Tool Prompts**: Organized in tool-specific files for modularity
@@ -254,7 +256,7 @@ The `prompts` directory contains various Markdown files that control agent behav
   - Maintains separation between core functionality and behavioral rules
 
 > [!NOTE]  
-> You can customize any of these files. Agent Zero will use files in `agents/<agent_profile>/prompts/` when present, and fall back to `prompts/default/` for everything else.
+> You can customize any of these files. Agent Zero will use files in `agents/<agent_profile>/prompts/` when present, and fall back to `prompts/` for everything else.
 
 > [!TIP]
 > The behavior system allows for dynamic adjustments without modifying the base prompt files.

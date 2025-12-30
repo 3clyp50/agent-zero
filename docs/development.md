@@ -132,6 +132,9 @@ My Dockerized instance:
 My VS Code instance:
 ![VS Code instance](res/dev/devinst-13.png)
 
+## RFC Notes (Host IDE + Docker Execution)
+Agent Zero runs code inside the container by default. If you are running the framework locally in your IDE but want tools (like code execution) to run in Docker, configure RFC in **Settings -> Development** and point it to a running Agent Zero container. This routes execution through SSH/RFC to the container while keeping the UI and agent loop on your host.
+
 
 # 🎉 Congratulations! 🚀
 

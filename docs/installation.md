@@ -380,12 +380,12 @@ For developers or users who need to run Agent Zero directly on their system,see 
 
 ## Manual Migration (Legacy or Non-Docker)
 If you are migrating from older, non-Docker setups, copy these directories into your new instance:
-- `/memory` (agent memories)
-- `/knowledge` (custom knowledge)
-- `/instruments` (custom instruments)
-- `/tmp/settings.json` (settings)
-- `/tmp/chats/` (chat history)
-- `/tmp/secrets.env` (secrets)
+- `/a0/memory` (agent memories)
+- `/a0/knowledge` (custom knowledge)
+- `/a0/instruments` (custom instruments)
+- `/a0/tmp/settings.json` (settings)
+- `/a0/tmp/chats/` (chat history)
+- `/a0/tmp/secrets.env` (secrets)
 
 Then proceed with the Docker installation steps above.
 

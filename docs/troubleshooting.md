@@ -36,7 +36,7 @@ Secrets are stored in `/a0/tmp/secrets.env` and are not always included in backu
 - Join the Agent Zero [Skool](https://www.skool.com/agent-zero) or [Discord](https://discord.gg/B8KZKNsPpj) community.
 
 **11. How do I adjust API rate limits?**
-Modify the `rate_limit_seconds` and `rate_limit_requests` parameters in the `AgentConfig` class within `initialize.py`.
+Use the model rate limit fields in Settings (Chat/Utility/Embedding model sections) to set request/input/output limits. These map to the model config limits (for example `limit_requests`, `limit_input`, `limit_output`).
 
 **12. My `code_execution_tool` doesn't work, what's wrong?**
 - Ensure Docker is installed and running.

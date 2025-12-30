@@ -34,7 +34,7 @@ Located beneath the chat input box, Agent Zero provides a set of action buttons 
 #### Knowledge and File Management
 * **Import Knowledge:** Import external files into the agent's knowledge base
   - Supports `.txt`, `.pdf`, `.csv`, `.html`, `.json`, and `.md` formats
-  - Files are stored in `\knowledge\custom\main`
+  - Files are stored in `/a0/knowledge/custom/main`
   - Success message confirms successful import
   - See [knowledge](architecture.md#knowledge) for more details
 
@@ -58,6 +58,7 @@ Located beneath the chat input box, Agent Zero provides a set of action buttons 
 Access the chat history in JSON format
   - View the conversation as processed by the LLM
   - Useful for debugging and understanding agent behavior
+  - Files are stored under `/a0/tmp/chats/` inside the container
 
 ![History](res/ui-history.png)
 
@@ -114,11 +115,11 @@ See [MCP Setup](mcp_setup.md) for configuration guidance and recommended servers
 ## Example of Tools Usage: Web Search and Code Execution
 Let's say you want Agent Zero to perform some financial analysis tasks. Here's a possible prompt:
 
-> Please be a professional financial analyst. Find last month Bitcoin/ USD price trend and make a chart in your environment. The chart must  have highlighted key points corresponding with dates of major news  about cryptocurrency. Use the 'search_engine' and 'document_query_tool' to find the price and  the news, and the 'code_execution_tool' to perform the rest of the job.
+> Please be a professional financial analyst. Find last month Bitcoin/ USD price trend and make a chart in your environment. The chart must have highlighted key points corresponding with dates of major news about cryptocurrency. Use the `search_engine` and `document_query` tools to find the price and the news, and the `code_execution_tool` to perform the rest of the job.
 
 Agent Zero might then:
 
-1. Use the `search_engine` and `document_query_tool` to query a reliable source for the Bitcoin price and for the news about cryptocurrency as prompted.
+1. Use the `search_engine` and `document_query` tools to query a reliable source for the Bitcoin price and for the news about cryptocurrency as prompted.
 2. Extract the price from the search results and save the news, extracting their dates and possible impact on the price.
 3. Use the `code_execution_tool` to execute a Python script that performs the graph creation and key points highlighting, using the extracted data and the news dates as inputs.
 4. Save the final chart on disk inside the container and provide a link to it with the `response_tool`.
@@ -175,6 +176,9 @@ You can reference these values in prompts by name. For example, store `MY_GMAIL`
 
 > [!IMPORTANT]
 > Secrets are stored in `/a0/tmp/secrets.env`. Keep a manual copy if you rely on backups, as secrets are not always preserved by Backup & Restore.
+
+> [!NOTE]
+> Project-scoped secrets and variables (when using Projects) live under `/a0/usr/projects/<project_name>/.a0proj/` (`secrets.env`, `variables.env`).
 
 ## Voice Interface
 Agent Zero provides both Text-to-Speech (TTS) and Speech-to-Text (STT) capabilities for natural voice interaction:
@@ -263,7 +267,7 @@ Agent Zero provides a powerful file browser interface for managing your workspac
   - Current path always visible for context
 
 > [!NOTE]
-> The files browser allows the user to go in the Agent Zero root folder if you click the `Up` button, but the working directory of Agents will always be `/work_dir`
+> The file browser lets you navigate the Agent Zero filesystem. For file-based work, keep your working files in `/a0/work_dir` (or inside a Project workspace).
 >
 - **File Operations**:
   - Create new files and directories
@@ -288,7 +292,7 @@ Agent Zero provides a comprehensive backup and restore system to protect your da
 Access the backup functionality through the Settings interface:
 
 1. Click the **Settings** button in the sidebar
-2. Navigate to the **Backup** tab
+2. Navigate to the **Backup & Restore** tab
 3. Click **Create Backup** to start the backup process
 
 #### What Gets Backed Up
@@ -297,7 +301,7 @@ By default, Agent Zero backs up your most important data:
 * **Knowledge Base**: Your custom knowledge files and documents
 * **Memory System**: Agent memories and learned information
 * **Chat History**: All your conversations and interactions
-* **Configuration Files**: Settings, API keys, and system preferences
+* **Configuration Files**: Settings and system preferences (secrets in `/a0/tmp/secrets.env` are not included)
 * **Custom Instruments**: Any tools you've added or modified
 * **Uploaded Files**: Documents and files you've worked with
 
@@ -323,12 +327,13 @@ Before creating a backup, you can customize what to include:
 
 > [!NOTE]
 > Backup creation may take a few minutes depending on the amount of data. You'll see progress updates during the process.
+> Secrets stored in `/a0/tmp/secrets.env` are not always included in backup archives. Keep a manual copy if you rely on secrets.
 
 ### Restoring from Backup
 The restore process allows you to recover your Agent Zero setup from a previous backup:
 
 #### Starting a Restore
-1. Navigate to **Settings** → **Backup** tab
+1. Navigate to **Settings** → **Backup & Restore** tab
 2. Click **Restore from Backup**
 3. Upload your backup ZIP file
 
@@ -369,7 +374,7 @@ Optionally clean up existing files before restoring:
 * **Test Restores**: Occasionally test restoring backups to ensure they work
 
 #### Security Considerations
-* **API Keys**: Backups include your API keys and sensitive configuration
+* **Secrets**: Backups do **not** reliably include `/a0/tmp/secrets.env`. Copy it manually when migrating.
 * **Secure Storage**: Store backup files securely and don't share them
 * **Clean Systems**: When restoring on new systems, verify all configurations
 
