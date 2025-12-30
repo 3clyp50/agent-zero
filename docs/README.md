@@ -15,7 +15,6 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
 - **[Contributing](contribution.md):** Learn how to contribute to the Agent Zero project.
 - **[Troubleshooting and FAQ](troubleshooting.md):** Find answers to common issues and questions.
 - **[Design Specs](designs/):** Technical specifications for larger features.
-- **[Documentation Audit](audit-report.md):** Current documentation audit and update plan.
 
 ### Your experience with Agent Zero starts now!
 
@@ -84,4 +83,3 @@ To begin with Agent Zero, follow the links below for detailed guides on various 
 - [Extensibility](extensibility.md)
 - [Contributing](contribution.md)
 - [Design Specs](designs/)
-- [Documentation Audit](audit-report.md)
