@@ -149,7 +149,7 @@
                             </button>
 
                             <button class="btn btn-mass delete"
-                                @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                                @click="$confirmClick($event, () => $store.memoryDashboardStore.bulkDeleteMemories())"
                                 title="Delete Selected Memories">
                                 <span class="material-symbols-outlined">delete</span>
                                 Delete
@@ -236,7 +236,7 @@
                                                 </button>
 
                                                 <button class="btn btn-action delete"
-                                                    @click="$store.memoryDashboardStore.deleteMemory(memory)"
+                                                    @click="$confirmClick($event, () => $store.memoryDashboardStore.deleteMemory(memory))"
                                                     title="Delete Memory">
                                                     <span class="material-symbols-outlined">delete</span>
                                                 </button>
@@ -272,7 +272,7 @@
                             </button>
 
                             <button class="btn btn-mass delete"
-                                @click="$store.memoryDashboardStore.bulkDeleteMemories()"
+                                @click="$confirmClick($event, () => $store.memoryDashboardStore.bulkDeleteMemories())"
                                 title="Delete Selected Memories">
                                 <span class="material-symbols-outlined">delete</span>
                                 Delete

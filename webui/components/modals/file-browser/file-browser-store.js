@@ -172,7 +172,6 @@ const model = {
 
   // --- File actions --------------------------------------------------------
   async deleteFile(file) {
-    if (!confirm(`Are you sure you want to delete ${file.name}?`)) return;
     try {
       const resp = await fetchApi("/delete_work_dir_file", {
         method: "POST",

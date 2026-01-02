@@ -223,7 +223,7 @@
                 <div class="buttons-container scheduler-editor-actions scheduler-editor-actions-top">
                     <div class="buttons-left">
                         <button type="button" class="button cancel"
-                                @click="$store.schedulerStore.deleteTask($store.schedulerStore.editingTask.uuid)">Delete</button>
+                                @click="$confirmClick($event, () => $store.schedulerStore.deleteTask($store.schedulerStore.editingTask.uuid))">Delete</button>
                     </div>
                     <div class="buttons-right">
                         <button type="button" class="button cancel"

@@ -721,14 +721,6 @@ const schedulerStoreModel = {
   },
 
   async deleteTask(taskId) {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this task? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
     try {
       if (typeof chatsStore.switchFromContext === "function") {
         await chatsStore.switchFromContext(taskId);

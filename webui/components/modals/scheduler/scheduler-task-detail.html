@@ -21,7 +21,7 @@
                 <div class="buttons-container scheduler-detail-actions">
                     <div class="buttons-left">
                         <button type="button" class="button cancel"
-                                @click="$store.schedulerStore.deleteFromDetail()">Delete</button>
+                                @click="$confirmClick($event, () => $store.schedulerStore.deleteFromDetail())">Delete</button>
                     </div>
                     <div class="buttons-right">
                         <button type="button" class="button confirm"
@@ -145,7 +145,7 @@
             <div class="buttons-container scheduler-detail-footer-actions">
                 <div class="buttons-left">
                     <button type="button" class="button cancel"
-                            @click="$store.schedulerStore.deleteFromDetail()">Delete</button>
+                            @click="$confirmClick($event, () => $store.schedulerStore.deleteFromDetail())">Delete</button>
                 </div>
                 <div class="buttons-right">
                     <button type="button" class="button confirm"

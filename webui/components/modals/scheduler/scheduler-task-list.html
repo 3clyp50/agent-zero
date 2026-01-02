@@ -146,7 +146,7 @@
                                         <span class="material-symbols-outlined">edit</span>
                                     </button>
                                     <button class="btn btn-action delete"
-                                            @click="$store.schedulerStore.deleteTask(task.uuid)" title="Delete Task">
+                                            @click="$confirmClick($event, () => $store.schedulerStore.deleteTask(task.uuid))" title="Delete Task">
                                         <span class="material-symbols-outlined">delete</span>
                                     </button>
                                 </div>

@@ -324,9 +324,6 @@ const memoryDashboardStore = {
     const selectedMemories = this.selectedMemories;
     if (selectedMemories.length === 0) return;
 
-    const confirmMessage = `Are you sure you want to delete ${selectedMemories.length} selected memories? This cannot be undone.`;
-    if (!confirm(confirmMessage)) return;
-
     try {
       this.loading = true;
       const response = await API.callJsonApi("memory_dashboard", {
@@ -554,14 +551,6 @@ ${memory.content_full}
   },
 
   async deleteMemory(memory) {
-    if (
-      !confirm(
-        `Are you sure you want to delete this memory from ${memory.area}?`
-      )
-    ) {
-      return;
-    }
-
     try {
       // Check if this is the memory currently being viewed in detail modal
       const isViewingThisMemory =

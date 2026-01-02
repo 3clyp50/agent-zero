@@ -35,7 +35,7 @@
                                         title="Edit Memory">
                                     <span class="material-symbols-outlined">edit_document</span>
                                 </button>
-                                <button class="btn btn-action-header delete danger" @click="$store.memoryDashboardStore.deleteMemory($store.memoryDashboardStore.detailMemory)"
+                                <button class="btn btn-action-header delete danger" @click="$confirmClick($event, () => $store.memoryDashboardStore.deleteMemory($store.memoryDashboardStore.detailMemory))"
                                         title="Delete Memory">
                                     <span class="material-symbols-outlined">delete</span>
                                 </button>
