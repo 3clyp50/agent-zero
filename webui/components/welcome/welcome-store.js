@@ -59,11 +59,14 @@ const registerWelcomeBannerChecks = (() => {
               This instance is reachable from a non-local address without authentication.
               Add credentials to protect access from the internet.
             </p>
-            <button class="welcome-banner-action" type="button"
-              @click="openSettingsTab('external')">
-              Configure credentials
-            </button>
           `,
+          actions: [
+            {
+              label: "Configure credentials",
+              action: "openSettingsTab",
+              args: ["external"],
+            },
+          ],
         }),
       ];
     });
@@ -101,7 +104,7 @@ const registerWelcomeBannerChecks = (() => {
       return [
         bannerStore.createBanner({
           id: "welcome-missing-api-key",
-          title: "Missing API key for models",
+          title: "Missing API key",
           type: BANNER_TYPES.ERROR,
           priority: BANNER_PRIORITY.HIGH,
           html: `
@@ -109,11 +112,14 @@ const registerWelcomeBannerChecks = (() => {
               The selected provider does not have an API key configured.
               Agent Zero will not be able to run until one is added.
             </p>
-            <button class="welcome-banner-action" type="button"
-              @click="openSettingsTab('external')">
-              Add API key
-            </button>
           `,
+          actions: [
+            {
+              label: "Add API key",
+              action: "openSettingsTab",
+              args: ["external"],
+            },
+          ],
         }),
       ];
     });
@@ -134,13 +140,23 @@ const model = {
       this.refreshBanners();
     }
 
-    // Watch for context changes with faster polling for immediate response
+    // Watch for context changes with faster polling
+    let lastSettings = settingsStore.settings;
+
     setInterval(() => {
       const wasVisible = this.isVisible;
       this.updateVisibility();
-      if (this.isVisible && !wasVisible) {
+      
+      // Check if settings have changed
+      const currentSettings = settingsStore.settings;
+      const settingsChanged = lastSettings !== currentSettings;
+
+      if (this.isVisible && (!wasVisible || settingsChanged)) {
         this.refreshBanners();
       }
+      
+      // Always update lastSettings to keep it in sync
+      lastSettings = currentSettings;
     }, 50); // 50ms for very responsive updates
   },
 
@@ -165,8 +181,8 @@ const model = {
     return bannerStore.sortBanners(this.banners);
   },
 
-  getBannerClass(banner) {
-    return bannerStore.getBannerClass(banner?.type, "welcome-banner");
+  getBannerClass(bannerOrType) {
+    return bannerStore.getBannerClass(bannerOrType, "welcome-banner");
   },
 
   getBannerIcon(type) {
@@ -228,6 +244,7 @@ const model = {
         context,
         settingsSnapshot
       );
+
       const backendBanners = await this.runBackendBannerChecks(
         frontendBanners,
         context

@@ -1,0 +1,134 @@
+<html>
+
+<body>
+    <div x-data x-show="$store.welcomeStore && $store.welcomeStore.sortedBanners.length > 0">
+        <div class="welcome-banners">
+            <template x-for="banner in $store.welcomeStore.sortedBanners" :key="banner.key">
+                <div class="welcome-banner" :class="$store.welcomeStore.getBannerClass(banner.type)">
+                    <div class="welcome-banner-header">
+                        <span class="material-symbols-outlined welcome-banner-icon"
+                            x-text="$store.welcomeStore.getBannerIcon(banner.type)"></span>
+                        <div class="welcome-banner-title" x-text="banner.title"></div>
+                    </div>
+                    <div class="welcome-banner-body" x-html="banner.html"></div>
+                    <template x-if="banner.actions && banner.actions.length > 0">
+                        <div class="welcome-banner-actions">
+                            <template x-for="action in banner.actions" :key="action.label">
+                                <button class="btn btn-ok" type="button"
+                                    @click="$store.welcomeStore[action.action](...(action.args || []))"
+                                    x-text="action.label"></button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <style>
+        .welcome-banner-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.2rem;
+        }
+
+        .welcome-banners {
+            position: fixed;
+            transform: translateX(-50%);
+            bottom: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            text-align: left;
+            pointer-events: none;
+            width: 50%;
+        }
+
+        .welcome-banner {
+            pointer-events: auto; /* Enable clicks on the banner itself */
+            background: var(--color-panel);
+            border: 1px solid var(--color-border);
+            border-left-width: 4px;
+            border-radius: 12px;
+            padding: 1rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); /* Enhanced shadow for "on top" feel */
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .welcome-banner-info {
+            border-left-color: var(--color-highlight);
+        }
+
+        .welcome-banner-warning {
+            border-left-color: var(--color-warning);
+        }
+
+        .welcome-banner-error {
+            border-left-color: var(--color-error);
+        }
+
+        .welcome-banner-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .welcome-banner-icon {
+            font-size: 1.4rem;
+        }
+
+        .welcome-banner-info .welcome-banner-icon {
+            color: var(--color-highlight);
+        }
+
+        .welcome-banner-warning .welcome-banner-icon {
+            color: var(--color-warning);
+        }
+
+        .welcome-banner-error .welcome-banner-icon {
+            color: var(--color-error);
+        }
+
+        .welcome-banner-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .welcome-banner-body {
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .welcome-banner-body p {
+            margin: 0 0 1rem 0;
+            color: var(--color-text);
+            opacity: 0.7;
+        }
+
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .welcome-banners {
+                width: 80%;
+            }
+        }
+    </style>
+</body>
+
+</html>
+

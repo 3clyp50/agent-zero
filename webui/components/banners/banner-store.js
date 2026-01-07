@@ -27,13 +27,14 @@ const model = {
     return checks.flatMap((check) => check(input) || []);
   },
 
-  createBanner({ id, title, type, priority, html }) {
+  createBanner({ id, title, type, priority, html, actions }) {
     return {
       id: id || null,
       title: title?.trim() || "",
       type: type || BANNER_TYPES.INFO,
       priority: Number.isFinite(priority) ? priority : 0,
       html: html || "",
+      actions: actions || [],
     };
   },
 
@@ -77,7 +78,11 @@ const model = {
     });
   },
 
-  getBannerClass(type, prefix = "banner") {
+  getBannerClass(typeOrBanner, prefix = "banner") {
+    const type =
+      typeOrBanner && typeof typeOrBanner === "object"
+        ? typeOrBanner.type
+        : typeOrBanner;
     const normalized = type || BANNER_TYPES.INFO;
     return `${prefix}-${normalized}`;
   },

@@ -49,6 +49,8 @@
   --color-border: var(--color-border-dark);
   --color-input: var(--color-input-dark);
   --color-input-focus: var(--color-input-focus-dark);
+  --color-warning: #f1c40f;
+  --color-error: var(--color-accent);
   --color-background-hover: color-mix(in srgb, var(--color-border) 50%, transparent);
 
   /* Spacing variables */
@@ -89,6 +91,8 @@
   --color-border: var(--color-border-light);
   --color-input: var(--color-input-light);
   --color-input-focus: var(--color-input-focus-light);
+  --color-warning: #fbc02d;
+  --color-error: var(--color-accent);
   --color-background-hover: color-mix(in srgb, var(--color-border) 50%, transparent);
 }
 
