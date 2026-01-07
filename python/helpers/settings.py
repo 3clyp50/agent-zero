@@ -437,7 +437,7 @@ def _write_sensitive_settings(settings: Settings):
         dotenv.save_dotenv_value(dotenv.KEY_AUTH_PASSWORD, settings["auth_password"])
     if settings["rfc_password"] != PASSWORD_PLACEHOLDER:
         dotenv.save_dotenv_value(dotenv.KEY_RFC_PASSWORD, settings["rfc_password"])
-    if settings["root_password"] != PASSWORD_PLACEHOLDER:
+    if settings["root_password"] and settings["root_password"] != PASSWORD_PLACEHOLDER:
         dotenv.save_dotenv_value(dotenv.KEY_ROOT_PASSWORD, settings["root_password"])
         set_root_password(settings["root_password"])
 
