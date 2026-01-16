@@ -17,7 +17,7 @@ from python.helpers import runtime, dotenv, process
 from python.helpers.extract_tools import load_classes_from_folder
 from python.helpers.api import ApiHandler
 from python.helpers.print_style import PrintStyle
-from python.helpers import login
+from python.helpers import login, openai_auth
 
 # disable logging
 import logging
@@ -166,6 +166,14 @@ async def login_handler():
 async def logout_handler():
     session.pop('authentication', None)
     return redirect(url_for('login_handler'))
+
+@webapp.route("/auth/openai", methods=["GET"])
+@requires_auth
+async def openai_auth_start():
+    flow = openai_auth.create_authorization_flow()
+    openai_auth.set_pending_flow(flow)
+    openai_auth.ensure_callback_server()
+    return redirect(flow["url"])
 
 # handle default address, load index
 @webapp.route("/", methods=["GET"])

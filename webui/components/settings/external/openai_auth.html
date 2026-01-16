@@ -1,0 +1,130 @@
+<html>
+  <head>
+    <title>OpenAI Auth</title>
+  </head>
+
+  <body>
+    <script type="module">
+      import * as API from "/js/api.js";
+
+      window.openaiAuth = () => ({
+        status: "loading",
+        accountId: "",
+        expiresAt: null,
+        error: "",
+        async refreshStatus() {
+          this.error = "";
+          this.status = "loading";
+          try {
+            const response = await API.callJsonApi("openai_auth_status", null);
+            this.accountId = response.account_id || "";
+            this.expiresAt = response.expires_at || null;
+            if (response.connected) {
+              this.status = "connected";
+            } else if (response.expired) {
+              this.status = "expired";
+            } else {
+              this.status = "disconnected";
+            }
+          } catch (err) {
+            this.error = err?.message || "Failed to load OpenAI Auth status.";
+            this.status = "error";
+          }
+        },
+        async disconnect() {
+          this.error = "";
+          try {
+            await API.callJsonApi("openai_auth_logout", null);
+            await this.refreshStatus();
+          } catch (err) {
+            this.error = err?.message || "Failed to disconnect OpenAI Auth.";
+          }
+        },
+        get statusLabel() {
+          if (this.status === "connected") return "Connected";
+          if (this.status === "expired") return "Expired";
+          if (this.status === "error") return "Error";
+          return "Not connected";
+        },
+        get expiresLabel() {
+          if (!this.expiresAt) return "—";
+          return new Date(this.expiresAt).toLocaleString();
+        },
+      });
+    </script>
+
+    <div x-data="openaiAuth()" x-init="refreshStatus()">
+      <template x-if="$store.settingsStore">
+        <div>
+          <div class="section-title">OpenAI Auth</div>
+          <div class="section-description">
+            Sign in with ChatGPT to connect your OpenAI subscription. This launches a secure login flow in a new tab and
+            redirects to <strong>http://localhost:1455/auth/callback</strong> on the same machine.
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Status</div>
+              <div class="field-description" x-text="statusLabel"></div>
+              <template x-if="error">
+                <div class="field-description" style="color: var(--color-error, #e74c3c);" x-text="error"></div>
+              </template>
+            </div>
+            <div class="field-control">
+              <button class="btn btn-field" @click="refreshStatus()">Refresh Status</button>
+            </div>
+          </div>
+
+          <template x-if="status === 'connected'">
+            <div class="field">
+              <div class="field-label">
+                <div class="field-title">Account ID</div>
+                <div class="field-description">ChatGPT account identifier detected in your OAuth token.</div>
+              </div>
+              <div class="field-control">
+                <input type="text" readonly x-model="accountId" />
+              </div>
+            </div>
+          </template>
+
+          <template x-if="status !== 'disconnected' && status !== 'loading'">
+            <div class="field">
+              <div class="field-label">
+                <div class="field-title">Token Expiration</div>
+                <div class="field-description">Refresh tokens are stored to keep the session active.</div>
+              </div>
+              <div class="field-control">
+                <input type="text" readonly :value="expiresLabel" />
+              </div>
+            </div>
+          </template>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">ChatGPT Login</div>
+              <div class="field-description">
+                Use your OpenAI subscription to authenticate and enable ChatGPT-backed features.
+              </div>
+            </div>
+            <div class="field-control">
+              <button
+                class="btn btn-field"
+                @click="window.open('/auth/openai', '_blank', 'noopener,noreferrer')"
+              >
+                Sign in with ChatGPT
+              </button>
+              <button
+                class="btn btn-field"
+                style="margin-left: 0.5rem;"
+                x-show="status === 'connected' || status === 'expired'"
+                @click="disconnect()"
+              >
+                Disconnect
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </body>
+</html>
