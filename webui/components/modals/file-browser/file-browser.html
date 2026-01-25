@@ -28,6 +28,16 @@
                 </button>
                 <div id="current-path"><span id="path-text" x-text="$store.fileBrowser.browser.currentPath"></span></div>
               </div>
+              <div class="new-item-buttons">
+                <button class="btn btn-ok btn-new-item" @click="$store.fileBrowser.openNewFile()">
+                  <span class="material-symbols-outlined">note_add</span>
+                  New File
+                </button>
+                <button class="btn btn-ok btn-new-item" @click="$store.fileBrowser.openNewFolderModal()">
+                  <span class="material-symbols-outlined">create_new_folder</span>
+                  New Folder
+                </button>
+              </div>
 
               <!-- Files list -->
               <div class="files-list">
@@ -48,10 +58,60 @@
                       <div class="file-size" x-text="$store.fileBrowser.formatFileSize(file.size)"></div>
                       <div class="file-date" x-text="$store.fileBrowser.formatDate(file.modified)"></div>
                       <div class="file-actions">
-                        <button class="btn-icon-action" @click.stop="$store.fileBrowser.downloadFile(file)" title="Download file">
+                        <!-- Single-item actions (Edit/Rename/...) are grouped under a dropdown -->
+                        <div
+                          class="dropdown file-actions-dropdown"
+                          x-data="{
+                            open: false,
+                            toggle() { this.open = !this.open; },
+                            close() { this.open = false; }
+                          }"
+                          @click.outside="close()"
+                          @keydown.escape.window="close()"
+                        >
+                          <button
+                            type="button"
+                            class="btn-icon-action dropdown-trigger"
+                            @click.stop="toggle()"
+                            :aria-expanded="open.toString()"
+                            aria-label="More actions"
+                            title="More actions"
+                          >
+                            <span class="material-symbols-outlined">more_vert</span>
+                          </button>
+
+                          <div
+                            class="dropdown-menu"
+                            x-show="open"
+                            x-transition
+                            :class="{ 'bottom': $el.getBoundingClientRect().bottom > window.innerHeight - 100 }"
+                            style="display: none;"
+                            @click="close()"
+                          >
+                            <button
+                              type="button"
+                              class="dropdown-item"
+                              x-show="!file.is_dir"
+                              @click="$store.fileBrowser.openFileEditor(file)"
+                            >
+                              <span class="material-symbols-outlined">file_open</span>
+                              <span>Edit</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              class="dropdown-item"
+                              @click="$store.fileBrowser.openRenameModal(file)"
+                            >
+                              <span class="material-symbols-outlined">drive_file_rename_outline</span>
+                              <span>Rename</span>
+                            </button>
+                          </div>
+                        </div>
+                        <button class="btn-icon-action" x-show="!file.is_dir" @click.stop="$store.fileBrowser.downloadFile(file)" title="Download file">
                           <span class="material-symbols-outlined">download</span>
                         </button>
-                        <button class="btn-icon-action" @click.stop="$confirmClick($event, () => $store.fileBrowser.deleteFile(file))" title="Delete file">
+                        <button class="btn-icon-action" @click.stop="$confirmClick($event, () => $store.fileBrowser.deleteFile(file))" title="Delete item">
                           <span class="material-symbols-outlined">delete</span>
                         </button>
                       </div>
@@ -132,8 +192,7 @@
 
     /* File Browser Styles */
     .files-list,
-    .file-header,
-    .file-item {
+    .file-header {
       width: 100%;
       border-radius: 4px;
       overflow: hidden;
@@ -142,7 +201,7 @@
     /* Header Styles */
     .file-header {
     display: grid;
-    grid-template-columns: 2fr 0.6fr 1fr 80px;
+    grid-template-columns: 2fr 0.6fr 1fr 160px;
     background: var(--secondary-bg);
     padding: 8px 0;
     font-weight: bold;
@@ -160,14 +219,15 @@
     /* File Item Styles */
     .file-item {
     display: grid;
-    grid-template-columns: 2fr 0.6fr 1fr 80px;
+    grid-template-columns: 2fr 0.6fr 1fr 160px;
     align-items: center;
     padding: 8px 0;
     font-size: 0.875rem;
     border-top: 1px solid var(--color-border);
     transition: background-color 0.2s;
     white-space: nowrap;
-    overflow: hidden;
+    border-radius: 4px;
+    overflow: visible; /* allow action dropdown menus to overflow the row */
     color: var(--color-text);
     }
     .file-item:hover {
@@ -221,6 +281,17 @@
     border: 1px solid var(--color-border);
     border-radius: 8px;
     }
+
+    .new-item-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5em;
+    margin-bottom: 0.5em;
+    }
+    .new-item-buttons button {
+    margin-left: 0.5em;
+    }
+    
     .nav-button {
     padding: 4px 12px;
     border: 1px solid var(--color-border);
@@ -285,11 +356,34 @@
     display: flex;
     gap: var(--spacing-xs);
     }
+    .file-actions .dropdown-menu {
+    top: auto !important;
+    bottom: 100% !important;
+    margin-top: 0;
+    margin-bottom: var(--spacing-xs);
+    }
+    .btn-new-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 8px 14px;
+    }
+    .btn-secondary {
+    background: var(--color-secondary);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    }
+    .btn-secondary:hover {
+    filter: brightness(1.05);
+    }
+    .btn-secondary:active {
+    filter: brightness(0.95);
+    }
     /* Responsive Design */
     @media (max-width: 768px) {
     .file-header,
     .file-item {
-        grid-template-columns: 1fr 0.5fr 80px;
+        grid-template-columns: 1fr 0.5fr 120px;
     }
     .file-cell-date,
     .file-date {
@@ -299,7 +393,7 @@
     @media (max-width: 540px) {
     .file-header,
     .file-item {
-        grid-template-columns: 1fr 80px;
+        grid-template-columns: 1fr 120px;
     }
     .file-cell-size,
     .file-size,

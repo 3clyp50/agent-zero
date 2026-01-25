@@ -230,6 +230,42 @@ def read_file_base64(relative_path):
         return base64.b64encode(f.read()).decode("utf-8")
 
 
+def is_probably_binary_bytes(data: bytes, threshold: float = 0.3) -> bool:
+    """
+    Binary detection.
+
+    - Fast path: NUL bytes => binary
+    - Otherwise: treat high ratio of suspicious ASCII control bytes as binary.
+      (We intentionally do NOT treat bytes >= 0x80 as binary to avoid false
+      positives for UTF-8 text.)
+    """
+    if not data:
+        return False
+    if b"\x00" in data:
+        return True
+
+    # Count suspicious control bytes
+    allowed = {8, 9, 10, 12, 13}  # \b \t \n \f \r
+    suspicious = sum(
+        1
+        for b in data
+        if ((b < 32 and b not in allowed) or b == 127)
+    )
+    return (suspicious / len(data)) > threshold
+
+
+def is_probably_binary_file(
+    file_path: str, sample_size: int = 10 * 1024, threshold: float = 0.3
+) -> bool:
+    """Binary detection by reading only the first ~sample_size bytes of a file."""
+    try:
+        with open(file_path, "rb") as f:
+            sample = f.read(sample_size)
+    except (FileNotFoundError, PermissionError, OSError):
+        raise OSError(f"Unable to read file for binary detection: {file_path}")
+    return is_probably_binary_bytes(sample, threshold=threshold)
+
+
 def replace_placeholders_text(_content: str, **kwargs):
     # Replace placeholders with values from kwargs
     for key, value in kwargs.items():
