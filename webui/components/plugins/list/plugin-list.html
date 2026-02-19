@@ -9,138 +9,95 @@
 <body>
     <div x-data>
         <template x-if="$store.pluginListStore">
-            <div x-init="$store.pluginListStore.loadPluginList && $store.pluginListStore.loadPluginList({ builtin: false, custom: true, search: '' })">
+            <div x-init="$store.pluginListStore.setTab && $store.pluginListStore.setTab('custom')">
 
                 <ul class="nav nav-tabs" id="plugin-list-tabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="plugins-custom-tab" data-bs-toggle="tab"
-                            data-bs-target="#plugins-custom" type="button" role="tab"
-                            aria-controls="plugins-custom" aria-selected="true"
-                            @click="$store.pluginListStore.loadPluginList && $store.pluginListStore.loadPluginList({ builtin: false, custom: true, search: '' })">
+                        <button class="nav-link"
+                            :class="{ active: $store.pluginListStore.activeTab === 'custom' }"
+                            id="plugins-custom-tab"
+                            type="button"
+                            role="tab"
+                            aria-controls="plugins-custom"
+                            :aria-selected="$store.pluginListStore.activeTab === 'custom'"
+                            @click="$store.pluginListStore.setTab('custom')">
                             Custom
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="plugins-builtin-tab" data-bs-toggle="tab"
-                            data-bs-target="#plugins-builtin" type="button" role="tab"
-                            aria-controls="plugins-builtin" aria-selected="false"
-                            @click="$store.pluginListStore.loadPluginList && $store.pluginListStore.loadPluginList({ builtin: true, custom: false, search: '' })">
+                        <button class="nav-link"
+                            :class="{ active: $store.pluginListStore.activeTab === 'builtin' }"
+                            id="plugins-builtin-tab"
+                            type="button"
+                            role="tab"
+                            aria-controls="plugins-builtin"
+                            :aria-selected="$store.pluginListStore.activeTab === 'builtin'"
+                            @click="$store.pluginListStore.setTab('builtin')">
                             Builtin
                         </button>
                     </li>
                 </ul>
 
-                <div class="tab-content" id="plugin-list-tabs-content">
-                    <div class="tab-pane fade show active" id="plugins-custom" role="tabpanel"
-                        aria-labelledby="plugins-custom-tab">
-                        <div>
-                            <div class="plugins-toolbar">
-                                <div class="plugins-toolbar-actions">
-                                    <button type="button" class="button confirm" title="Refresh"
-                                        @click="$store.pluginListStore.loadPluginList && $store.pluginListStore.loadPluginList({ builtin: false, custom: true, search: '' })"
-                                        :disabled="$store.pluginListStore.loading">
-                                        <span class="icon material-symbols-outlined">refresh</span> Refresh
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div x-show="$store.pluginListStore.loading" class="loading">
-                                <span>Loading plugins...</span>
-                            </div>
-
-                            <div class="plugins-list">
-                                <template x-for="plugin in ($store.pluginListStore.plugins || [])" :key="plugin.path || plugin.name">
-                                    <div class="plugin-card">
-                                        <div class="plugin-header">
-                                            <div class="plugin-heading">
-                                                <div class="plugin-title" x-text="plugin.name || '(unnamed plugin)'"></div>
-                                                <code class="plugin-path" x-text="plugin.path"></code>
-                                            </div>
-                                            <div class="plugin-actions">
-                                                <template x-if="plugin.has_main_screen">
-                                                    <button type="button" class="button" title="Open"
-                                                        @click="$store.pluginListStore.openPlugin && $store.pluginListStore.openPlugin(plugin)">
-                                                        <span class="icon material-symbols-outlined">assistant_on_hub</span> Open
-                                                    </button>
-                                                </template>
-                                                <template x-if="plugin.has_config_screen">
-                                                    <button type="button" class="button" title="Config"
-                                                        @click="$store.pluginListStore.openPluginConfig && $store.pluginListStore.openPluginConfig(plugin)">
-                                                        <span class="icon material-symbols-outlined">settings</span> Config
-                                                    </button>
-                                                </template>
-                                                <button type="button" class="button" title="Info"
-                                                    @click="$store.pluginListStore.openPluginInfo && $store.pluginListStore.openPluginInfo(plugin)">
-                                                    <span class="icon material-symbols-outlined">info</span> Info
-                                                </button>
-                                                <button type="button" class="button cancel icon-button" title="Delete"
-                                                    @click="$confirmClick($event, () => $store.pluginListStore.deletePlugin && $store.pluginListStore.deletePlugin(plugin))">
-                                                    <span class="icon material-symbols-outlined">delete</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="plugin-description" x-text="plugin.description || 'No description provided.'"></div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-pane fade" id="plugins-builtin" role="tabpanel" aria-labelledby="plugins-builtin-tab">
-                        <div>
-                            <div class="plugins-toolbar">
-                                <div class="plugins-toolbar-actions">
-                                    <button type="button" class="button confirm" title="Refresh"
-                                        @click="$store.pluginListStore.loadPluginList && $store.pluginListStore.loadPluginList({ builtin: true, custom: false, search: '' })"
-                                        :disabled="$store.pluginListStore.loading">
-                                        <span class="icon material-symbols-outlined">refresh</span> Refresh
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div x-show="$store.pluginListStore.loading" class="loading">
-                                <span>Loading plugins...</span>
-                            </div>
-
-                            <div class="plugins-list">
-                                <template x-for="plugin in ($store.pluginListStore.plugins || [])" :key="plugin.path || plugin.name">
-                                    <div class="plugin-card">
-                                        <div class="plugin-header">
-                                            <div class="plugin-heading">
-                                                <div class="plugin-title" x-text="plugin.name || '(unnamed plugin)'"></div>
-                                                <code class="plugin-path" x-text="plugin.path"></code>
-                                            </div>
-                                            <div class="plugin-actions">
-                                                <template x-if="plugin.has_main_screen">
-                                                    <button type="button" class="button" title="Open"
-                                                        @click="$store.pluginListStore.openPlugin && $store.pluginListStore.openPlugin(plugin)">
-                                                        <span class="icon material-symbols-outlined">assistant_on_hub</span> Open
-                                                    </button>
-                                                </template>
-                                                <template x-if="plugin.has_config_screen">
-                                                    <button type="button" class="button" title="Config"
-                                                        @click="$store.pluginListStore.openPluginConfig && $store.pluginListStore.openPluginConfig(plugin)">
-                                                        <span class="icon material-symbols-outlined">settings</span> Config
-                                                    </button>
-                                                </template>
-                                                <button type="button" class="button" title="Info"
-                                                    @click="$store.pluginListStore.openPluginInfo && $store.pluginListStore.openPluginInfo(plugin)">
-                                                    <span class="icon material-symbols-outlined">info</span> Info
-                                                </button>
-                                                <button type="button" class="button cancel icon-button" title="Delete"
-                                                    @click="$confirmClick($event, () => $store.pluginListStore.deletePlugin && $store.pluginListStore.deletePlugin(plugin))">
-                                                    <span class="icon material-symbols-outlined">delete</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="plugin-description" x-text="plugin.description || 'No description provided.'"></div>
-                                    </div>
-                                </template>
-                            </div>
-                        </div>
+                <div class="plugins-toolbar">
+                    <div class="plugins-toolbar-actions">
+                        <button type="button"
+                            class="button confirm"
+                            title="Refresh"
+                            @click="$store.pluginListStore.refresh()"
+                            :disabled="$store.pluginListStore.loading">
+                            <span class="icon material-symbols-outlined">refresh</span> Refresh
+                        </button>
                     </div>
                 </div>
 
+                <div x-show="$store.pluginListStore.loading" class="loading">
+                    <span>Loading plugins...</span>
+                </div>
+
+                <div class="plugins-list">
+                    <template x-for="plugin in ($store.pluginListStore.plugins || [])" :key="plugin.path || plugin.name">
+                        <div class="plugin-card">
+                            <div class="plugin-header">
+                                <div class="plugin-heading">
+                                    <div class="plugin-title" x-text="plugin.display_name || plugin.name || '(unnamed plugin)'"></div>
+                                    <code class="plugin-path" x-text="plugin.path"></code>
+                                </div>
+                                <div class="plugin-actions">
+                                    <template x-if="plugin.has_main_screen">
+                                        <button type="button"
+                                            class="button"
+                                            title="Open"
+                                            @click="$store.pluginListStore.openPlugin(plugin)">
+                                            <span class="icon material-symbols-outlined">folder_open</span> Open
+                                        </button>
+                                    </template>
+                                    <template x-if="plugin.has_config_screen">
+                                        <button type="button"
+                                            class="button"
+                                            title="Config"
+                                            @click="$store.pluginListStore.openPluginConfig(plugin)">
+                                            <span class="icon material-symbols-outlined">settings</span> Config
+                                        </button>
+                                    </template>
+                                    <button type="button"
+                                        class="button"
+                                        title="Info"
+                                        @click="$store.pluginListStore.openPluginInfo(plugin)">
+                                        <span class="icon material-symbols-outlined">info</span> Info
+                                    </button>
+                                    <button type="button"
+                                        class="button cancel icon-button"
+                                        :title="plugin.is_custom ? 'Delete' : 'Builtin plugins cannot be deleted'"
+                                        :disabled="!plugin.is_custom"
+                                        @click="$confirmClick($event, () => $store.pluginListStore.deletePlugin(plugin))">
+                                        <span class="icon material-symbols-outlined">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="plugin-description" x-text="plugin.description || 'No description provided.'"></div>
+                        </div>
+                    </template>
+                </div>
             </div>
         </template>
     </div>
@@ -172,24 +129,12 @@
             background: var(--color-bg-primary);
         }
 
-        .tab-content {
-            padding-top: 0.75rem;
-        }
-
-        .tab-pane {
-            display: none;
-        }
-
-        .tab-pane.active {
-            display: block;
-        }
-
         .plugins-toolbar {
             display: flex;
             align-items: center;
             gap: 0.75rem;
             flex-wrap: wrap;
-            margin-top: 0.25rem;
+            margin-top: 0.5rem;
             margin-bottom: 0.75rem;
         }
 
@@ -238,45 +183,11 @@
             align-items: center;
             gap: 0.5rem;
             padding-bottom: var(--spacing-sm);
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
             min-width: 0;
-            flex: 0 0 auto;
+            flex: 0 1 11.5rem;
             max-width: 100%;
             justify-content: flex-end;
-        }
-
-        @media (max-width: 640px) {
-            .plugin-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .plugin-heading {
-                width: 100%;
-                flex: 0 0 auto;
-            }
-
-            .plugin-actions {
-                width: 100%;
-                justify-content: flex-start;
-                padding-bottom: 0;
-                flex-wrap: wrap;
-            }
-
-            .plugin-path {
-                white-space: normal;
-                word-break: break-word;
-            }
-        }
-
-        .plugin-actions .button {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.85rem;
-            line-height: 1.1;
-        }
-
-        .plugin-actions .button .icon {
-            font-size: 1.1rem;
         }
 
         .plugin-description {
@@ -302,6 +213,30 @@
             margin-top: 0.75rem;
             margin-bottom: 0.75rem;
             color: var(--color-secondary);
+        }
+
+        @media (max-width: 640px) {
+            .plugin-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .plugin-heading {
+                width: 100%;
+                flex: 0 0 auto;
+            }
+
+            .plugin-actions {
+                width: 100%;
+                justify-content: flex-start;
+                padding-bottom: 0;
+                flex-wrap: wrap;
+            }
+
+            .plugin-path {
+                white-space: normal;
+                word-break: break-word;
+            }
         }
     </style>
 </body>

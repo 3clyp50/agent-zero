@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from python.helpers import files, print_style
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from agent import Agent
@@ -23,13 +23,24 @@ ENABLED_FILE_NAME = ".enabled"
 
 
 class PluginMetadata(BaseModel):
+    name: str = ""
     description: str = ""
+    version: str = ""
+    settings_sections: List[str] = Field(default_factory=list)
+    per_project_config: bool = False
+    per_agent_config: bool = False
 
 
 class PluginListItem(BaseModel):
     name: str
     path: str
+    display_name: str = ""
     description: str = ""
+    version: str = ""
+    settings_sections: List[str] = Field(default_factory=list)
+    per_project_config: bool = False
+    per_agent_config: bool = False
+    is_custom: bool = False
     has_main_screen: bool = False
     has_config_screen: bool = False
 
@@ -64,7 +75,7 @@ def get_enhanced_plugins_list(
     """Discover plugins by directory convention. First root wins on ID conflict."""
     results = []
 
-    def load_plugins(root_path: str):
+    def load_plugins(root_path: str, is_custom: bool):
         for d in sorted(Path(root_path).iterdir(), key=lambda p: p.name):
             try:
                 if not d.is_dir() or d.name.startswith("."):
@@ -78,7 +89,13 @@ def get_enhanced_plugins_list(
                     PluginListItem(
                         name=d.name,
                         path=str(d),
+                        display_name=meta.name or d.name,
                         description=meta.description,
+                        version=meta.version,
+                        settings_sections=meta.settings_sections,
+                        per_project_config=meta.per_project_config,
+                        per_agent_config=meta.per_agent_config,
+                        is_custom=is_custom,
                         has_main_screen=has_main_screen,
                         has_config_screen=has_config_screen,
                     )
@@ -87,9 +104,9 @@ def get_enhanced_plugins_list(
                 pass
 
     if custom:
-        load_plugins(files.get_abs_path(files.USER_DIR, files.PLUGINS_DIR))
+        load_plugins(files.get_abs_path(files.USER_DIR, files.PLUGINS_DIR), True)
     if builtin:
-        load_plugins(files.get_abs_path(files.PLUGINS_DIR))
+        load_plugins(files.get_abs_path(files.PLUGINS_DIR), False)
     return results
 
 

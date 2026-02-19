@@ -11,7 +11,7 @@ import asyncio
 from pathlib import Path
 import urllib.request
 import urllib.error
-from regex.regex import F
+from regex import F
 import uvicorn
 from flask import Flask, request, Response, session, redirect, url_for, render_template_string
 from werkzeug.wrappers.response import Response as BaseResponse
