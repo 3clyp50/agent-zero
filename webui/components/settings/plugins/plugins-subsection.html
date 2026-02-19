@@ -1,0 +1,118 @@
+<html>
+<head>
+    <script type="module">
+        import { store } from "/components/plugins/plugin-settings-store.js";
+    </script>
+</head>
+<body>
+    <!--
+        Reusable plugin subsection for a settings tab.
+        Parent must pass data-tab attribute on the x-component tag, e.g.:
+          <x-component path="settings/plugins/plugins-subsection.html" data-tab="agent"></x-component>
+        The tab value is read at init time from the x-component element's dataset.
+    -->
+    <div x-data="{
+        tab: '',
+        plugins: [],
+        loading: false,
+        async init() {
+            // find closest x-component ancestor to read the data-tab attribute
+            const host = this.$el.closest('x-component') || this.$el.parentElement?.closest('x-component');
+            this.tab = host?.getAttribute('data-tab') || '';
+            await this.load();
+        },
+        async load() {
+            if (!this.tab) return;
+            this.loading = true;
+            try {
+                const r = await globalThis.fetchApi('/plugins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'list', tab: this.tab }),
+                });
+                const data = await r.json().catch(() => ({}));
+                this.plugins = (data.ok ? data.data || [] : []).filter(p => p.has_settings_ui);
+            } catch {
+                this.plugins = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+        async openSettings(pluginName) {
+            await Alpine.store('pluginSettings')?.open(pluginName);
+            window.openModal?.('components/plugins/plugin-settings.html');
+        }
+    }" x-init="init()">
+
+        <template x-if="loading || plugins.length > 0">
+            <div class="plugin-subsection-wrapper">
+                <div class="section-title">Plugins</div>
+                <div class="section-description">
+                    Plugin-specific settings for this tab.
+                </div>
+
+                <div x-show="loading" class="plugin-subsection-loading">
+                    <span>Loading...</span>
+                </div>
+
+                <template x-for="plugin in plugins" :key="plugin.name">
+                    <div class="plugin-subsection-row">
+                        <div class="plugin-subsection-info">
+                            <span class="plugin-subsection-name" x-text="plugin.display_name || plugin.name"></span>
+                            <span class="plugin-subsection-desc" x-text="plugin.description"></span>
+                        </div>
+                        <button class="button" @click="openSettings(plugin.name)">
+                            <span class="icon material-symbols-outlined">settings</span>
+                            Settings
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+
+    <style>
+        .plugin-subsection-wrapper {
+            margin-top: 0.5rem;
+        }
+
+        .plugin-subsection-loading {
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-small);
+            margin-top: 0.5rem;
+        }
+
+        .plugin-subsection-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            background: var(--color-bg-primary);
+        }
+
+        .plugin-subsection-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            min-width: 0;
+        }
+
+        .plugin-subsection-name {
+            font-weight: 600;
+            font-size: var(--font-size-normal);
+        }
+
+        .plugin-subsection-desc {
+            font-size: var(--font-size-small);
+            color: var(--color-text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</body>
+</html>

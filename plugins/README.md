@@ -1,6 +1,9 @@
 # Agent Zero Plugins
 
-This directory contains default plugins shipped with Agent Zero and is the source of truth for the plugin system.
+This directory contains default plugins. For a full-stack development guide, see [docs/AGENTS.md](../docs/AGENTS.md).
+
+> [!TIP]
+> While Agent Zero looks for plugins in both `usr/plugins/` and `plugins/`, you should **always develop new plugins in `usr/plugins/`**. This ensures your work is isolated from core system files and persists through framework updates.
 
 ## Architecture
 
@@ -38,8 +41,9 @@ Agent Zero uses a convention-over-configuration plugin model:
 ## File Structure
 
 ```text
-plugins/
-  <plugin_id>/
+usr/plugins/
+  <plugin_name>/
+    plugin.json                   # Required manifest (enables discovery)
     api/                          # API handlers (ApiHandler subclasses)
     tools/                        # Agent tools (Tool subclasses)
     helpers/                      # Shared Python helpers
@@ -48,25 +52,40 @@ plugins/
     extensions/
       python/<extension_point>/   # Python lifecycle extensions
       webui/<extension_point>/    # WebUI HTML/JS hook contributions
-    webui/                        # Full plugin-owned UI pages/components
-
-usr/plugins/<plugin_id>/          # User overrides (higher priority)
+    webui/
+      settings.html               # Optional: plugin settings UI
+      ...                         # Full plugin-owned UI pages/components
 ```
 
 ## Directory Conventions
 
-Each plugin lives in `plugins/<plugin_id>/` (or `usr/plugins/<plugin_id>/` for overrides).
+Each plugin lives in `usr/plugins/<plugin_name>/`.
 
 Capability discovery is based on these paths:
 
-- `api/*.py` - API handlers (`ApiHandler` subclasses), exposed under `/api/plugins/<plugin_id>/<handler>`
+- `plugin.json` - **required** manifest; a directory without it is not recognized as a plugin
+- `api/*.py` - API handlers (`ApiHandler` subclasses), exposed under `/api/plugins/<plugin_name>/<handler>`
 - `tools/*.py` - agent tools (`Tool` subclasses)
 - `helpers/*.py` - shared Python helpers
 - `extensions/python/<extension_point>/*.py` - backend lifecycle extensions
 - `extensions/webui/<extension_point>/*` - WebUI extension assets (HTML/JS)
 - `webui/**` - full plugin-owned UI pages/components (loaded directly by path)
+- `webui/settings.html` - if present, a Settings button appears for this plugin in the relevant settings tabs
 - `prompts/**/*.md` - prompt templates
 - `agents/` - agent profiles
+
+### `plugin.json` format
+
+```json
+{
+  "name": "My Plugin",
+  "description": "What this plugin does.",
+  "version": "1.0.0",
+  "settings_sections": ["agent"]
+}
+```
+
+`settings_sections` controls which Settings tabs show a subsection for this plugin. Current valid values: `agent`, `external`, `mcp`, `developer`, `backup`. Leave empty (`[]`) for no subsection.
 
 ## Frontend Extensions
 
@@ -78,57 +97,6 @@ Core UI defines insertion points like:
 <x-extension id="sidebar-quick-actions-main-start"></x-extension>
 ```
 
-Current sidebar surfaces:
-
-- `sidebar-start`
-- `sidebar-end`
-- `sidebar-top-wrapper-start`
-- `sidebar-top-wrapper-end`
-- `sidebar-quick-actions-main-start`
-- `sidebar-quick-actions-main-end`
-- `sidebar-quick-actions-dropdown-start`
-- `sidebar-quick-actions-dropdown-end`
-- `sidebar-chats-list-start`
-- `sidebar-chats-list-end`
-- `sidebar-tasks-list-start`
-- `sidebar-tasks-list-end`
-- `sidebar-bottom-wrapper-start`
-- `sidebar-bottom-wrapper-end`
-
-Current input surfaces:
-
-- `chat-input-start`
-- `chat-input-end`
-- `chat-input-progress-start`
-- `chat-input-progress-end`
-- `chat-input-box-start`
-- `chat-input-box-end`
-- `chat-input-bottom-actions-start`
-- `chat-input-bottom-actions-end`
-
-Current chat surfaces:
-
-- `chat-top-start`
-- `chat-top-end`
-
-Current welcome surfaces:
-
-- `welcome-screen-start`
-- `welcome-screen-end`
-- `welcome-actions-start`
-- `welcome-actions-end`
-- `welcome-banners-start`
-- `welcome-banners-end`
-
-Current modal surfaces:
-
-- `modal-shell-start`
-- `modal-shell-end`
-
-Placement pattern:
-- keep wrapper-level anchors in parent composition files
-- keep section anchors in their owning component files, inside local `x-data` scope
-
 Resolution flow:
 
 1. `webui/js/extensions.js` finds `x-extension` nodes.
@@ -136,21 +104,6 @@ Resolution flow:
 3. Backend returns matching files from `plugins/*/extensions/webui/<extension_point>/`.
 4. `extensions.js` injects returned entries as `<x-component path="...">`.
 5. `components.js` loads each component using the standard component pipeline.
-
-Baseline extension template (project convention):
-
-```html
-<div x-data>
-  <button
-    x-move-after=".config-button#dashboard"
-    class="config-button"
-    id="my-plugin-button"
-    @click="openModal('../plugins/my-plugin/webui/my-modal.html')"
-    title="My Plugin">
-    <span class="material-symbols-outlined">extension</span>
-  </button>
-</div>
-```
 
 Required baseline for HTML UI extensions in this repository:
 - include a root `x-data` scope
@@ -166,22 +119,6 @@ Runtime code calls:
 
 `callJsExtensions("<extension_point>", contextObject)`
 
-JS hook convention:
-- pass one mutable context object when extensions are expected to influence behavior
-- that object is passed by reference, so mutations are visible to subsequent hooks in the same flow
-- hooks that support cancellation expose a `cancel: false` or `skip: false` field; set it to `true` to abort the operation
-
-Current JS hook points:
-
-| Hook | File | Context fields | skip/cancel |
-|---|---|---|---|
-| `set_messages_before_loop` | messages.js | `messages, history, scrollerOptions, massRender, results` | - |
-| `set_messages_after_loop` | messages.js | same as above | - |
-| `send_message_before` | index.js | `message, attachments, context, cancel` | `cancel` |
-| `apply_snapshot_before` | index.js | `snapshot, willUpdateMessages, skip` | `skip` |
-| `open_modal_before` | modals.js | `modalPath, modal, cancel` | `cancel` |
-| `close_modal_before` | modals.js | `modalPath, modal, cancel` | `cancel` |
-
 ### Fine placement helpers
 
 `initFw.js` provides Alpine move directives for plugin markup:
@@ -192,75 +129,71 @@ Current JS hook points:
 - `x-move-before`
 - `x-move-after`
 
-Placement behavior:
-- `x-move-to-start`, `x-move-to-end`, and `x-move-to` resolve a parent selector and insert the extension element as that parent's child.
-- `x-move-before` and `x-move-after` resolve a reference selector and insert the extension element as a sibling in the reference element's parent.
-- This structural difference can produce different visual results when parent and sibling styling differ (for example dropdown spacing/padding).
-- Example anchor selector for placing after the first dropdown item: `x-move-after=".quick-actions-dropdown .dropdown-header + .dropdown-item"`.
+## Plugin Settings
+
+If your plugin needs user-configurable settings:
+
+1. Add `webui/settings.html` to your plugin. The system detects this file automatically.
+2. Declare which settings tabs should show a subsection for your plugin via `settings_sections` in `plugin.json`.
+3. The plugin settings modal provides **Project** and **Agent profile** context selectors (same as the Skills list). Settings are scoped per-project and per-agent.
+
+### Settings HTML contract
+
+Your `settings.html` receives context from `$store.pluginSettings`:
+
+```html
+<html>
+<head>
+  <title>My Plugin Settings</title>
+  <script type="module">
+    import { store } from "/components/plugins/plugin-settings-store.js";
+  </script>
+</head>
+<body>
+  <div x-data>
+    <!-- bind fields to $store.pluginSettings.settings -->
+    <input x-model="$store.pluginSettings.settings.my_key" />
+  </div>
+</body>
+</html>
+```
+
+- `$store.pluginSettings.settings` - plain object loaded from `settings.json`, save-scoped to the selected project/agent.
+- The modal's **Save** button calls `POST /plugins` (`action: save_settings`) automatically.
+- For plugins that surface **core settings** (like memory), set `saveMode = 'core'` in `x-init` so Save delegates to the core settings API instead.
+
+### Settings resolution priority (highest first)
+
+```
+project/.a0proj/agents/<profile>/plugins/<name>/settings.json
+project/.a0proj/plugins/<name>/settings.json
+usr/agents/<profile>/plugins/<name>/settings.json
+agents/<profile>/plugins/<name>/settings.json
+usr/plugins/<name>/settings.json
+plugins/<name>/settings.json
+```
 
 ## Plugin Author Flow
 
-1. Create `plugins/<plugin_id>/`.
-2. Add backend capabilities by convention (`api/`, `tools/`, `helpers/`, `extensions/python/`, `prompts/`, `agents/`).
-3. Pick a WebUI breakpoint or JS hook extension point.
-4. For HTML UI entries: place files under `extensions/webui/<extension_point>/`, use root `x-data` + one `x-move-*` directive.
-5. For JS hooks: place `*.js` files under `extensions/webui/<extension_point>/`, export a default async function.
-6. Place full plugin pages/components in `webui/` and open them directly by path.
-
-### Python extension example
-
-```python
-# plugins/my-plugin/extensions/python/monologue_end/_50_my_extension.py
-from python.helpers.extension import Extension
-
-class MyExtension(Extension):
-    async def execute(self, **kwargs):
-        pass
-```
-
-### HTML WebUI extension example
-
-```html
-<!-- plugins/my-plugin/extensions/webui/sidebar-quick-actions-main-start/my-button.html -->
-<div x-data>
-  <button
-    x-move-after=".config-button#dashboard"
-    class="config-button"
-    id="my-plugin-button"
-    @click="openModal('../plugins/my-plugin/webui/my-modal.html')"
-    title="My Plugin">
-    <span class="material-symbols-outlined">extension</span>
-  </button>
-</div>
-```
-
-### JS hook example
-
-```js
-// plugins/my-plugin/extensions/webui/send_message_before/transform.js
-export default async function(ctx) {
-  // prepend a tag to every outgoing message
-  ctx.message = "[my-plugin] " + ctx.message;
-}
-```
-
-### Full plugin UI page
-
-```html
-<!-- opened via openModal() or x-component -->
-<x-component path="../plugins/my-plugin/webui/my-modal.html"></x-component>
-```
+1. Create `usr/plugins/<plugin_name>/`.
+2. Add `plugin.json` manifest (required for discovery).
+3. Add backend capabilities by convention (`api/`, `tools/`, `helpers/`, `extensions/python/`, `prompts/`, `agents/`).
+4. Pick a WebUI breakpoint or JS hook extension point.
+5. For HTML UI entries: place files under `extensions/webui/<extension_point>/`, use root `x-data` + one `x-move-*` directive.
+6. For JS hooks: place `*.js` files under `extensions/webui/<extension_point>/`, export a default async function.
+7. Place full plugin pages/components in `webui/` and open them directly by path.
+8. Optionally add `webui/settings.html` and set `settings_sections` in `plugin.json` to expose settings in the UI.
 
 ## Routes
 
-- Plugin static assets: `GET /plugins/<plugin_id>/<path>`
-- Plugin APIs: `POST /api/plugins/<plugin_id>/<handler>`
+- Plugin static assets: `GET /plugins/<plugin_name>/<path>`
+- Plugin APIs: `POST /api/plugins/<plugin_name>/<handler>`
 - WebUI extension discovery: `POST /api/load_webui_extensions`
+- Plugin management (list, get/save settings): `POST /plugins`
 
 ## Notes
 
 - User plugins in `usr/plugins/` override repo plugins by plugin ID.
 - Runtime behavior is fully convention-driven from directory structure.
 - Extension point ordering between multiple plugins is currently implicit (filesystem order).
-- Project-specific plugin roots are not yet active (commented out in `get_plugin_roots()`).
 - When you need a new extension point for your plugin, submit a PR - we are actively expanding coverage based on community needs.

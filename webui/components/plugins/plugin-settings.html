@@ -1,0 +1,152 @@
+<html>
+<head>
+    <title>Plugin Settings</title>
+    <script type="module">
+        import { store } from "/components/plugins/plugin-settings-store.js";
+    </script>
+</head>
+<body>
+    <div x-data>
+        <template x-if="$store.pluginSettings">
+            <div x-create="$store.pluginSettings.onModalOpen()"
+                 x-destroy="$store.pluginSettings.cleanup()">
+
+                <!-- Context toolbar: Project + Agent profile (mirrors skills list) -->
+                <div class="plugin-settings-toolbar">
+                    <div class="plugin-settings-toolbar-row">
+
+                        <label class="plugin-settings-toolbar-item">
+                            <span class="plugin-settings-toolbar-label">Project</span>
+                            <select x-model="$store.pluginSettings.projectName"
+                                    @change="$store.pluginSettings.loadSettings()">
+                                <option value="">Global</option>
+                                <template x-for="project in $store.pluginSettings.projects" :key="project.key">
+                                    <option :value="project.key" x-text="project.label"></option>
+                                </template>
+                            </select>
+                        </label>
+
+                        <label class="plugin-settings-toolbar-item">
+                            <span class="plugin-settings-toolbar-label">Agent profile</span>
+                            <select x-model="$store.pluginSettings.agentProfileKey"
+                                    @change="$store.pluginSettings.loadSettings()">
+                                <option value="">All profiles</option>
+                                <template x-for="profile in $store.pluginSettings.agentProfiles" :key="profile.key">
+                                    <option :value="profile.key" x-text="profile.label"></option>
+                                </template>
+                            </select>
+                        </label>
+
+                    </div>
+                </div>
+
+                <!-- Error -->
+                <div x-show="$store.pluginSettings.error" class="plugin-settings-error">
+                    <span class="material-symbols-outlined">error</span>
+                    <span x-text="$store.pluginSettings.error"></span>
+                </div>
+
+                <!-- Loading -->
+                <div x-show="$store.pluginSettings.isLoading" class="plugin-settings-loading">
+                    <span class="material-symbols-outlined spinning">progress_activity</span>
+                    <span>Loading settings...</span>
+                </div>
+
+                <!-- Plugin settings body: plugin provides /plugins/<name>/webui/settings.html -->
+                <div x-show="!$store.pluginSettings.isLoading"
+                     class="plugin-settings-body"
+                     x-html="$store.pluginSettings.settingsComponentHtml">
+                </div>
+
+            </div>
+        </template>
+    </div>
+
+    <!-- Footer (pinned outside scroll area) -->
+    <div class="modal-footer" data-modal-footer>
+        <button class="btn btn-ok"
+                @click="$store.pluginSettings.save()"
+                :disabled="$store.pluginSettings?.isSaving || $store.pluginSettings?.isLoading">
+            Save
+        </button>
+        <button class="btn btn-cancel"
+                @click="window.closeModal?.()">
+            Cancel
+        </button>
+    </div>
+
+    <style>
+        .plugin-settings-toolbar {
+            margin-bottom: 1rem;
+        }
+
+        .plugin-settings-toolbar-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .plugin-settings-toolbar-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1 1 18rem;
+            min-width: 12rem;
+            margin: 0;
+        }
+
+        .plugin-settings-toolbar-label {
+            font-weight: 600;
+            color: var(--color-text-secondary);
+            white-space: nowrap;
+        }
+
+        .plugin-settings-toolbar-item select {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        @media (max-width: 640px) {
+            .plugin-settings-toolbar-item {
+                flex-basis: 100%;
+                min-width: 0;
+            }
+        }
+
+        .plugin-settings-error {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--color-error, #e74c3c);
+            background: var(--color-error-bg, #fdecea);
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: var(--font-size-small);
+        }
+
+        .plugin-settings-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            color: var(--color-text-secondary);
+        }
+
+        .plugin-settings-body {
+            min-height: 4rem;
+        }
+
+        .spinning {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>
