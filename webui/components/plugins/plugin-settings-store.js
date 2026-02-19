@@ -79,7 +79,7 @@ const model = {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "get_settings",
+                    action: "get_config",
                     plugin_name: this.pluginName,
                     project_name: this.projectName || "",
                     agent_profile: this.agentProfileKey || "",
@@ -117,7 +117,7 @@ const model = {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action: "save_settings",
+                    action: "save_config",
                     plugin_name: this.pluginName,
                     project_name: this.projectName || "",
                     agent_profile: this.agentProfileKey || "",
@@ -144,7 +144,7 @@ const model = {
     // Reactive URL for the plugin's settings component (used with x-html injection)
     get settingsComponentHtml() {
         if (!this.pluginName) return "";
-        return `<x-component path="/plugins/${this.pluginName}/webui/settings.html"></x-component>`;
+        return `<x-component path="/plugins/${this.pluginName}/webui/config.html"></x-component>`;
     },
 };
 

@@ -53,7 +53,7 @@ usr/plugins/
       python/<extension_point>/   # Python lifecycle extensions
       webui/<extension_point>/    # WebUI HTML/JS hook contributions
     webui/
-      settings.html               # Optional: plugin settings UI
+      config.html                 # Optional: plugin settings UI
       ...                         # Full plugin-owned UI pages/components
 ```
 
@@ -70,7 +70,7 @@ Capability discovery is based on these paths:
 - `extensions/python/<extension_point>/*.py` - backend lifecycle extensions
 - `extensions/webui/<extension_point>/*` - WebUI extension assets (HTML/JS)
 - `webui/**` - full plugin-owned UI pages/components (loaded directly by path)
-- `webui/settings.html` - if present, a Settings button appears for this plugin in the relevant settings tabs
+- `webui/config.html` - if present, a Settings button appears for this plugin in the relevant settings tabs
 - `prompts/**/*.md` - prompt templates
 - `agents/` - agent profiles
 
@@ -133,18 +133,18 @@ Runtime code calls:
 
 If your plugin needs user-configurable settings:
 
-1. Add `webui/settings.html` to your plugin. The system detects this file automatically.
+1. Add `webui/config.html` to your plugin. The system detects this file automatically.
 2. Declare which settings tabs should show a subsection for your plugin via `settings_sections` in `plugin.json`.
 3. The plugin settings modal provides **Project** and **Agent profile** context selectors (same as the Skills list). Settings are scoped per-project and per-agent.
 
-### Settings HTML contract
+### Config HTML contract
 
-Your `settings.html` receives context from `$store.pluginSettings`:
+Your `config.html` receives context from `$store.pluginSettings`:
 
 ```html
 <html>
 <head>
-  <title>My Plugin Settings</title>
+  <title>My Plugin Config</title>
   <script type="module">
     import { store } from "/components/plugins/plugin-settings-store.js";
   </script>
@@ -158,19 +158,19 @@ Your `settings.html` receives context from `$store.pluginSettings`:
 </html>
 ```
 
-- `$store.pluginSettings.settings` - plain object loaded from `settings.json`, save-scoped to the selected project/agent.
-- The modal's **Save** button calls `POST /plugins` (`action: save_settings`) automatically.
+- `$store.pluginSettings.settings` - plain object loaded from `config.json`, save-scoped to the selected project/agent.
+- The modal's **Save** button calls `POST /plugins` (`action: save_config`) automatically.
 - For plugins that surface **core settings** (like memory), set `saveMode = 'core'` in `x-init` so Save delegates to the core settings API instead.
 
 ### Settings resolution priority (highest first)
 
 ```
-project/.a0proj/agents/<profile>/plugins/<name>/settings.json
-project/.a0proj/plugins/<name>/settings.json
-usr/agents/<profile>/plugins/<name>/settings.json
-agents/<profile>/plugins/<name>/settings.json
-usr/plugins/<name>/settings.json
-plugins/<name>/settings.json
+project/.a0proj/agents/<profile>/plugins/<name>/config.json
+project/.a0proj/plugins/<name>/config.json
+usr/agents/<profile>/plugins/<name>/config.json
+agents/<profile>/plugins/<name>/config.json
+usr/plugins/<name>/config.json
+plugins/<name>/config.json
 ```
 
 ## Plugin Author Flow
@@ -182,14 +182,14 @@ plugins/<name>/settings.json
 5. For HTML UI entries: place files under `extensions/webui/<extension_point>/`, use root `x-data` + one `x-move-*` directive.
 6. For JS hooks: place `*.js` files under `extensions/webui/<extension_point>/`, export a default async function.
 7. Place full plugin pages/components in `webui/` and open them directly by path.
-8. Optionally add `webui/settings.html` and set `settings_sections` in `plugin.json` to expose settings in the UI.
+8. Optionally add `webui/config.html` and set `settings_sections` in `plugin.json` to expose settings in the UI.
 
 ## Routes
 
 - Plugin static assets: `GET /plugins/<plugin_name>/<path>`
 - Plugin APIs: `POST /api/plugins/<plugin_name>/<handler>`
 - WebUI extension discovery: `POST /api/load_webui_extensions`
-- Plugin management (list, get/save settings): `POST /plugins`
+- Plugin management (get/save config): `POST /plugins`
 
 ## Notes
 

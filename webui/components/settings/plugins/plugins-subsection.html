@@ -25,21 +25,30 @@
             if (!this.tab) return;
             this.loading = true;
             try {
-                const r = await globalThis.fetchApi('/plugins', {
+                const r = await globalThis.fetchApi('/plugins_list', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'list', tab: this.tab }),
+                    body: JSON.stringify({
+                        filter: { custom: true, builtin: true },
+                    }),
                 });
                 const data = await r.json().catch(() => ({}));
-                this.plugins = (data.ok ? data.data || [] : []).filter(p => p.has_settings_ui);
+                const plugins = data.ok ? (data.plugins || []) : [];
+                this.plugins = plugins.filter((plugin) => {
+                    const sections = Array.isArray(plugin.settings_sections)
+                        ? plugin.settings_sections
+                        : [];
+                    return plugin.has_config_screen && sections.includes(this.tab);
+                });
             } catch {
                 this.plugins = [];
             } finally {
                 this.loading = false;
             }
         },
-        async openSettings(pluginName) {
-            await Alpine.store('pluginSettings')?.open(pluginName);
+        async openSettings(plugin) {
+            if (!plugin?.name) return;
+            await Alpine.store('pluginSettings')?.open(plugin.name);
             window.openModal?.('components/plugins/plugin-settings.html');
         }
     }" x-init="init()">
@@ -55,13 +64,13 @@
                     <span>Loading...</span>
                 </div>
 
-                <template x-for="plugin in plugins" :key="plugin.name">
+                <template x-for="plugin in plugins" :key="plugin.path || plugin.name">
                     <div class="plugin-subsection-row">
                         <div class="plugin-subsection-info">
                             <span class="plugin-subsection-name" x-text="plugin.display_name || plugin.name"></span>
                             <span class="plugin-subsection-desc" x-text="plugin.description"></span>
                         </div>
-                        <button class="button" @click="openSettings(plugin.name)">
+                        <button class="button" @click="openSettings(plugin)">
                             <span class="icon material-symbols-outlined">settings</span>
                             Settings
                         </button>

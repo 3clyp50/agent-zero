@@ -72,10 +72,10 @@ Modals in A0 are "stacked" and loaded dynamically via `openModal(path)`.
 
 Plugins get a dedicated settings modal with **Project** and **Agent profile** context selectors. To enable it:
 
-1. Add `webui/settings.html` to your plugin (auto-detected).
+1. Add `webui/config.html` to your plugin (auto-detected).
 2. Set `"settings_sections": ["agent"]` in `plugin.json` - this places a subsection with a Settings button in the chosen tab.
 
-Your `settings.html` binds to `$store.pluginSettings.settings` (a plain object persisted as `settings.json`). The modal's Save/Cancel footer handles persistence automatically. See `plugins/README.md` for the full contract and settings resolution priority chain.
+Your `config.html` binds to `$store.pluginSettings.settings` (a plain object persisted as `config.json`). The modal's Save/Cancel footer handles persistence automatically. See `plugins/README.md` for the full contract and settings resolution priority chain.
 
 For plugins that surface **existing core settings** (e.g. wrapping `settings/agent/memory.html`), set `$store.pluginSettings.saveMode = 'core'` in `x-init` to route Save through the core settings API instead.
 
@@ -105,7 +105,7 @@ usr/plugins/my-plugin/
 │   ├── python/agent_init/ # Auto-start logic
 │   └── webui/            # sidebar-quick-actions-main-start/
 └── webui/
-    ├── settings.html     # Optional: plugin settings UI
+    ├── config.html       # Optional: plugin settings UI
     └── my-modal.html     # Full plugin pages + stores
 ```
 

@@ -63,11 +63,11 @@ Import it in the HTML `<head>`:
 
 ## ⚙️ Plugin Settings
 
-If your plugin needs user-configurable settings, add `webui/settings.html`. The system detects it automatically and shows a Settings button in the relevant tabs (per `settings_sections` in `plugin.json`).
+If your plugin needs user-configurable settings, add `webui/config.html`. The system detects it automatically and shows a Settings button in the relevant tabs (per `settings_sections` in `plugin.json`).
 
 ### Settings modal contract
 
-The modal provides Project + Agent profile context selectors. Your `settings.html` binds to `$store.pluginSettings.settings`:
+The modal provides Project + Agent profile context selectors. Your `config.html` binds to `$store.pluginSettings.settings`:
 
 ```html
 <html>
@@ -86,7 +86,7 @@ The modal provides Project + Agent profile context selectors. Your `settings.htm
 </html>
 ```
 
-The modal's Save button persists `$store.pluginSettings.settings` to `settings.json` in the correct scope (project/agent/global).
+The modal's Save button persists `$store.pluginSettings.settings` to `config.json` in the correct scope (project/agent/global).
 
 ### Surfacing core settings (e.g. memory pattern)
 
@@ -124,13 +124,18 @@ response = await task.result()
 
 ### Reading Plugin Settings (backend)
 ```python
-from python.helpers.plugins import get_plugin_settings
+from python.helpers.plugins import get_plugin_config, save_plugin_config
 
 # Runtime (with running agent - resolves project/profile from context)
-settings = get_plugin_settings("my-plugin", agent=agent)
+settings = get_plugin_config("my-plugin", agent=agent) or {}
 
-# UI path (explicit strings, no agent instance needed)
-settings = get_plugin_settings("my-plugin", project_name="my-project", agent_profile="default")
+# Explicit write target (project/profile scope)
+save_plugin_config(
+    "my-plugin",
+    project_name="my-project",
+    agent_profile="default",
+    settings=settings,
+)
 ```
 
 ## 📁 Directory Layout
@@ -143,7 +148,7 @@ usr/plugins/<name>/
     python/agent_init/  # Python lifecycle extensions
     webui/<point>/      # HTML/JS hook extensions
   webui/
-    settings.html       # Optional: plugin settings UI
+    config.html         # Optional: plugin settings UI
     my-modal.html       # Full plugin pages
     my-store.js         # Alpine stores
 ```
