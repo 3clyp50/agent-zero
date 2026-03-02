@@ -151,6 +151,13 @@ class Plugins(ApiHandler):
 
             return {"ok": True}
 
+        if action == "get_default_config":
+            plugin_name = input.get("plugin_name", "")
+            if not plugin_name:
+                return Response(status=400, response="Missing plugin_name")
+            settings = plugins.get_default_plugin_config(plugin_name)
+            return {"ok": True, "data": settings or {}}
+
         if action == "save_config":
             plugin_name = input.get("plugin_name", "")
             project_name = input.get("project_name", "")

@@ -387,6 +387,15 @@ def get_plugin_config(
     return None
 
 
+def get_default_plugin_config(plugin_name: str):
+    file_path = files.get_abs_path(find_plugin_dir(plugin_name), CONFIG_DEFAULT_FILE_NAME)
+    if file_path and files.exists(file_path):
+        return (
+            json.loads if file_path.lower().endswith(".json") else yaml_helper.loads
+        )(files.read_file(file_path))
+    return None
+
+
 def save_plugin_config(
     plugin_name: str, project_name: str, agent_profile: str, settings: dict
 ):
