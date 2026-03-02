@@ -136,6 +136,7 @@ def get_enhanced_plugins_list(
                         has_config_screen=has_config_screen,
                         has_readme=has_readme,
                         has_license=has_license,
+                        has_init_script=has_init_script,
                         toggle_state=toggle_state,
                     )
                 )

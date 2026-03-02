@@ -1,4 +1,8 @@
+import json
 import os
+import subprocess
+import sys
+from datetime import datetime, timezone
 
 from python.helpers.api import ApiHandler, Request, Response
 from python.helpers import plugins, files
@@ -205,5 +209,63 @@ class Plugins(ApiHandler):
                 return Response(status=404, response=f"{filename} not found")
 
             return {"ok": True, "content": files.read_file(file_path), "filename": filename}
+
+        if action == "run_init_script":
+            plugin_name = input.get("plugin_name", "")
+            if not plugin_name:
+                return Response(status=400, response="Missing plugin_name")
+
+            plugin_dir = plugins.find_plugin_dir(plugin_name)
+            if not plugin_dir:
+                return Response(status=404, response="Plugin not found")
+
+            init_script = files.get_abs_path(plugin_dir, "initialize.py")
+            if not files.exists(init_script):
+                return Response(status=404, response="initialize.py not found")
+
+            executed_at = datetime.now(timezone.utc).isoformat()
+            try:
+                result = subprocess.run(
+                    [sys.executable, init_script],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    cwd=plugin_dir,
+                    timeout=120,
+                )
+                exit_code = result.returncode
+                output = result.stdout or ""
+            except subprocess.TimeoutExpired:
+                exit_code = -1
+                output = "Error: script timed out after 120 seconds"
+            except Exception as e:
+                exit_code = -1
+                output = f"Error: {str(e)}"
+
+            exec_record = {"executed_at": executed_at, "exit_code": exit_code}
+            exec_path = plugins.determine_plugin_asset_path(plugin_name, "", "", "init_exec.json")
+            if exec_path:
+                files.write_file(exec_path, json.dumps(exec_record))
+
+            return {
+                "ok": exit_code == 0,
+                "output": output,
+                "exit_code": exit_code,
+                "executed_at": executed_at,
+            }
+
+        if action == "get_init_exec":
+            plugin_name = input.get("plugin_name", "")
+            if not plugin_name:
+                return Response(status=400, response="Missing plugin_name")
+
+            exec_path = plugins.determine_plugin_asset_path(plugin_name, "", "", "init_exec.json")
+            if exec_path and files.exists(exec_path):
+                try:
+                    data = json.loads(files.read_file(exec_path))
+                    return {"ok": True, "data": data}
+                except Exception:
+                    pass
+            return {"ok": True, "data": None}
 
         return Response(status=400, response=f"Unknown action: {action}")

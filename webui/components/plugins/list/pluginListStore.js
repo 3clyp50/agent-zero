@@ -2,6 +2,7 @@ import { createStore } from "/js/AlpineStore.js";
 import * as api from "/js/api.js";
 import "/components/plugins/plugin-settings-store.js";
 import "/components/plugins/toggle/plugin-toggle-store.js";
+import "/components/plugins/list/plugin-init-store.js";
 import "/components/modals/markdown/markdown-store.js";
 import {
   store as notificationStore,

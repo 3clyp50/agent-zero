@@ -97,6 +97,14 @@
                                             <span class="icon material-symbols-outlined">gavel</span> License
                                         </button>
                                     </template>
+                                    <template x-if="plugin.has_init_script">
+                                        <button type="button"
+                                            class="button"
+                                            title="Run initializer script"
+                                            @click="$store.pluginInitStore.open(plugin)">
+                                            <span class="icon material-symbols-outlined">terminal</span> Init
+                                        </button>
+                                    </template>
                                     <button type="button"
                                         class="button"
                                         title="Info"
