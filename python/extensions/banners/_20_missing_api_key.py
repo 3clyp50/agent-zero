@@ -10,8 +10,7 @@ class MissingApiKeyCheck(Extension):
     LOCAL_EMBEDDING = ["huggingface"]
     MODEL_TYPE_NAMES = {
         "chat": "Chat Model",
-        "utility": "Utility Model", 
-        "browser": "Web Browser Model",
+        "utility": "Utility Model",
         "embedding": "Embedding Model",
     }
 
@@ -20,7 +19,6 @@ class MissingApiKeyCheck(Extension):
         model_providers = {
             "chat": current_settings.get("chat_model_provider", ""),
             "utility": current_settings.get("util_model_provider", ""),
-            "browser": current_settings.get("browser_model_provider", ""),
             "embedding": current_settings.get("embed_model_provider", ""),
         }
         

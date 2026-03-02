@@ -306,13 +306,9 @@ class AgentConfig:
     chat_model: models.ModelConfig
     utility_model: models.ModelConfig
     embeddings_model: models.ModelConfig
-    browser_model: models.ModelConfig
     mcp_servers: str
     profile: str = ""
     knowledge_subdirs: list[str] = field(default_factory=lambda: ["default", "custom"])
-    browser_http_headers: dict[str, str] = field(
-        default_factory=dict
-    )  # Custom HTTP headers for browser requests
     code_exec_ssh_enabled: bool = True
     code_exec_ssh_addr: str = "localhost"
     code_exec_ssh_port: int = 55022
@@ -767,14 +763,7 @@ class Agent:
             **self.config.utility_model.build_kwargs(),
         )
 
-    @extensible
-    def get_browser_model(self):
-        return models.get_browser_model(
-            self.config.browser_model.provider,
-            self.config.browser_model.name,
-            model_config=self.config.browser_model,
-            **self.config.browser_model.build_kwargs(),
-        )
+
 
     @extensible
     def get_embedding_model(self):
