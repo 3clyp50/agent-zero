@@ -41,6 +41,10 @@ per_agent_config: false
 always_enabled: false
 ```
 
+## Plugin Initialization (`initialize.py`)
+
+Plugins can include an optional `initialize.py` at the plugin root for one-time setup such as installing dependencies or downloading models. Users trigger it via the **Init** button in the Plugin List UI. The script should return `0` on success and print progress messages for user feedback.
+
 ## Plugin Index & Community Sharing
 
 The **Plugin Index** at https://github.com/agent0ai/a0-plugins is the community-maintained registry of plugins available to all Agent Zero users.

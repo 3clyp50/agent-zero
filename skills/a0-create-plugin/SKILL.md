@@ -168,6 +168,7 @@ save_plugin_config(
 ```
 /a0/usr/plugins/<name>/
   plugin.yaml           # Required manifest
+  initialize.py         # Optional one-time setup script
   default_config.yaml   # Optional default settings fallback
   README.md             # Optional, shown in Plugin List UI
   LICENSE               # Optional, shown in Plugin List UI
@@ -183,6 +184,32 @@ save_plugin_config(
     my-modal.html       # Full plugin pages
     my-store.js         # Alpine stores
 ```
+
+## Plugin Initialization Script (`initialize.py`)
+
+If your plugin requires one-time setup (e.g., installing dependencies, downloading models), add an `initialize.py` at the plugin root:
+
+```python
+import subprocess
+import sys
+
+def main():
+    print("Installing plugin dependencies...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "requests==2.31.0"],
+        text=True,
+    )
+    if result.returncode != 0:
+        print("ERROR: Installation failed")
+        return result.returncode
+    print("Done.")
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+Users trigger it via the **Init** button in the Plugin List UI. Return `0` on success, non-zero on failure.
 
 ---
 

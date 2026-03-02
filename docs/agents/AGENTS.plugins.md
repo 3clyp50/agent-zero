@@ -24,6 +24,7 @@ Each plugin lives in usr/plugins/<plugin_name>/.
 ```text
 usr/plugins/<plugin_name>/
 ├── plugin.yaml                   # Required: Title, version, settings + activation metadata
+├── initialize.py                 # Optional: one-time setup script (dependencies, models, etc.)
 ├── default_config.yaml           # Optional: fallback settings defaults
 ├── README.md                     # Optional: shown in Plugin List UI
 ├── LICENSE                       # Optional: shown in Plugin List UI
