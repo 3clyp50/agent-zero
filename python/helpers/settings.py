@@ -81,15 +81,7 @@ class Settings(TypedDict):
     embed_model_rl_requests: int
     embed_model_rl_input: int
 
-    browser_model_provider: str
-    browser_model_name: str
-    browser_model_api_base: str
-    browser_model_vision: bool
-    browser_model_rl_requests: int
-    browser_model_rl_input: int
-    browser_model_rl_output: int
-    browser_model_kwargs: dict[str, Any]
-    browser_http_headers: dict[str, Any]
+
 
     agent_profile: str
     agent_knowledge_subdir: str
@@ -267,7 +259,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     additional["chat_providers"] = _ensure_option_present(additional.get("chat_providers"), current.get("chat_model_provider"))
     additional["chat_providers"] = _ensure_option_present(additional.get("chat_providers"), current.get("util_model_provider"))
-    additional["chat_providers"] = _ensure_option_present(additional.get("chat_providers"), current.get("browser_model_provider"))
+
     additional["embedding_providers"] = _ensure_option_present(additional.get("embedding_providers"), current.get("embed_model_provider"))
     additional["shell_interfaces"] = _ensure_option_present(additional.get("shell_interfaces"), current.get("shell_interface"))
     additional["agent_subdirs"] = _ensure_option_present(additional.get("agent_subdirs"), current.get("agent_profile"))
@@ -309,7 +301,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
     # normalize certain fields
     for key, value in list(out["settings"].items()):
         # convert kwargs dicts to .env format
-        if (key.endswith("_kwargs") or key=="browser_http_headers") and isinstance(value, dict):
+        if key.endswith("_kwargs") and isinstance(value, dict):
             out["settings"][key] = _dict_to_env(value)
     return out
 
@@ -328,8 +320,8 @@ def convert_in(settings: Settings) -> Settings:
     current = get_settings()
 
     for key, value in settings.items():
-        # Special handling for browser_http_headers and *_kwargs (stored as .env text)
-        if (key == "browser_http_headers" or key.endswith("_kwargs")) and isinstance(value, str):
+        # Special handling for *_kwargs (stored as .env text)
+        if key.endswith("_kwargs") and isinstance(value, str):
             current[key] = _env_to_dict(value)
             continue
 
@@ -523,15 +515,7 @@ def get_default_settings() -> Settings:
         embed_model_kwargs=get_default_value("embed_model_kwargs", {}),
         embed_model_rl_requests=get_default_value("embed_model_rl_requests", 0),
         embed_model_rl_input=get_default_value("embed_model_rl_input", 0),
-        browser_model_provider=get_default_value("browser_model_provider", "openrouter"),
-        browser_model_name=get_default_value("browser_model_name", "anthropic/claude-sonnet-4.6"),
-        browser_model_api_base=get_default_value("browser_model_api_base", ""),
-        browser_model_vision=get_default_value("browser_model_vision", True),
-        browser_model_rl_requests=get_default_value("browser_model_rl_requests", 0),
-        browser_model_rl_input=get_default_value("browser_model_rl_input", 0),
-        browser_model_rl_output=get_default_value("browser_model_rl_output", 0),
-        browser_model_kwargs=get_default_value("browser_model_kwargs", {}),
-        browser_http_headers=get_default_value("browser_http_headers", {}),
+
         api_keys={},
         auth_login="",
         auth_password="",

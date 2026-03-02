@@ -39,8 +39,7 @@ uv pip install -r /git/agent-zero/requirements.txt
 # override for packages that have unnecessarily strict dependencies
 uv pip install -r /git/agent-zero/requirements2.txt
 
-# install playwright
-bash /ins/install_playwright.sh "$@"
+
 
 # Preload A0
 python /git/agent-zero/preload.py --dockerized=true

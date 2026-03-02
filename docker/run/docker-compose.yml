@@ -1,8 +1,38 @@
 services:
   agent-zero:
     container_name: agent-zero
-    image: agent0ai/agent-zero:latest
+    image: agent-zero-local
     volumes:
       - ./agent-zero:/a0
     ports:
       - "50080:80"
+    environment:
+      - PINCHTAB_BASE_URL=http://pinchtab:9867
+    depends_on:
+      pinchtab:
+        condition: service_healthy
+
+  pinchtab:
+    container_name: pinchtab
+    image: pinchtab/pinchtab:latest
+    restart: unless-stopped
+    shm_size: "2gb"
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - "9867:9867"
+    volumes:
+      - pinchtab-data:/data
+    environment:
+      - BRIDGE_HEADLESS=true
+      - PINCHTAB_STATE_DIR=/data/state
+      - PINCHTAB_PROFILE_DIR=/data/profiles
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9867/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  pinchtab-data:
