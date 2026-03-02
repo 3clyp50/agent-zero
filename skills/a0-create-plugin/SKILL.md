@@ -12,7 +12,7 @@ Primary references:
 - /a0/AGENTS.md (Full-stack architecture & AgentContext)
 - /a0/docs/agents/AGENTS.components.md (Component system deep dive)
 - /a0/docs/agents/AGENTS.modals.md (Modal system & CSS conventions)
-- /a0/AGENTS.plugins.md (Extension points, plugin.yaml, settings system, Plugin Index)
+- /a0/docs/agents/AGENTS.plugins.md (Extension points, plugin.yaml, settings system, Plugin Index)
 
 ---
 

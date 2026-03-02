@@ -191,6 +191,6 @@ A built-in **Plugin Marketplace** (always-active plugin) will allow users to bro
 
 ## See Also
 
-- `AGENTS.plugins.md` for full architecture details
+- `docs/agents/AGENTS.plugins.md` for full architecture details
 - `skills/a0-create-plugin/SKILL.md` for plugin authoring workflow (agent-facing)
 - `plugins/README.md` for core plugin directory overview

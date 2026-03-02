@@ -7,7 +7,7 @@ Tech Stack: Python 3.12+ | Flask | Alpine.js | LiteLLM | WebSocket (Socket.io)
 Dev Server: python run_ui.py (runs on http://localhost:50001 by default)
 Run Tests: pytest (standard) or pytest tests/test_name.py (file-scoped)
 Documentation: README.md | docs/
-Frontend Deep Dives: [Component System](docs/agents/AGENTS.components.md) | [Modal System](docs/agents/AGENTS.modals.md) | [Plugin Architecture](AGENTS.plugins.md)
+Frontend Deep Dives: [Component System](docs/agents/AGENTS.components.md) | [Modal System](docs/agents/AGENTS.modals.md) | [Plugin Architecture](docs/agents/AGENTS.plugins.md)
 
 ---
 
@@ -98,7 +98,7 @@ Key Files:
 - python/helpers/api.py: Base class for all API endpoints.
 - docs/agents/AGENTS.components.md: Deep dive into the frontend component architecture.
 - docs/agents/AGENTS.modals.md: Guide to the stacked modal system.
-- AGENTS.plugins.md: Comprehensive guide to the full-stack plugin system.
+- docs/agents/AGENTS.plugins.md: Comprehensive guide to the full-stack plugin system.
 
 ---
 
