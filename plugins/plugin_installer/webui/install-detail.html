@@ -8,24 +8,86 @@
 <body>
     <div x-data>
         <template x-if="$store.pluginInstallStore?.selectedPlugin">
-            <div>
-                <div class="pi-detail-header">
-                    <div class="pi-detail-thumb">
-                        <template x-if="$store.pluginInstallStore.selectedPlugin.thumbnail">
-                            <img :src="$store.pluginInstallStore.selectedPlugin.thumbnail"
-                                :alt="$store.pluginInstallStore.selectedPlugin.title">
+            <div class="pi-detail-container"
+                 x-destroy="$store.pluginInstallStore.refreshPluginList()">
+                <div class="pi-hero">
+                    <div class="pi-hero-thumb">
+                        <template x-if="$store.pluginInstallStore.getDetailThumbnailUrl()">
+                            <img :src="$store.pluginInstallStore.getDetailThumbnailUrl()"
+                                :alt="$store.pluginInstallStore.selectedPlugin.title"
+                                @error="$store.pluginInstallStore.nextDetailThumbnail()">
                         </template>
-                        <template x-if="!$store.pluginInstallStore.selectedPlugin.thumbnail">
-                            <span class="material-symbols-outlined pi-detail-placeholder">extension</span>
+                        <template x-if="!$store.pluginInstallStore.getDetailThumbnailUrl()">
+                            <span class="material-symbols-outlined pi-hero-placeholder">extension</span>
                         </template>
                     </div>
-                    <div class="pi-detail-info">
-                        <h3 class="pi-detail-title" x-text="$store.pluginInstallStore.selectedPlugin.title || $store.pluginInstallStore.selectedPlugin.key"></h3>
-                        <div class="pi-detail-stars">
-                            <span class="material-symbols-outlined" style="font-size:1rem">star</span>
-                            <span x-text="($store.pluginInstallStore.selectedPlugin.stars || 0) + ' stars'"></span>
+                    <div class="pi-hero-info">
+                        <div class="pi-hero-title-row">
+                            <h2 class="pi-hero-title" x-text="$store.pluginInstallStore.selectedPlugin.title || $store.pluginInstallStore.selectedPlugin.key"></h2>
+                            <template x-if="$store.pluginInstallStore.selectedPlugin.installed && $store.pluginInstallStore.installedPluginInfo">
+                                <div class="pi-hero-manage">
+                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_main_screen">
+                                        <button type="button" class="button"
+                                            title="Open"
+                                            @click="$store.pluginInstallStore.manageOpenPlugin()">
+                                            <span class="icon material-symbols-outlined">dashboard</span> Open
+                                        </button>
+                                    </template>
+                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_config_screen">
+                                        <button type="button" class="button"
+                                            title="Config"
+                                            @click="$store.pluginInstallStore.manageOpenConfig()">
+                                            <span class="icon material-symbols-outlined">settings</span> Config
+                                        </button>
+                                    </template>
+                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_readme">
+                                        <button type="button" class="button"
+                                            title="README"
+                                            @click="$store.pluginInstallStore.manageOpenDoc('readme')">
+                                            <span class="icon material-symbols-outlined">description</span> README
+                                        </button>
+                                    </template>
+                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_license">
+                                        <button type="button" class="button"
+                                            title="LICENSE"
+                                            @click="$store.pluginInstallStore.manageOpenDoc('license')">
+                                            <span class="icon material-symbols-outlined">gavel</span> License
+                                        </button>
+                                    </template>
+                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_init_script">
+                                        <button type="button" class="button"
+                                            title="Run initializer script"
+                                            @click="$store.pluginInstallStore.manageOpenInit()">
+                                            <span class="icon material-symbols-outlined">terminal</span> Init
+                                        </button>
+                                    </template>
+                                    <button type="button" class="button"
+                                        title="Info"
+                                        @click="$store.pluginInstallStore.manageOpenInfo()">
+                                        <span class="icon material-symbols-outlined">info</span> Info
+                                    </button>
+                                </div>
+                            </template>
                         </div>
-                        <div class="pi-detail-tags" x-show="$store.pluginInstallStore.selectedPlugin.tags?.length">
+                        <template x-if="$store.pluginInstallStore.selectedPlugin.installed">
+                            <div class="pi-installed-badge-simple">
+                                <span class="material-symbols-outlined">check_circle</span>
+                                <span>Installed</span>
+                            </div>
+                        </template>
+                        <div class="pi-hero-meta">
+                            <template x-if="$store.pluginInstallStore.selectedPlugin.author">
+                                <span class="pi-hero-author">
+                                    <span class="pi-hero-label">Author</span>
+                                    <span x-text="$store.pluginInstallStore.selectedPlugin.author"></span>
+                                </span>
+                            </template>
+                            <span class="pi-hero-stars">
+                                <span class="material-symbols-outlined">star</span>
+                                <span x-text="($store.pluginInstallStore.selectedPlugin.stars || 0)"></span>
+                            </span>
+                        </div>
+                        <div class="pi-hero-tags" x-show="$store.pluginInstallStore.selectedPlugin.tags?.length">
                             <template x-for="tag in $store.pluginInstallStore.selectedPlugin.tags || []" :key="tag">
                                 <span class="pi-tag" x-text="tag"></span>
                             </template>
@@ -33,105 +95,94 @@
                     </div>
                 </div>
 
-                <div class="pi-detail-desc" x-text="$store.pluginInstallStore.selectedPlugin.description || 'No description available.'"></div>
-
-                <div class="pi-detail-links">
-                    <template x-if="$store.pluginInstallStore.selectedPlugin.github">
-                        <a :href="$store.pluginInstallStore.selectedPlugin.github" target="_blank" class="pi-link">
-                            <span class="material-symbols-outlined pi-link-icon">code</span>
-                            <span class="pi-link-text">GitHub Repository</span>
-                        </a>
-                    </template>
-                    <template x-if="$store.pluginInstallStore.selectedPlugin.discussion">
-                        <a :href="$store.pluginInstallStore.selectedPlugin.discussion" target="_blank" class="pi-link">
-                            <span class="material-symbols-outlined pi-link-icon">forum</span>
-                            <span class="pi-link-text">Discussion</span>
-                        </a>
-                    </template>
+                <div class="pi-screenshots-section"
+                     x-show="$store.pluginInstallStore.selectedPlugin.screenshots?.length">
+                    <div class="pi-screenshots-header">Screenshots</div>
+                    <div class="pi-screenshots-grid">
+                        <template x-for="(url, i) in ($store.pluginInstallStore.selectedPlugin.screenshots || [])" :key="i">
+                            <img class="pi-screenshot-thumb"
+                                 :src="url"
+                                 :alt="$store.pluginInstallStore.selectedPlugin.title + ' screenshot ' + (i + 1)"
+                                 @click="$store.imageViewer.open(url, { name: $store.pluginInstallStore.selectedPlugin.title })">
+                        </template>
+                    </div>
                 </div>
 
-                <div class="pi-detail-actions">
-                    <template x-if="$store.pluginInstallStore.selectedPlugin.installed">
-                        <div>
-                            <div class="pi-installed-badge-row">
-                                <span class="material-symbols-outlined pi-installed-check">check_circle</span>
-                                <span class="pi-installed-label">Installed</span>
-                            </div>
+                <div class="pi-description" x-text="$store.pluginInstallStore.selectedPlugin.description || 'No description available.'"></div>
 
-                            <div x-show="$store.pluginInstallStore.installedPluginInfoLoading" class="pi-loading-inline">
-                                Loading plugin info...
-                            </div>
-
-                            <template x-if="$store.pluginInstallStore.installedPluginInfo">
-                                <div class="pi-manage-actions">
-                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_main_screen">
-                                        <button type="button" class="button"
-                                            @click="$store.pluginInstallStore.manageOpenPlugin()">
-                                            <span class="icon material-symbols-outlined">dashboard</span> Open
-                                        </button>
-                                    </template>
-                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_config_screen">
-                                        <button type="button" class="button"
-                                            @click="$store.pluginInstallStore.manageOpenConfig()">
-                                            <span class="icon material-symbols-outlined">settings</span> Config
-                                        </button>
-                                    </template>
-                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_readme">
-                                        <button type="button" class="button"
-                                            @click="$store.pluginInstallStore.manageOpenDoc('readme')">
-                                            <span class="icon material-symbols-outlined">description</span> README
-                                        </button>
-                                    </template>
-                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.has_license">
-                                        <button type="button" class="button"
-                                            @click="$store.pluginInstallStore.manageOpenDoc('license')">
-                                            <span class="icon material-symbols-outlined">gavel</span> License
-                                        </button>
-                                    </template>
-                                    <button type="button" class="button"
-                                        @click="$store.pluginInstallStore.manageOpenInfo()">
-                                        <span class="icon material-symbols-outlined">info</span> Info
-                                    </button>
-                                    <template x-if="$store.pluginInstallStore.installedPluginInfo.is_custom">
-                                        <button type="button" class="button cancel"
-                                            @click="$confirmClick($event, () => $store.pluginInstallStore.manageDeletePlugin())">
-                                            <span class="icon material-symbols-outlined">delete</span> Delete
-                                        </button>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
+                <div class="pi-actions-primary">
                     <template x-if="!$store.pluginInstallStore.selectedPlugin.installed">
-                        <button class="button confirm"
+                        <button class="pi-btn-install"
                             @click="$store.pluginInstallStore.installFromIndex($store.pluginInstallStore.selectedPlugin)"
                             :disabled="$store.pluginInstallStore.loading">
                             <template x-if="$store.pluginInstallStore.loading">
-                                <span class="pi-button-loading">
+                                <span class="pi-btn-loading">
                                     <span class="spinner"></span>
                                     <span x-text="$store.pluginInstallStore.loadingMessage || 'Installing...'"></span>
                                 </span>
                             </template>
                             <template x-if="!$store.pluginInstallStore.loading">
-                                <span>
-                                    <span class="icon material-symbols-outlined">download</span> Install Plugin
-                                </span>
+                                <span class="material-symbols-outlined">download</span>
+                            </template>
+                            <template x-if="!$store.pluginInstallStore.loading">
+                                <span>Install</span>
                             </template>
                         </button>
                     </template>
+                    <template x-if="$store.pluginInstallStore.selectedPlugin.installed && $store.pluginInstallStore.installedPluginInfo?.is_custom">
+                        <button type="button" class="pi-btn-uninstall"
+                            @click="$confirmClick($event, () => $store.pluginInstallStore.manageDeletePlugin())">
+                            <span class="material-symbols-outlined">delete</span>
+                            <span>Uninstall</span>
+                        </button>
+                    </template>
+                    <template x-if="$store.pluginInstallStore.selectedPlugin.discussion">
+                        <a :href="$store.pluginInstallStore.selectedPlugin.discussion" target="_blank" class="pi-btn-discussion">
+                            <span class="material-symbols-outlined">forum</span>
+                            <span>Join Discussion</span>
+                        </a>
+                    </template>
                 </div>
 
-                <div x-show="$store.pluginInstallStore.error" class="pi-error">
+                <div x-show="$store.pluginInstallStore.error" class="pi-message pi-message-error">
                     <span x-text="$store.pluginInstallStore.error"></span>
                 </div>
 
-                <div x-show="$store.pluginInstallStore.result" class="pi-result">
-                    <div class="pi-result-icon">
-                        <span class="material-symbols-outlined">check_circle</span>
+                <div class="pi-readme-section" x-show="$store.pluginInstallStore.readmeContent || $store.pluginInstallStore.readmeLoading">
+                    <div class="pi-readme-header">Readme</div>
+                    <div x-show="$store.pluginInstallStore.readmeLoading" class="pi-loading-text">
+                        Loading readme...
                     </div>
-                    <div class="pi-result-text">
-                        <strong>Plugin installed successfully!</strong>
-                        <div class="pi-result-path" x-text="$store.pluginInstallStore.result?.path || ''"></div>
+                    <div x-show="$store.pluginInstallStore.readmeContent && !$store.pluginInstallStore.readmeLoading"
+                         class="pi-readme-content" x-html="$store.pluginInstallStore.readmeContent"></div>
+                </div>
+
+                <div class="pi-developer-section">
+                    <div class="pi-developer-header">Plugin Code</div>
+                    <div class="pi-developer-links">
+                        <template x-if="$store.pluginInstallStore.selectedPlugin.github">
+                            <a :href="$store.pluginInstallStore.selectedPlugin.github" target="_blank" class="pi-dev-link">
+                                <span class="material-symbols-outlined">code</span>
+                                <span>GitHub Repository</span>
+                            </a>
+                        </template>
+                        <template x-if="$store.pluginInstallStore.selectedPlugin.key">
+                            <a :href="$store.pluginInstallStore.getIndexUrl($store.pluginInstallStore.selectedPlugin.key)" target="_blank" class="pi-dev-link">
+                                <span class="material-symbols-outlined">inventory_2</span>
+                                <span>Plugin Index</span>
+                            </a>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template x-if="$store.pluginInstallStore?.selectedPlugin">
+            <div class="modal-footer pi-footer" data-modal-footer>
+                <div class="buttons-container">
+                    <div class="buttons-left"></div>
+                    <div class="buttons-right">
+                        <button class="btn btn-cancel" @click="window.closeModal?.()">Close</button>
                     </div>
                 </div>
             </div>
@@ -139,190 +190,522 @@
     </div>
 
     <style>
-        .pi-detail-header {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
+        .pi-detail-container {
+            padding: 1rem;
+            margin: 0 auto;
         }
 
-        .pi-detail-thumb {
-            width: 100px;
-            height: 100px;
-            border-radius: 8px;
+        .pi-hero {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .pi-hero-thumb {
+            width: 120px;
+            height: 120px;
+            border-radius: 12px;
             overflow: hidden;
             flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             background: var(--color-panel);
-        }
-
-        .pi-detail-thumb img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-
-        .pi-detail-placeholder {
-            font-size: 4rem;
-            color: var(--color-text-muted);
-        }
-
-        .pi-detail-info {
-            flex: 1;
-        }
-
-        .pi-detail-title {
-            margin: 0 0 0.3rem 0;
-            font-size: 1.2rem;
-        }
-
-        .pi-detail-stars {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            font-size: 0.9rem;
-            color: var(--color-text-secondary);
-            margin-bottom: 0.4rem;
-        }
-
-        .pi-detail-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.3rem;
-        }
-
-        .pi-tag {
-            font-size: 0.75rem;
-            padding: 0.15rem 0.5rem;
-            border-radius: 3px;
-            background: var(--color-panel);
-            color: var(--color-text-secondary);
             border: 1px solid var(--color-border);
         }
 
-        .pi-detail-desc {
-            color: var(--color-text-primary);
-            font-size: 0.95rem;
-            line-height: 1.5;
-            margin-bottom: 1rem;
+        .pi-hero-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 0.5rem;
         }
 
-        .pi-detail-links {
+        .pi-hero-placeholder {
+            font-size: 5rem;
+            color: var(--color-text-muted);
+        }
+
+        .pi-hero-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .pi-hero-title-row {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .pi-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-
-        .pi-link-icon {
-            color: var(--color-highlight);
-            display: inline-block;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
-
-        .pi-link-text {
-            color: var(--color-highlight);
-        }
-
-        .pi-link:hover .pi-link-text {
-            text-decoration: underline;
-            text-underline-offset: 2px;
-        }
-
-        .pi-detail-actions {
-            margin: 1rem 0;
-        }
-
-        .pi-button-loading {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .pi-error {
-            color: var(--color-error);
-            padding: 0.75rem;
-            background: var(--color-error-bg, rgba(239,68,68,0.1));
-            border-radius: 4px;
-            margin-top: 0.75rem;
-        }
-
-        .pi-result {
-            display: flex;
-            align-items: center;
+            align-items: flex-start;
+            justify-content: space-between;
             gap: 0.75rem;
-            padding: 0.75rem;
-            background: rgba(34,197,94,0.1);
-            border: 1px solid rgba(34,197,94,0.3);
-            border-radius: 4px;
-            margin-top: 0.75rem;
+            margin-bottom: 0.5rem;
         }
 
-        .pi-result-icon .material-symbols-outlined {
-            font-size: 2rem;
-            color: #22c55e;
+        .pi-hero-title {
+            margin: 0;
+            font-size: 1.75rem;
+            font-weight: 600;
+            line-height: 1.2;
+            color: var(--color-text-primary);
         }
 
-        .pi-result-path {
-            font-size: 0.85rem;
-            color: var(--color-text-secondary);
-            margin-top: 0.25rem;
-            font-family: var(--font-family-code);
-        }
-
-        .pi-installed-badge-row {
+        .pi-hero-manage {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .pi-installed-check {
-            font-size: 1.3rem;
-            color: #22c55e;
-        }
-
-        .pi-installed-label {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: #22c55e;
-        }
-
-        .pi-manage-actions {
-            display: flex;
-            flex-wrap: wrap;
             gap: 0.5rem;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+            justify-content: flex-end;
         }
 
-        .pi-manage-actions .button {
+        .pi-hero-manage .button {
             padding: 0.3rem 0.6rem;
             font-size: 0.9rem;
         }
 
-        .pi-manage-actions .button .icon {
+        .pi-hero-manage .button .icon {
             font-size: 1.1rem;
         }
 
-        .pi-loading-inline {
-            font-size: 0.85rem;
-            color: var(--color-text-secondary);
-            padding: 0.5rem 0;
+        .pi-hero-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
         }
 
-        @media (max-width: 500px) {
-            .pi-detail-header {
+        .pi-hero-label {
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            margin-right: 0.2rem;
+        }
+
+        .pi-hero-author {
+            font-size: 1rem;
+            color: var(--color-text-secondary);
+            font-weight: 500;
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0.15rem;
+        }
+
+        .pi-hero-stars {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.95rem;
+            color: var(--color-text-secondary);
+        }
+
+        .pi-hero-stars .material-symbols-outlined {
+            font-size: 1.1rem;
+            color: #fbbf24;
+        }
+
+        .pi-hero-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .pi-installed-badge-simple {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #22c55e;
+            margin-bottom: 0.35rem;
+        }
+
+        .pi-installed-badge-simple .material-symbols-outlined {
+            font-size: 1.1rem;
+        }
+
+        .pi-tag {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .pi-tag {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            background: var(--color-panel);
+            color: var(--color-text-secondary);
+            border: 1px solid var(--color-border);
+            font-weight: 500;
+        }
+
+        .pi-description {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--color-text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .pi-actions-primary {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pi-btn-install {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.85rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            background: var(--color-highlight);
+            color: #fff;
+            font-family: 'Rubik';
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .pi-btn-install:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .pi-btn-install:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .pi-btn-install .material-symbols-outlined {
+            font-size: 1.3rem;
+        }
+
+        .pi-btn-uninstall {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.85rem 1.5rem;
+            border: 2px solid var(--color-accent);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--color-accent);
+            font-family: 'Rubik';
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .pi-btn-uninstall:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background: var(--color-accent);
+            color: #fff;
+        }
+
+        .pi-btn-uninstall .material-symbols-outlined {
+            font-size: 1.3rem;
+        }
+
+        .pi-btn-discussion {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.85rem 1.5rem;
+            border: 2px solid var(--color-highlight);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--color-highlight);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .pi-btn-discussion:hover {
+            background: var(--color-highlight);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .pi-btn-discussion .material-symbols-outlined {
+            font-size: 1.3rem;
+        }
+
+        .pi-btn-loading {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .pi-loading-text {
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+            padding: 0.75rem 0;
+        }
+
+        .pi-message {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .pi-message-error {
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.3);
+            color: var(--color-error);
+        }
+
+        .pi-screenshots-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .pi-screenshots-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .pi-screenshots-grid {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .pi-screenshot-thumb {
+            height: 120px;
+            flex: 1;
+            min-width: 0;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid var(--color-border);
+            transition: opacity 0.15s;
+        }
+
+        .pi-screenshot-thumb:hover {
+            opacity: 0.8;
+        }
+
+        .pi-readme-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .pi-readme-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .pi-readme-content {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--color-text-primary);
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .pi-readme-content::-webkit-scrollbar {
+            display: none;
+        }
+
+        .pi-readme-content h1,
+        .pi-readme-content h2,
+        .pi-readme-content h3,
+        .pi-readme-content h4 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--color-text-primary);
+        }
+
+        .pi-readme-content h1 { font-size: 1.5rem; }
+        .pi-readme-content h2 { font-size: 1.25rem; }
+        .pi-readme-content h3 { font-size: 1.1rem; }
+        .pi-readme-content h4 { font-size: 1rem; }
+
+        .pi-readme-content p {
+            margin-bottom: 0.75rem;
+        }
+
+        .pi-readme-content code {
+            background: var(--color-panel);
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+            font-family: var(--font-family-code);
+            font-size: 0.85em;
+        }
+
+        .pi-readme-content pre {
+            background: var(--color-panel);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+
+        .pi-readme-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .pi-readme-content ul,
+        .pi-readme-content ol {
+            margin-bottom: 0.75rem;
+            padding-left: 1.5rem;
+        }
+
+        .pi-readme-content li {
+            margin-bottom: 0.25rem;
+        }
+
+        .pi-readme-content a {
+            color: var(--color-highlight);
+            text-decoration: none;
+        }
+
+        .pi-readme-content a:hover {
+            text-decoration: underline;
+        }
+
+        .pi-readme-content img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+
+        .pi-readme-content blockquote {
+            border-left: 3px solid var(--color-border);
+            padding-left: 1rem;
+            margin-left: 0;
+            color: var(--color-text-secondary);
+        }
+
+        .pi-readme-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .pi-readme-content th,
+        .pi-readme-content td {
+            border: 1px solid var(--color-border);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .pi-readme-content th {
+            background: var(--color-panel);
+        }
+
+        .pi-developer-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .pi-developer-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .pi-developer-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .pi-dev-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            text-decoration: none;
+            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+            transition: color 0.15s;
+        }
+
+        .pi-dev-link:hover {
+            color: var(--color-highlight);
+        }
+
+        .pi-dev-link .material-symbols-outlined {
+            font-size: 1.1rem;
+            color: var(--color-text-muted);
+        }
+
+        .pi-dev-link:hover .material-symbols-outlined {
+            color: var(--color-highlight);
+        }
+
+        .pi-footer .buttons-container {
+            width: 100%;
+        }
+
+        @media (max-width: 600px) {
+            .pi-hero {
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
+            }
+
+            .pi-hero-thumb {
+                width: 100px;
+                height: 100px;
+            }
+
+            .pi-hero-title {
+                font-size: 1.5rem;
+            }
+
+            .pi-hero-title-row {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .pi-hero-manage {
+                justify-content: center;
+            }
+
+            .pi-hero-meta {
+                justify-content: center;
+            }
+
+            .pi-hero-tags {
+                justify-content: center;
+            }
+
+            .pi-actions-primary {
+                flex-direction: column;
+            }
+
+            .pi-btn-install,
+            .pi-btn-discussion {
+                min-width: 100%;
             }
         }
     </style>

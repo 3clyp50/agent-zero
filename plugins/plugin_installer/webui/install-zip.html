@@ -8,7 +8,8 @@
 <body>
     <div x-data>
         <template x-if="$store.pluginInstallStore">
-            <div x-init="$store.pluginInstallStore.resetZip()">
+            <div x-init="$store.pluginInstallStore.resetZip()"
+                 x-destroy="$store.pluginInstallStore.refreshPluginList()">
 
                 <div class="pi-upload-section">
                     <label for="plugin-zip-file" class="pi-upload-btn button confirm"
