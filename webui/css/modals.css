@@ -136,7 +136,7 @@ some classes like modal-header are shared between the old and the new system */
 .modal-scroll {
   max-height: 90vh;
   overflow-y: auto;
-  padding: 0 1rem 1rem 1rem;
+  padding: 1rem;
 }
 
 .modal-x {
