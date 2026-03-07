@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import logging
 import time
+import urllib.request
 import uuid
 from pathlib import Path
 
@@ -8,7 +11,6 @@ from helpers.api import ApiHandler, Input, Request, Output
 from helpers import files
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
-
 
 class PluginInstall(ApiHandler):
     """Plugin installation API. Handles ZIP upload, Git clone, and index fetch."""
@@ -64,10 +66,45 @@ class PluginInstall(ApiHandler):
     def _fetch_index(self, input: dict) -> dict:
         from plugins.plugin_installer.helpers.install import fetch_plugin_index
         from helpers.plugins import get_plugins_list
+
         index_data = fetch_plugin_index()
-        installed = get_plugins_list()
-        return {
-            "success": True,
-            "index": index_data,
-            "installed_plugins": installed,
-        }
+        plugins = index_data.get("plugins", {})
+        installed_dirs = set(get_plugins_list())
+
+        def _dir_name(github: str) -> str:
+            seg = (github or "").rstrip("/").split("/")[-1]
+            return seg[:-4] if seg.endswith(".git") else seg
+
+        installed_keys = [
+            key for key, p in plugins.items()
+            if _dir_name(p.get("github", "")) in installed_dirs
+        ]
+
+        if all(plugin.get("discussion") for plugin in plugins.values()):
+            return {"success": True, "index": index_data, "installed_plugins": installed_keys}
+
+        try:
+            req = urllib.request.Request(
+                "https://api.github.com/repos/agent0ai/a0-plugins/discussions?per_page=100",
+                headers={
+                    "User-Agent": "AgentZero",
+                    "Accept": "application/vnd.github+json",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                discussions = json.loads(resp.read().decode())
+
+            for discussion in discussions:
+                title = discussion.get("title", "")
+                if not title.startswith("Plugin: "):
+                    continue
+
+                key = title[len("Plugin: "):]
+                if key in plugins and not plugins[key].get("discussion"):
+                    plugins[key]["discussion"] = discussion["html_url"]
+        except Exception as e:
+            logging.getLogger(__name__).warning(
+                "Failed to augment plugin index discussions: %s", e
+            )
+
+        return {"success": True, "index": index_data, "installed_plugins": installed_keys}

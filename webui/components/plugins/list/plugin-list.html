@@ -7,7 +7,7 @@
 </head>
 
 <body>
-    <div x-data x-on:plugin-modal-closed.window="$store.pluginListStore.refresh()">
+    <div x-data>
         <template x-if="$store.pluginListStore">
             <div x-init="$store.pluginListStore.init && $store.pluginListStore.init()">
 
@@ -224,7 +224,9 @@
 
         .plugins-toolbar-actions {
             margin-left: auto;
+            display: flex;
             flex: 0 0 auto;
+            gap: var(--spacing-sm);
         }
 
         .plugins-list {
@@ -233,7 +235,7 @@
 
         .plugin-card {
             border: 1px solid var(--color-border);
-            border-radius: 4px;
+            border-radius: 0.5rem;
             padding: 0.75rem;
             margin-top: 0.75rem;
             background: var(--color-background);

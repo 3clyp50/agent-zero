@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import re
 import shutil
 import time
 import zipfile
@@ -16,26 +15,9 @@ from helpers.plugins import (
 )
 from helpers import yaml as yaml_helper
 
-_SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_]*$")
-
-
 def _get_user_plugins_dir() -> str:
     """Return absolute path to usr/plugins/."""
     return files.get_abs_path(files.USER_DIR, files.PLUGINS_DIR)
-
-
-def _sanitize_plugin_name(name: str) -> str:
-    """Validate and sanitize a plugin directory name.
-    Converts dots and dashes to underscores for Python import compatibility.
-    Raises ValueError if the name is unsafe for filesystem use."""
-    name = name.strip().strip(".")
-    name = re.sub(r"[-.]", "_", name)
-    if not name or not _SAFE_NAME_RE.match(name):
-        raise ValueError(
-            f"Invalid plugin name: '{name}'. "
-            "Names must start with a letter or digit and contain only letters, digits, or underscores."
-        )
-    return name
 
 
 def validate_plugin_dir(path: str) -> PluginMetadata:
@@ -100,7 +82,6 @@ def install_from_zip(zip_path: str) -> dict:
             # plugin.yaml at root of extraction — use zip filename stem
             plugin_name = Path(zip_path).stem
 
-        plugin_name = _sanitize_plugin_name(plugin_name)
         check_plugin_conflict(plugin_name)
 
         # Move to usr/plugins/
@@ -136,7 +117,6 @@ def install_from_git(url: str, token: Optional[str] = None) -> dict:
     if not repo_name:
         raise ValueError("Could not derive plugin name from URL")
 
-    repo_name = _sanitize_plugin_name(repo_name)
     check_plugin_conflict(repo_name)
 
     dest = os.path.join(_get_user_plugins_dir(), repo_name)
