@@ -10,12 +10,17 @@
   <div
     class="sidebar-header-stack"
     x-data="{ dropdownOpen: false }"
-    @click.outside="dropdownOpen = false"
+    @click.window="if (dropdownOpen && !$refs.headerPanel.contains($event.target)) dropdownOpen = false"
     @keydown.escape.window="dropdownOpen = false"
     x-init="$watch('dropdownOpen', open => open && $nextTick(() => $store.sidebar.updateDropdownPosition($refs.quickActionsToggle)))"
   >
     <!-- Fixed panel that expands on hover -->
-    <div id="sidebar-header-panel" class="sidebar-header-panel" :class="{ 'sidebar-header-panel-open': $store.sidebar.isOpen }">
+    <div
+      id="sidebar-header-panel"
+      class="sidebar-header-panel"
+      x-ref="headerPanel"
+      :class="{ 'sidebar-header-panel-open': $store.sidebar.isOpen || dropdownOpen }"
+    >
       <div id="logo-bar">
         <a href="https://github.com/agent0ai/agent-zero" target="_blank" rel="noopener noreferrer" aria-label="Agent Zero on GitHub">
           <div class="logo-container">
