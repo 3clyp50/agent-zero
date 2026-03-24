@@ -1022,6 +1022,10 @@ input:checked + .slider:before {
 /* Media Queries */
 @media (max-width: 640px) {
   /* Responsive tiles for mobile */
+  #time-date {
+    display: none;
+  }
+
   .preview-section {
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     gap: 8px;

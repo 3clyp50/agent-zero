@@ -3,6 +3,7 @@ import { createStore } from "/js/AlpineStore.js";
 // This store manages the visibility and state of the main sidebar panel.
 const model = {
   isOpen: true,
+  moreOpen: false,
   _initialized: false,
 
   // Centralized collapse state for all sidebar sections (persisted in localStorage)
@@ -79,7 +80,10 @@ const model = {
 
   // Handle browser resize to show/hide sidebar based on viewport width
   handleResize() {
-    this.isOpen = !this.isMobile();
+    if (this.isMobile()) {
+      this.isOpen = false;
+    }
+    this.moreClose();
   },
 
   // Check if the current viewport is mobile
@@ -89,8 +93,29 @@ const model = {
 
   // Dropdown positioning for quick-actions (fixed position to escape overflow:hidden)
   dropdownStyle: {},
-  
-  updateDropdownPosition(triggerElement) {
+
+  headOpen() {
+    return this.moreOpen;
+  },
+
+  moreToggle(triggerElement) {
+    this.moreOpen = !this.moreOpen;
+    if (this.moreOpen) {
+      this.morePos(triggerElement);
+    }
+  },
+
+  moreClose() {
+    this.moreOpen = false;
+  },
+
+  moreClick(event, panelElement) {
+    if (this.moreOpen && panelElement && !panelElement.contains(event.target)) {
+      this.moreClose();
+    }
+  },
+
+  morePos(triggerElement) {
     if (!triggerElement) return;
     const rect = triggerElement.getBoundingClientRect();
     const menuWidth = Math.max(rect.width, 180);
