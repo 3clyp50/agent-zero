@@ -9,11 +9,10 @@ class MissingApiKeyCheck(Extension):
     LOCAL_PROVIDERS = {"ollama", "lm_studio"}
     LOCAL_EMBEDDING = {"huggingface"}
     CONFIGURE_MODEL_SETTINGS_LINK = (
-        """<a href="#" onclick="(async()=>{"""
-        """const { store: s } = await import('/components/plugins/plugin-settings-store.js');"""
-        """if(s&&s.openConfig){await s.openConfig('_model_config');}"""
-        """})();return false;">"""
-        """Configure model settings</a>"""
+        """<div class="onboarding-banner-btn-container" style="margin-top: 12px;">"""
+        """<button class="btn btn-ok" onclick="window.openModal('/plugins/_onboarding/webui/onboarding.html');return false;">"""
+        """Start Onboarding</button>"""
+        """</div>"""
     )
 
     async def execute(self, banners: list = [], frontend_context: dict = {}, **kwargs):
@@ -51,11 +50,11 @@ class MissingApiKeyCheck(Extension):
             
             banners.append({
                 "id": "missing-api-key",
-                "type": "error",
+                "type": "info",
                 "priority": 100,
-                "title": "Missing LLM API Key for current settings",
-                "html": f"""No API key configured for: {model_list}.<br>
-                         Agent Zero will not be able to function properly unless you provide an API key or change your settings.<br>
+                "title": "Welcome to Agent Zero!",
+                "html": f"""You're almost ready to chat. Please configure your models to continue.<br>
+                         Insert your API key in the onboarding wizard.
                          {self.CONFIGURE_MODEL_SETTINGS_LINK}""",
                 "dismissible": False,
                 "source": "backend"
