@@ -7,7 +7,6 @@ class MissingApiKeyCheck(Extension):
     """Check if API keys are configured for selected model providers."""
 
     LOCAL_PROVIDERS = {"ollama", "lm_studio"}
-    LOCAL_EMBEDDING = {"huggingface"}
     CONFIGURE_MODEL_SETTINGS_LINK = (
         """<div class="onboarding-banner-btn-container" style="margin-top: 12px;">"""
         """<button class="btn btn-ok" onclick="window.openModal('/plugins/_onboarding/webui/onboarding.html');return false;">"""
@@ -17,47 +16,21 @@ class MissingApiKeyCheck(Extension):
 
     async def execute(self, banners: list = [], frontend_context: dict = {}, **kwargs):
         cfg = plugins.get_plugin_config("_model_config") or {}
-        missing_providers = []
-        checks = [
-            ("Chat Model", cfg.get("chat_model", {})),
-            ("Utility Model", cfg.get("utility_model", {})),
-            ("Embedding Model", cfg.get("embedding_model", {})),
-        ]
+        missing_providers = model_config.get_missing_api_key_providers()
 
-        for label, model_cfg in checks:
-            provider = model_cfg.get("provider", "")
-            if not provider:
-                continue
-            provider_lower = provider.lower()
-            if provider_lower in self.LOCAL_PROVIDERS:
-                continue
-            if label == "Embedding Model" and provider_lower in self.LOCAL_EMBEDDING:
-                continue
-
-            if not model_config.has_provider_api_key(
-                provider_lower,
-                model_cfg.get("api_key", ""),
-            ):
-                missing_providers.append({
-                    "model_type": label,
-                    "provider": provider,
-                })
-        
         if missing_providers:
-            model_list = ", ".join(
-                f"{p['model_type']} ({p['provider']})" for p in missing_providers
-            )
-            
             banners.append({
                 "id": "missing-api-key",
-                "type": "info",
+                "type": "error",
                 "priority": 100,
                 "title": "Welcome to Agent Zero!",
                 "html": f"""You're almost ready to chat. Please configure your models to continue.<br>
                          Insert your API key in the onboarding wizard.
                          {self.CONFIGURE_MODEL_SETTINGS_LINK}""",
                 "dismissible": False,
-                "source": "backend"
+                "source": "backend",
+                # For programmatic clients (e.g. chat composer) reusing this banner pipeline
+                "missing_providers": missing_providers,
             })
 
         # Check preset providers for missing API keys (warning level)

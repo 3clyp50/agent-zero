@@ -3,6 +3,7 @@ import threading
 import types
 from pathlib import Path
 
+import pytest
 from flask import Flask
 
 
@@ -44,6 +45,7 @@ sys.modules["watchdog.observers"] = watchdog.observers
 sys.modules["watchdog.events"] = watchdog.events
 
 from plugins._model_config.api.api_keys import ApiKeys
+from plugins._model_config.extensions.python.banners import _20_missing_api_key as missing_key_banner
 import models
 
 
@@ -64,6 +66,21 @@ def test_model_config_api_keys_can_be_cleared_via_backend(monkeypatch, tmp_path)
     assert handler._set_keys({"keys": {"openrouter": ""}}) == {"ok": True}
     assert models.get_api_key("openrouter") == "None"
     assert handler._reveal_key({"provider": "openrouter"}) == {"ok": True, "value": ""}
+
+
+@pytest.mark.asyncio
+async def test_missing_api_key_banner_exposes_missing_providers(monkeypatch):
+    from plugins._model_config.helpers import model_config
+
+    fake = [{"model_type": "Chat Model", "provider": "openai"}]
+    monkeypatch.setattr(model_config, "get_missing_api_key_providers", lambda: fake)
+
+    banners = []
+    await missing_key_banner.MissingApiKeyCheck(agent=None).execute(
+        banners=banners, frontend_context={}
+    )
+    row = next(b for b in banners if b.get("id") == "missing-api-key")
+    assert row.get("missing_providers") == fake
 
 
 def test_model_config_frontend_tracks_inline_api_key_edits():
