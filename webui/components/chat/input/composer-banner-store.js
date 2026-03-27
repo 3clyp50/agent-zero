@@ -1,8 +1,6 @@
 import { createStore } from "/js/AlpineStore.js";
 import { callJsonApi } from "/js/api.js";
 
-const MISSING_API_KEY_BANNER_ID = "missing-api-key";
-
 function buildBannersContext() {
   return {
     url: window.location.href,
@@ -47,14 +45,11 @@ export const store = createStore("composerBanner", {
     this.lastRefresh = now;
     this.loading = true;
     try {
-      const response = await callJsonApi("/banners", {
-        banners: [],
+      const response = await callJsonApi("/plugins/_model_config/missing_api_key_status", {
         context: buildBannersContext(),
       });
-      const list = response?.banners || [];
-      const row = list.find((b) => b?.id === MISSING_API_KEY_BANNER_ID);
-      this.missingApiKeys = Array.isArray(row?.missing_providers)
-        ? row.missing_providers
+      this.missingApiKeys = Array.isArray(response?.missing_providers)
+        ? response.missing_providers
         : [];
     } catch (e) {
       console.error("composerBanner refresh failed", e);
