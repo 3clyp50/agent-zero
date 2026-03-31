@@ -4,11 +4,11 @@
 
 For day-to-day upgrades inside a running instance:
 
-1. **Settings → Update** → open **Self Update**
-2. Select the target version
-3. Click **Restart and Update**
+1. Open **Settings UI → Update** tab
+2. Open **Self Update**
+3. Wait for the update checker to see if you have the latest version or if there's an available update.
 
-The UI will tell you when a new A0 update is available for download.
+The UI will tell you when a new A0 update is available for download. Backups are automatically managed internally during the update process.
 
 ---
 
@@ -39,11 +39,8 @@ Because these files live in `/exe`, you can recover from an older downgraded `/a
 
 ## Backup behavior
 
-The updater can create a zip backup of `/a0/usr` before replacing repository files.
+The updater automatically creates a backup of `a0/usr`.
 
-- The default backup directory is `/root/update-backups`
-- The default file name format is `usr-YYYYMMDD-HHMMSS.zip`
-- Conflict handling supports rename, overwrite, or fail-before-restart
 
 ## Version selection
 

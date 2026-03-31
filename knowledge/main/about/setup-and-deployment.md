@@ -41,13 +41,19 @@ Settings are saved to `usr/settings.json` immediately on change.
 
 ## Updating Agent Zero
 
-The recommended update process preserves user data:
-1. Keep the old container running
-2. Pull the new image: `docker pull agent0ai/agent-zero`
-3. Start the new container on a different host port
-4. In the old instance: Settings → Backup & Restore → Create Backup
-5. In the new instance: Settings → Backup & Restore → Restore from Backup
-6. Stop the old container
+The recommended update process is to use Self Update:
+1. Open **Settings UI → Update** tab
+2. Open **Self Update**
+3. Wait for the update checker to see if you have the latest version or if there's an available update
+
+You'll also be prompted through the UI when a new A0 version is released. Note that backups are automatically managed internally during the self-update process.
+
+### Updating from Pre-v0.9.8
+
+If upgrading from v0.9.8 or earlier, the architecture has significantly changed. You must use the new install scripts and manually migrate your data:
+1. Backup your existing `usr/` directory.
+2. Run the Quick Install script (`curl -fsSL https://bash.agent-zero.ai | bash` for macOS/Linux or `irm https://ps.agent-zero.ai | iex` for Windows).
+3. Copy your backed-up `usr/` contents into the new installation's `a0/usr/` directory to preserve your settings, memory, and plugins.
 
 ## Remote Access
 

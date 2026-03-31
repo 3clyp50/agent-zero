@@ -31,13 +31,26 @@ Once the install completes, open the URL shown in your terminal to access the We
 
 ### Self Update (Recommended)
 
-Use the built-in updater in the Web UI (since v1.5):
+Use the built-in updater in the Web UI:
 
-1. Go to **Settings → Update** and open **Self Update**
-2. Choose the version you want
-3. Click **Restart and Update**
+1. Open **Settings UI → Update** tab
+2. Open **Self Update**
+3. Wait for the update checker to see if you have the latest version or if there's an available update. 
+
+You'll also be prompted through the UI when a new A0 version is released. Backups are automatically managed internally during this process.
 
 For technical details of the updater, see [Self Update](../guides/self-update.md).
+
+### Updating from Pre-v0.9.8
+
+If you are upgrading from an older version of Agent Zero (v0.9.8 or earlier) to v1.1 or newer, the architecture has fundamentally changed. You cannot use the in-app Self Update. Instead, follow these steps to migrate your data:
+
+1. **Backup your existing `usr/` directory** (which contains your settings, projects, memory, and custom plugins).
+2. **Run the new install script** to set up the new Docker-based architecture:
+   - macOS / Linux: `curl -fsSL https://bash.agent-zero.ai | bash`
+   - Windows (PowerShell): `irm https://ps.agent-zero.ai | iex`
+3. **Migrate your data:** After the new installation completes, copy the contents of your backed-up `usr/` directory into the new `/a0/usr/` directory created by the script.
+4. Restart the container for the changes to take effect.
 
 ### Manual Update (Advanced)
 

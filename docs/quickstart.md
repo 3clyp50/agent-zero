@@ -18,7 +18,7 @@ irm https://ps.agent-zero.ai | iex
 Follow the CLI prompts for port and authentication, complete onboarding, then open the Web UI URL from the terminal.
 
 > [!TIP]
-> To update later, use **Settings → Update → Self Update** (see [How to Update](setup/installation.md#how-to-update-agent-zero)). Always create a backup under **Settings → Backup & Restore** first.
+> To update later, open **Settings UI → Update tab → Open Self Update** (see [How to Update](setup/installation.md#how-to-update-agent-zero)). Backups are automatically managed internally.
 
 > [!NOTE]
 > For manual Docker Desktop setup, volume mapping, and platform-specific detail, see the [Installation Guide](setup/installation.md#manual-installation-advanced).
