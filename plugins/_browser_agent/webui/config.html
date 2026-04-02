@@ -1,0 +1,117 @@
+<html>
+<head>
+  <title>Browser Agent Settings</title>
+  <script type="module">
+    import { store } from "/plugins/_model_config/webui/model-config-store.js";
+  </script>
+</head>
+
+<body>
+  <div x-data
+       x-init="
+         await $store.modelConfig.ensureLoaded();
+         if (!config.browser_model_mode) config.browser_model_mode = 'main';
+         if (!config.browser_model) config.browser_model = {
+           provider: '',
+           name: '',
+           api_key: '',
+           api_base: '',
+           ctx_length: 128000,
+           ctx_history: 0.7,
+           vision: true,
+           max_embeds: 10,
+           rl_requests: 0,
+           rl_input: 0,
+           rl_output: 0,
+           kwargs: {},
+           _kwargs_text: '',
+         };
+         config.browser_model._kwargs_text = config.browser_model._kwargs_text || $store.modelConfig.kwargsToText(config.browser_model.kwargs);
+         if (!config.browser_allowed_domains) config.browser_allowed_domains = '*\nhttp://*\nhttps://*';
+       ">
+    <template x-if="config && $store.modelConfig._loaded">
+      <div class="model-config-sections">
+        <div class="model-section">
+          <div class="section-title">Browser Model</div>
+          <div class="section-description">
+            The browser agent follows the Main model by default. Switch to a dedicated Browser model when you want a cheaper or differently tuned model for web automation.
+          </div>
+
+          <div class="field">
+            <div class="field-label">
+              <div class="field-title">Browser model mode</div>
+              <div class="field-description">
+                Choose whether browser-use should resolve the Main model or a dedicated Browser model.
+              </div>
+            </div>
+            <div class="field-control">
+              <select x-model="config.browser_model_mode">
+                <option value="main">Use Main model (default)</option>
+                <option value="custom">Use custom Browser model</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-description" x-show="config.browser_model_mode === 'main'">
+            Browser automation will use the effective Main model configured in <span class="mono">_model_config</span>.
+          </div>
+
+          <div class="field-description" x-show="config.browser_model_mode === 'custom'">
+            The Browser model uses the same selector as the Main and Utility model fields, but it is stored only for this plugin. If provider or model name is left blank, the browser agent keeps using Main model.
+          </div>
+
+          <div x-show="config.browser_model_mode === 'custom'">
+            <div x-data="{
+              model: config.browser_model,
+              modelType: 'chat',
+              providers: $store.modelConfig.getProviders('browser_model'),
+              searchType: $store.modelConfig.getSearchType('browser_model'),
+              apiKeyMode: 'inline'
+            }">
+              <x-component path="/plugins/_model_config/webui/model-field.html"></x-component>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="model-section">
+        <div class="section-title">Browser Session</div>
+        <div class="section-description">
+          Controls how browser-use navigates pages and which sites it is allowed to touch.
+        </div>
+
+        <div class="field">
+          <div class="field-label">
+            <div class="field-title">Allowed domains</div>
+            <div class="field-description">
+              One domain pattern per line. Leave the defaults to allow any site. Examples: <span class="mono">example.com</span>, <span class="mono">*.docs.example.com</span>, <span class="mono">https://intranet.example.com</span>.
+            </div>
+          </div>
+          <div class="field-control">
+            <textarea rows="5" x-model="config.browser_allowed_domains"></textarea>
+          </div>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <style>
+    .model-config-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .model-section {
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .model-section .section-title {
+      margin-top: 0;
+    }
+    .mono {
+      font-family: var(--font-mono);
+    }
+  </style>
+</body>
+</html>

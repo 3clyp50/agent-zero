@@ -3,9 +3,10 @@
   <title>Browser Agent</title>
   <script type="module">
     import { callJsonApi } from "/js/api.js";
-    import "/components/plugins/list/pluginListStore.js";
+    import { store as pluginSettingsStore } from "/components/plugins/plugin-settings-store.js";
 
     globalThis.browserAgentStatusApi = { callJsonApi };
+    globalThis.browserAgentSettingsStore = pluginSettingsStore;
   </script>
 </head>
 <body>
@@ -30,7 +31,7 @@
     <div class="section-title">Browser Agent</div>
     <div class="section-description">
       Built-in browser automation plugin backed by `browser-use` and Playwright.
-      Model selection stays in `_model_config`; the browser agent follows the effective Main Model.
+      The browser agent follows the effective Main Model by default, with an optional dedicated Browser model in this plugin's settings.
     </div>
 
     <div class="browser-agent-card" x-show="loading">
@@ -53,7 +54,7 @@
         </div>
 
         <div class="browser-agent-card">
-          <div class="field-title">Resolved Main Model</div>
+          <div class="field-title">Resolved Browser Model</div>
           <div class="status-row">
             <span class="status-key">Provider</span>
             <span class="status-value" x-text="status.model.provider || 'Not configured'"></span>
@@ -105,9 +106,15 @@
     <div class="browser-agent-actions">
       <button
         class="btn btn-field"
-        @click="$store.pluginListStore.openPluginConfig({ name: '_model_config', has_config_screen: true })"
+        @click="browserAgentSettingsStore.openConfig('_browser_agent')"
       >
-        Open Model Settings
+        Open Browser Settings
+      </button>
+      <button
+        class="btn btn-field"
+        @click="browserAgentSettingsStore.openConfig('_model_config')"
+      >
+        Open Main Model Settings
       </button>
       <button class="btn btn-field" @click="openModal('/plugins/_model_config/webui/main.html')">
         Open Presets
