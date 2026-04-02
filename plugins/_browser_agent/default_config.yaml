@@ -1,0 +1,21 @@
+browser_model_mode: main
+
+browser_model:
+  provider: ""
+  name: ""
+  api_key: ""
+  api_base: ""
+  ctx_length: 128000
+  ctx_history: 0.7
+  vision: true
+  max_embeds: 10
+  rl_requests: 0
+  rl_input: 0
+  rl_output: 0
+  kwargs: {}
+  _kwargs_text: ""
+
+browser_allowed_domains: |
+  *
+  http://*
+  https://*

@@ -1,16 +1,24 @@
 import importlib.metadata
 
 from helpers.api import ApiHandler, Request, Response
+from helpers import plugins
 from plugins._browser_agent.helpers.playwright import (
     get_playwright_binary,
     get_playwright_cache_dir,
 )
-from plugins._model_config.helpers.model_config import get_chat_model_config
+from plugins._browser_agent.helpers.browser_llm import get_browser_model_config
 
 
 class Status(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict | Response:
-        cfg = get_chat_model_config()
+        plugin_cfg = plugins.get_plugin_config("_browser_agent") or {}
+        browser_mode = str(plugin_cfg.get("browser_model_mode", "main")).strip().lower()
+        browser_model_cfg = plugin_cfg.get("browser_model", {})
+        browser_model_custom = bool(
+            isinstance(browser_model_cfg, dict)
+            and (browser_model_cfg.get("provider") or browser_model_cfg.get("name"))
+        )
+        cfg = get_browser_model_config()
         binary = get_playwright_binary()
 
         browser_use_ok = False
@@ -24,9 +32,18 @@ class Status(ApiHandler):
         except Exception as e:
             browser_use_error = str(e)
 
+        if browser_mode == "custom" and browser_model_custom:
+            model_source = "Custom Browser model"
+        elif browser_mode == "custom":
+            model_source = "Custom Browser model not configured, using Main model"
+        else:
+            model_source = "Use Main model (default)"
+
         return {
             "plugin": "_browser_agent",
-            "model_source": "Main Model via _model_config",
+            "model_source": model_source,
+            "browser_model_mode": browser_mode,
+            "browser_model_custom": browser_model_custom,
             "model": {
                 "provider": cfg.get("provider", ""),
                 "name": cfg.get("name", ""),

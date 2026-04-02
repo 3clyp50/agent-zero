@@ -134,6 +134,7 @@ export const store = createStore("modelConfig", {
     if (config?.chat_model) config.chat_model._kwargs_text = kwargsToText(config.chat_model.kwargs);
     if (config?.utility_model) config.utility_model._kwargs_text = kwargsToText(config.utility_model.kwargs);
     if (config?.embedding_model) config.embedding_model._kwargs_text = kwargsToText(config.embedding_model.kwargs);
+    if (config?.browser_model) config.browser_model._kwargs_text = kwargsToText(config.browser_model.kwargs);
   },
 
   // Global presets

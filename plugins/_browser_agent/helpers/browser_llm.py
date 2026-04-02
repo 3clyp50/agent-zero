@@ -6,6 +6,8 @@ from langchain_core.messages import BaseMessage
 
 import models
 from browser_use.llm import ChatGoogle, ChatOpenRouter
+from helpers import plugins
+from plugins._model_config.helpers import model_config
 
 from plugins._browser_agent.helpers import browser_use_monkeypatch
 from plugins._browser_agent.helpers import browser_use_openrouter_compat
@@ -132,30 +134,40 @@ class BrowserCompatibleChatWrapper(ChatOpenRouter):
         return resp
 
 
+def get_browser_model_config(agent=None) -> dict:
+    """Get the effective browser model config for the browser-use adapter."""
+    cfg = plugins.get_plugin_config("_browser_agent", agent=agent) or {}
+    mode = str(cfg.get("browser_model_mode", "main")).strip().lower()
+    browser_cfg = cfg.get("browser_model", {})
+
+    if mode == "custom" and isinstance(browser_cfg, dict):
+        if browser_cfg.get("provider") or browser_cfg.get("name"):
+            return browser_cfg
+
+    return model_config.get_chat_model_config(agent)
+
+
 def build_browser_model_from_config(
-    model_config: models.ModelConfig,
+    model_cfg: models.ModelConfig,
 ) -> BrowserCompatibleChatWrapper:
     apply_browser_use_patches()
-    original_provider = model_config.provider.lower()
+    original_provider = model_cfg.provider.lower()
     provider_name, kwargs = models._merge_provider_defaults(  # type: ignore[attr-defined]
-        "chat", original_provider, model_config.build_kwargs()
+        "chat", original_provider, model_cfg.build_kwargs()
     )
     return models._get_litellm_chat(  # type: ignore[attr-defined]
         BrowserCompatibleChatWrapper,
-        model_config.name,
+        model_cfg.name,
         provider_name,
-        model_config,
+        model_cfg,
         **kwargs,
     )
 
+
 def build_browser_model_for_agent(agent=None) -> BrowserCompatibleChatWrapper:
-    """Build and return the browser-use adapter using chat model config."""
-    from plugins._model_config.helpers.model_config import (
-        get_chat_model_config,
-        build_model_config,
-    )
-    import models
-    
-    cfg = get_chat_model_config(agent)
+    """Build and return the browser-use adapter using the effective browser model config."""
+    from plugins._model_config.helpers.model_config import build_model_config
+
+    cfg = get_browser_model_config(agent)
     mc = build_model_config(cfg, models.ModelType.CHAT)
     return build_browser_model_from_config(mc)

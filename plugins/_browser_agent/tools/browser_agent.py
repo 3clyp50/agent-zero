@@ -1,14 +1,16 @@
 import asyncio
+import re
 import time
 from typing import Optional, cast
 from agent import Agent, InterventionException
 from pathlib import Path
 
 from helpers.tool import Tool, Response
-from helpers import files, defer, persist_chat, strings
+from helpers import files, defer, persist_chat, strings, plugins
 from plugins._browser_agent.helpers.browser_use import browser_use  # type: ignore[attr-defined]
 from helpers.print_style import PrintStyle
 from plugins._browser_agent.helpers.playwright import ensure_playwright_binary
+from plugins._browser_agent.helpers.browser_llm import get_browser_model_config
 from helpers.secrets import get_secrets_manager
 from extensions.python.message_loop_start._10_iteration_no import get_iter_no
 from pydantic import BaseModel
@@ -17,6 +19,7 @@ from helpers.dirty_json import DirtyJson
 
 
 PLUGIN_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_ALLOWED_DOMAINS = ["*", "http://*", "https://*"]
 
 
 class State:
@@ -50,9 +53,21 @@ class State:
         # ignored for now
         return {}
 
+    def _get_browser_config(self) -> dict:
+        return plugins.get_plugin_config("_browser_agent", agent=self.agent) or {}
+
+    def _get_browser_allowed_domains(self) -> list[str]:
+        raw = self._get_browser_config().get("browser_allowed_domains", "")
+        if isinstance(raw, list):
+            values = raw
+        else:
+            values = re.split(r"[\n,]+", str(raw))
+
+        domains = [value.strip() for value in values if str(value).strip()]
+        return domains or DEFAULT_ALLOWED_DOMAINS
+
     def _get_browser_vision(self):
-        from plugins._model_config.helpers.model_config import get_chat_model_config
-        cfg = get_chat_model_config(self.agent)
+        cfg = get_browser_model_config(self.agent)
         return cfg.get("vision", False)
 
     async def _initialize(self):
@@ -69,7 +84,7 @@ class State:
                 chromium_sandbox=False,
                 accept_downloads=True,
                 downloads_path=files.get_abs_path("usr/downloads"),
-                allowed_domains=["*", "http://*", "https://*"],
+                allowed_domains=self._get_browser_allowed_domains(),
                 executable_path=pw_binary,
                 keep_alive=True,
                 minimum_wait_page_load_time=1.0,
