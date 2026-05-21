@@ -2,6 +2,7 @@ from helpers import notification
 from helpers.extension import Extension
 from agent import LoopData
 from helpers import files, settings, update_check
+from helpers.localization import Localization
 import datetime
 import json
 
@@ -11,12 +12,16 @@ import json
 # do not check too often, use cooldown
 # do not notify too often
 
-last_check = datetime.datetime.fromtimestamp(0)
+last_check = datetime.datetime.fromtimestamp(0, tz=Localization.get().get_tzinfo())
 check_cooldown_seconds = 60
 last_notification_id = None
-last_notification_time = datetime.datetime.fromtimestamp(0)
+last_notification_time = datetime.datetime.fromtimestamp(0, tz=Localization.get().get_tzinfo())
 notification_cooldown_seconds = 60 * 60 * 24
 notification_state_file = "usr/update-check-state.json"
+
+
+def _now() -> datetime.datetime:
+    return Localization.get().now()
 
 
 def _load_notification_state() -> dict:
@@ -34,13 +39,13 @@ def _parse_timestamp(value: str | None) -> datetime.datetime | None:
     except ValueError:
         return None
     if parsed.tzinfo:
-        return parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
-    return parsed
+        return parsed.astimezone(Localization.get().get_tzinfo())
+    return Localization.get().localize_naive_datetime(parsed)
 
 
 def _remember_notification(notif: dict, now: datetime.datetime):
     state = {
-        "last_notification_at": now.replace(tzinfo=datetime.timezone.utc).isoformat(),
+        "last_notification_at": now.isoformat(),
         "last_notification_id": notif.get("id") or "",
         "last_notification_group": notif.get("group", "update_check"),
     }
@@ -62,16 +67,17 @@ class UpdateCheck(Extension):
                 return
             
             # check if cooldown has passed
-            if (datetime.datetime.now() - last_check).total_seconds() < check_cooldown_seconds:
+            now = _now()
+            if (now - last_check).total_seconds() < check_cooldown_seconds:
                 return
-            last_check = datetime.datetime.now()
+            last_check = now
             
             # check for updates
             version = await update_check.check_version()
 
             # if the user should update, send notification
             if notif := version.get("notification"):
-                now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                now = _now()
                 stored_state = _load_notification_state()
                 stored_notification_time = _parse_timestamp(stored_state.get("last_notification_at"))
                 effective_notification_time = stored_notification_time or last_notification_time

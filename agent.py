@@ -2,7 +2,7 @@ import asyncio, random, string, threading
 
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Awaitable, Coroutine, Dict, Literal
 from enum import Enum
 import models
@@ -86,11 +86,11 @@ class AgentContext:
         self.paused = paused
         self.streaming_agent = streaming_agent
         self.task: DeferredTask | None = None
-        self.created_at = created_at or datetime.now(timezone.utc)
+        self.created_at = created_at or Localization.get().now()
         self.type = type
         AgentContext._counter += 1
         self.no = AgentContext._counter
-        self.last_message = last_message or datetime.now(timezone.utc)
+        self.last_message = last_message or Localization.get().now()
 
         # initialize agent at last (context is complete now)
         self.agent0 = agent0 or Agent(0, self.config, self)
@@ -666,7 +666,7 @@ class Agent:
     def hist_add_message(
         self, ai: bool, content: history.MessageContent, tokens: int = 0, id: str = ""
     ):
-        self.last_message = datetime.now(timezone.utc)
+        self.last_message = Localization.get().now()
         # Allow extensions to process content before adding to history
         content_data = {"content": content}
         extension.call_extensions_sync(

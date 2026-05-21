@@ -41,10 +41,10 @@ UPLOAD_LIMIT_BYTES = 5 * 1024 * 1024 * 1024
 
 def configure_process_environment() -> None:
     logging.getLogger().setLevel(logging.WARNING)
-    os.environ["TZ"] = "UTC"
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
-    if hasattr(time, "tzset"):
-        time.tzset()
+    from helpers.localization import Localization
+
+    Localization.get().apply_process_timezone()
 
 
 @dataclass
@@ -229,6 +229,14 @@ class UiRouteHandlers:
                 "version": "unknown",
                 "commit_time": "unknown",
             }
+        try:
+            user_timezone_setting = str(settings_helper.get_settings().get("timezone", "auto"))
+        except Exception:
+            user_timezone_setting = "auto"
+        try:
+            user_time_format_setting = str(settings_helper.get_settings().get("time_format", "12h"))
+        except Exception:
+            user_time_format_setting = "12h"
 
         index = files.read_file("webui/index.html")
         return files.replace_placeholders_text(
@@ -238,6 +246,8 @@ class UiRouteHandlers:
             runtime_id=runtime.get_runtime_id(),
             runtime_is_development=("true" if runtime.is_development() else "false"),
             logged_in=("true" if login.get_credentials_hash() else "false"),
+            user_timezone_setting=user_timezone_setting,
+            user_time_format_setting=user_time_format_setting,
         )
 
     @requires_auth

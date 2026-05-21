@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from helpers import files, virtual_desktop
+from helpers.localization import Localization
 from plugins._desktop.helpers import desktop_state
 from plugins._office.helpers import document_store, libreoffice
 
@@ -103,6 +104,7 @@ class DesktopSession:
     process_ids: dict[str, int] = field(default_factory=dict)
     owns_processes: bool = True
     started_at: float = field(default_factory=time.time)
+    timezone: str = field(default_factory=lambda: Localization.get().get_timezone())
 
     def alive(self) -> bool:
         return _running(self.processes.get("xpra")) or _pid_is_running(self.process_ids.get("xpra", 0))
@@ -456,6 +458,27 @@ class DesktopSessionManager:
                 self._terminate_session(session)
                 self._remove_manifest(session.session_id)
 
+    def sync_timezone(self, timezone: str | None = None) -> dict[str, Any]:
+        target_timezone = str(timezone or Localization.get().get_timezone()).strip()
+        if not target_timezone:
+            target_timezone = Localization.get().get_timezone()
+
+        with self._lock:
+            self._reap_dead_locked()
+            session = self._sessions.get(SYSTEM_SESSION_ID)
+            if not session or not session.alive():
+                return {"ok": True, "restarted": False, "reason": "no_active_desktop"}
+            if session.timezone == target_timezone:
+                return {"ok": True, "restarted": False, "timezone": target_timezone}
+
+            replacement = self._restart_system_desktop_for_timezone_locked(session)
+            return {
+                "ok": True,
+                "restarted": True,
+                "session_id": replacement.session_id,
+                "timezone": replacement.timezone,
+            }
+
     def _document_for_save(self, session: DesktopSession, file_id: str = "") -> dict[str, Any] | None:
         normalized = str(file_id or "").strip()
         if normalized == SYSTEM_FILE_ID:
@@ -471,6 +494,32 @@ class DesktopSessionManager:
                     return document_store.register_document(path)
         return None
 
+    def _restart_system_desktop_for_timezone_locked(self, session: DesktopSession) -> DesktopSession:
+        try:
+            doc = self._document_for_save(session, session.file_id)
+        except Exception:
+            doc = None
+        if doc:
+            try:
+                self.save(session.session_id, str(doc.get("file_id") or ""))
+            except Exception:
+                pass
+
+        virtual_desktop.unregister_session(session.token)
+        self._sessions.pop(session.session_id, None)
+        self._terminate_session(session, include_rehydrated=True)
+        self._remove_manifest(session.session_id)
+
+        replacement = self._ensure_system_desktop_locked()
+        if doc:
+            self._open_document_locked(replacement, doc)
+            replacement.file_id = str(doc["file_id"])
+            replacement.extension = str(doc["extension"])
+            replacement.path = str(doc["path"])
+            replacement.title = str(doc["basename"])
+            self._write_manifest(replacement)
+        return replacement
+
     def _register_virtual_desktop(self, session: DesktopSession) -> None:
         virtual_desktop.register_session(
             token=session.token,
@@ -482,8 +531,11 @@ class DesktopSessionManager:
         )
 
     def _ensure_system_desktop_locked(self) -> DesktopSession:
+        target_timezone = Localization.get().get_timezone()
         existing = self._sessions.get(SYSTEM_SESSION_ID)
         if existing and existing.alive():
+            if existing.timezone != target_timezone:
+                return self._restart_system_desktop_for_timezone_locked(existing)
             self._prepare_desktop_url_bridge(existing)
             self._refresh_xfce_desktop(existing)
             return existing
@@ -492,6 +544,8 @@ class DesktopSessionManager:
         if existing:
             self._sessions[existing.session_id] = existing
             self._register_virtual_desktop(existing)
+            if existing.timezone != target_timezone:
+                return self._restart_system_desktop_for_timezone_locked(existing)
             self._prepare_desktop_url_bridge(existing)
             self._refresh_xfce_desktop(existing)
             return existing
@@ -513,6 +567,7 @@ class DesktopSessionManager:
             token=SYSTEM_SESSION_ID,
             url=_xpra_url(SYSTEM_SESSION_ID),
             profile_dir=profile_dir,
+            timezone=target_timezone,
         )
         try:
             self._prepare_profile(session)
@@ -572,6 +627,7 @@ class DesktopSessionManager:
                 process_ids=process_ids,
                 owns_processes=False,
                 started_at=float(payload.get("started_at") or time.time()),
+                timezone=str(payload.get("timezone") or Localization.get().get_timezone()),
             )
         except Exception:
             return None
@@ -1431,6 +1487,7 @@ fi
             **os.environ,
             "HOME": str(session.profile_dir),
             "LANG": os.environ.get("LANG") or "C.UTF-8",
+            "TZ": session.timezone or Localization.get().get_timezone(),
         }
         browser_bridge = _url_bridge_script_path(session)
         if browser_bridge.exists():
@@ -1532,6 +1589,7 @@ fi
             "width": session.width,
             "height": session.height,
             "started_at": session.started_at,
+            "timezone": session.timezone,
             "owner_pid": os.getpid(),
             "pids": pids,
         }

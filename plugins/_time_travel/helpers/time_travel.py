@@ -11,11 +11,11 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 from helpers import files
+from helpers.localization import Localization
 from helpers.print_style import PrintStyle
 
 
@@ -166,7 +166,7 @@ class SnapshotResult:
 
 
 def now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return Localization.get().now_iso()
 
 
 def normalize_display_path(path: str) -> str:
@@ -1026,7 +1026,7 @@ class TimeTravelService:
         return self._git("show", "-s", "--format=%T", commit_hash).stdout.strip()
 
     def _preserve_ref(self, commit_hash: str, *, reason: str) -> str:
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        stamp = Localization.get().now().strftime("%Y%m%d%H%M%S")
         base_ref = f"{PRESERVED_REF_PREFIX}/{stamp}-{reason}-{commit_hash[:12]}"
         ref = base_ref
         counter = 2
@@ -1174,7 +1174,7 @@ class TimeTravelService:
         return "refs/heads/" + refs[0].relative_to(heads_dir).as_posix()
 
     def _next_invalid_repo_backup_path(self) -> Path:
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        stamp = Localization.get().now().strftime("%Y%m%d%H%M%S")
         base_path = self.workspace.shadow_path / f"{SHADOW_REPO_BACKUP_PREFIX}-{stamp}"
         backup_path = base_path
         counter = 2

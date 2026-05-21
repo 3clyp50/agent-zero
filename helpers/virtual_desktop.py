@@ -13,6 +13,7 @@ from typing import Any, Callable
 from urllib.parse import quote, urlencode
 
 from helpers import files
+from helpers.localization import Localization
 
 
 STATE_DIR = Path(files.get_abs_path("usr", "plugins", "_desktop", "virtual_desktop"))
@@ -563,6 +564,7 @@ def _display_env(display: int, *, xauthority: str = "", home: str = "") -> dict[
         **os.environ,
         "DISPLAY": f":{display}",
         "XDG_RUNTIME_DIR": str(runtime_dir),
+        "TZ": Localization.get().get_timezone(),
     }
     if home:
         env["HOME"] = home

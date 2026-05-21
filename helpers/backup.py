@@ -9,6 +9,7 @@ from typing import List, Dict, Any, Optional
 from pathspec import PathSpec
 
 from helpers import files, runtime, git
+from helpers.localization import Localization
 from helpers.print_style import PrintStyle
 
 
@@ -35,7 +36,7 @@ class BackupService:
 
     def get_default_backup_metadata(self) -> Dict[str, Any]:
         """Get default backup patterns and metadata"""
-        timestamp = datetime.datetime.now().isoformat()
+        timestamp = Localization.get().now_iso()
 
         default_patterns = self._get_default_patterns()
         include_patterns, exclude_patterns = self._parse_patterns(default_patterns)
@@ -144,7 +145,7 @@ class BackupService:
                 "home": os.environ.get("HOME", "unknown"),
                 "shell": os.environ.get("SHELL", "unknown"),
                 "path": os.environ.get("PATH", "")[:200] + "..." if len(os.environ.get("PATH", "")) > 200 else os.environ.get("PATH", ""),
-                "timezone": str(datetime.datetime.now().astimezone().tzinfo),
+                "timezone": Localization.get().get_timezone(),
                 "working_directory": os.getcwd(),
                 "agent_zero_root": files.get_abs_path(""),
                 "runtime_mode": "development" if runtime.is_development() else "production"
@@ -305,7 +306,10 @@ class BackupService:
                                     "path": pattern_path,
                                     "real_path": file_path,
                                     "size": stat.st_size,
-                                    "modified": datetime.datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                                    "modified": datetime.datetime.fromtimestamp(
+                                        stat.st_mtime,
+                                        tz=Localization.get().get_tzinfo(),
+                                    ).isoformat(),
                                     "type": "file"
                                 })
                                 processed_count += 1
@@ -356,7 +360,7 @@ class BackupService:
                 metadata = {
                     # Basic backup information
                     "agent_zero_version": self.agent_zero_version,
-                    "timestamp": datetime.datetime.now().isoformat(),
+                    "timestamp": Localization.get().now_iso(),
                     "backup_name": backup_name,
                     "include_hidden": include_hidden,
 
@@ -698,7 +702,7 @@ class BackupService:
                                 })
                                 continue
                             elif overwrite_policy == "backup":
-                                timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                                timestamp = Localization.get().now().strftime('%Y%m%d_%H%M%S')
                                 backup_path = f"{target_path}.backup.{timestamp}"
                                 import shutil
                                 shutil.move(target_path, backup_path)

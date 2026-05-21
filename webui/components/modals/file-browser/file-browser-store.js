@@ -1,5 +1,6 @@
 import { createStore } from "/js/AlpineStore.js";
 import { fetchApi } from "/js/api.js";
+import { formatDateTime } from "/js/time-utils.js";
 import { store as fileEditorStore } from "/components/modals/file-editor/file-editor-store.js";
 
 // Model migrated from legacy file_browser.js (lift-and-shift)
@@ -134,14 +135,7 @@ const model = {
   },
 
   formatDate(dateString) {
-    const options = {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return formatDateTime(dateString, "short");
   },
 
   decorateEntries(entries = [], selectedPaths = new Set()) {

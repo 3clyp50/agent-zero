@@ -16,6 +16,7 @@ from typing import Any
 from xml.sax.saxutils import escape
 
 from helpers import files
+from helpers.localization import Localization
 from plugins._office.helpers import pptx_writer
 
 
@@ -52,7 +53,7 @@ def now() -> float:
 
 
 def now_iso() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    return Localization.get().now_iso(timespec="seconds")
 
 
 def ensure_dirs() -> None:

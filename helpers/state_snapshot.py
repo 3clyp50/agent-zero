@@ -200,7 +200,7 @@ def _coerce_state_request_inputs(
     timezone: Any,
 ) -> StateRequestV1:
     tz = timezone if isinstance(timezone, str) and timezone else None
-    tz = tz or get_dotenv_value("DEFAULT_USER_TIMEZONE", "UTC")
+    tz = tz or get_dotenv_value("DEFAULT_USER_TIMEZONE", Localization.get().get_timezone())
 
     ctxid: str | None = context.strip() if isinstance(context, str) else None
     if ctxid == "":
@@ -242,7 +242,12 @@ def advance_state_request_after_snapshot(
 async def build_snapshot_from_request(*, request: StateRequestV1) -> SnapshotV1:
     """Build a poll-shaped snapshot for both /poll and state_push."""
 
-    Localization.get().set_timezone(request.timezone)
+    localization = Localization.get()
+    previous_timezone = localization.get_timezone()
+    localization.set_timezone(request.timezone)
+    current_timezone = localization.get_timezone()
+    if current_timezone != previous_timezone:
+        _notify_timezone_changed(previous_timezone, current_timezone)
 
     ctxid = request.context if isinstance(request.context, str) else ""
     ctxid = ctxid.strip()
@@ -337,6 +342,21 @@ async def build_snapshot_from_request(*, request: StateRequestV1) -> SnapshotV1:
 
     validate_snapshot_schema_v1(snapshot)
     return snapshot
+
+
+def _notify_timezone_changed(previous_timezone: str, current_timezone: str) -> None:
+    try:
+        from helpers import plugins
+
+        plugins.call_plugin_hook(
+            "_office",
+            "timezone_changed",
+            None,
+            previous_timezone=previous_timezone,
+            timezone=current_timezone,
+        )
+    except Exception:
+        return
 
 
 async def build_snapshot(

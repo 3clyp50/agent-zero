@@ -5,6 +5,7 @@ import { store as memoryStore } from "/plugins/_memory/webui/memory-dashboard-st
 import { store as projectsStore } from "/components/projects/projects-store.js";
 import { store as chatInputStore } from "/components/chat/input/input-store.js";
 import * as API from "/js/api.js";
+import { getCurrentUserISOString } from "/js/time-utils.js";
 
 const model = {
   // State
@@ -44,7 +45,7 @@ const model = {
       hostname: window.location.hostname,
       port: window.location.port,
       browser: navigator.userAgent,
-      timestamp: new Date().toISOString(),
+      timestamp: getCurrentUserISOString(),
     };
   },
 

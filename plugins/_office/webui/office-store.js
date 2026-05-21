@@ -2,6 +2,7 @@ import { createStore } from "/js/AlpineStore.js";
 import { callJsonApi } from "/js/api.js";
 import { store as fileBrowserStore } from "/components/modals/file-browser/file-browser-store.js";
 import { open as openSurface } from "/js/surfaces.js";
+import { getCurrentUserDateString } from "/js/time-utils.js";
 
 const SAVE_MESSAGE_MS = 1800;
 const DESKTOP_DOCUMENT_EXTENSIONS = new Set(["odt", "ods", "odp", "docx", "xlsx", "pptx"]);
@@ -185,7 +186,7 @@ const model = {
   },
 
   defaultTitle(kind, fmt) {
-    const date = new Date().toISOString().slice(0, 10);
+    const date = getCurrentUserDateString();
     if (fmt === "md") return `Document ${date}`;
     if (fmt === "odt") return `Writer ${date}`;
     if (fmt === "docx") return `DOCX ${date}`;

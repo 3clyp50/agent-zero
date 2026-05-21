@@ -8,6 +8,7 @@ from helpers.security import safe_filename
 from datetime import datetime
 
 from helpers import files
+from helpers.localization import Localization
 from helpers.print_style import PrintStyle
 
 
@@ -260,7 +261,10 @@ class FileBrowser:
                         entry_data: Dict[str, Any] = {
                             "name": filename,
                             "path": str(entry_path.relative_to(self.base_dir)),
-                            "modified": datetime.fromtimestamp(stat_info.st_mtime).isoformat()
+                            "modified": datetime.fromtimestamp(
+                                stat_info.st_mtime,
+                                tz=Localization.get().get_tzinfo(),
+                            ).isoformat()
                         }
 
                         # Add symlink information if this is a symlink

@@ -1,6 +1,11 @@
 import { createStore } from "/js/AlpineStore.js";
 import * as API from "/js/api.js";
 import { store as notificationStore } from "/components/notifications/notification-store.js";
+import {
+  getBrowserTimezone,
+  setConfiguredTimeFormat,
+  setConfiguredTimezone,
+} from "/js/time-utils.js";
 
 // Constants
 const VIEW_MODE_STORAGE_KEY = "settingsActiveTab";
@@ -17,8 +22,9 @@ const TAB_ITEMS = Object.freeze([
     sections: [
       { id: "section-agent-config", label: "Agent Config", icon: "settings" },
       { id: "section-models-summary", label: "Models", icon: "forum" },
-      { id: "section-speech", label: "Speech", icon: "mic" },
+      { id: "section-voice", label: "Voice", icon: "mic" },
       { id: "section-workdir", label: "Workdir", icon: "folder" },
+      { id: "section-locale", label: "Locale", icon: "language" },
       { id: "section-agent-plugins", label: "Plugins", icon: "extension" },
     ],
   },
@@ -135,6 +141,7 @@ const model = {
       if (response && response.settings) {
         this.settings = response.settings;
         this.additional = response.additional || null;
+        this.applyLocaleRuntime(this.settings);
       } else {
         throw new Error("Invalid settings response");
       }
@@ -208,6 +215,30 @@ const model = {
   getFirstSectionId(tabName = this.activeTab) {
     const tab = TAB_ITEMS.find((item) => item.id === tabName) || TAB_ITEMS[0];
     return tab?.sections?.[0]?.id || null;
+  },
+
+  get browserTimezone() {
+    return getBrowserTimezone();
+  },
+
+  get effectiveTimezone() {
+    if (!this.settings) return this.browserTimezone;
+    return this.settings.timezone === "auto"
+      ? this.browserTimezone
+      : this.settings.timezone || this.browserTimezone;
+  },
+
+  applyTimezoneRuntime(timezone) {
+    setConfiguredTimezone(timezone || "auto");
+  },
+
+  applyTimeFormatRuntime(timeFormat) {
+    setConfiguredTimeFormat(timeFormat || "12h");
+  },
+
+  applyLocaleRuntime(settings) {
+    this.applyTimezoneRuntime(settings?.timezone);
+    this.applyTimeFormatRuntime(settings?.time_format);
   },
 
   getTabIdForSection(sectionId) {
@@ -476,10 +507,14 @@ const model = {
 
     this.isLoading = true;
     try {
-      const response = await API.callJsonApi("settings_set", { settings: this.settings });
+      const response = await API.callJsonApi("settings_set", {
+        settings: this.settings,
+        browser_timezone: this.browserTimezone,
+      });
       if (response && response.settings) {
         this.settings = response.settings;
         this.additional = response.additional || this.additional;
+        this.applyLocaleRuntime(this.settings);
         toast("Settings saved successfully", "success");
         document.dispatchEvent(
           new CustomEvent("settings-updated", { detail: response.settings })

@@ -1,6 +1,7 @@
 import { createStore } from "/js/AlpineStore.js";
 import * as API from "/js/api.js";
 import { openModal } from "/js/modals.js";
+import { formatDateTime, getCurrentUserISOString } from "/js/time-utils.js";
 
 export const NotificationType = {
   INFO: "info",
@@ -408,7 +409,7 @@ const model = {
     else if (diffHours < 24) return `${Math.round(diffHours)}h ago`;
     else if (diffDays < 7) return `${Math.round(diffDays)}d ago`;
 
-    return date.toLocaleDateString();
+    return formatDateTime(timestamp, "date");
   },
 
   // Get CSS class for notification type
@@ -615,7 +616,7 @@ const model = {
     group = "",
     priority = defaultPriority
   ) {
-    const timestamp = new Date().toISOString();
+    const timestamp = getCurrentUserISOString();
     const notification = {
       id: `frontend-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: type,

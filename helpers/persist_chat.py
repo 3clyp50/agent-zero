@@ -4,6 +4,7 @@ from typing import Any
 import uuid
 from agent import Agent, AgentConfig, AgentContext, AgentContextType
 from helpers import files, history
+from helpers.localization import Localization
 import json
 from initialize import initialize_agent
 
@@ -12,6 +13,18 @@ from helpers.log import Log, LogItem
 CHATS_FOLDER = "usr/chats"
 LOG_SIZE = 1000
 CHAT_FILE_NAME = "chat.json"
+
+
+def _fallback_datetime_iso() -> str:
+    return datetime.fromtimestamp(0, tz=Localization.get().get_tzinfo()).isoformat()
+
+
+def _parse_persisted_datetime(value: str | None) -> datetime:
+    raw_value = value or _fallback_datetime_iso()
+    dt = datetime.fromisoformat(raw_value)
+    if dt.tzinfo is None:
+        dt = Localization.get().localize_naive_datetime(dt)
+    return dt
 
 
 def get_chat_folder_path(ctxid: str):
@@ -137,15 +150,15 @@ def _serialize_context(context: AgentContext):
         "id": context.id,
         "name": context.name,
         "created_at": (
-            context.created_at.isoformat()
+            Localization.get().serialize_datetime(context.created_at)
             if context.created_at
-            else datetime.fromtimestamp(0).isoformat()
+            else _fallback_datetime_iso()
         ),
         "type": context.type.value,
         "last_message": (
-            context.last_message.isoformat()
+            Localization.get().serialize_datetime(context.last_message)
             if context.last_message
-            else datetime.fromtimestamp(0).isoformat()
+            else _fallback_datetime_iso()
         ),
         "agents": agents,
         "streaming_agent": (
@@ -196,16 +209,11 @@ def _deserialize_context(data):
         id=data.get("id", None),  # get new id
         name=data.get("name", None),
         created_at=(
-            datetime.fromisoformat(
-                # older chats may not have created_at - backcompat
-                data.get("created_at", datetime.fromtimestamp(0).isoformat())
-            )
+            _parse_persisted_datetime(data.get("created_at"))
         ),
         type=AgentContextType(data.get("type", AgentContextType.USER.value)),
         last_message=(
-            datetime.fromisoformat(
-                data.get("last_message", datetime.fromtimestamp(0).isoformat())
-            )
+            _parse_persisted_datetime(data.get("last_message"))
         ),
         log=log,
         paused=False,

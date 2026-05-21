@@ -33,6 +33,18 @@
                   <span>Workdir</span>
                 </a>
               </li>
+              <li>
+                <a href="#section-locale">
+                  <span class="material-symbols-outlined" aria-hidden="true">language</span>
+                  <span>Locale</span>
+                </a>
+              </li>
+              <li>
+                <a href="#section-agent-plugins">
+                  <span class="material-symbols-outlined" aria-hidden="true">extension</span>
+                  <span>Plugins</span>
+                </a>
+              </li>
             </ul>
           </nav>
 
@@ -50,6 +62,10 @@
 
           <div id="section-workdir" class="section">
             <x-component path="settings/agent/workdir.html"></x-component>
+          </div>
+
+          <div id="section-locale" class="section">
+            <x-component path="settings/agent/locale.html"></x-component>
           </div>
 
           <!-- Plugin settings subsection: shows plugins tagged with "agent" -->

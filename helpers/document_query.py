@@ -10,7 +10,6 @@ from langchain_unstructured import UnstructuredLoader  # noqa E402
 
 from urllib.parse import urlparse
 from typing import Callable, Sequence, List, Optional, Tuple
-from datetime import datetime
 
 from langchain_community.document_loaders.pdf import PyMuPDFLoader
 from langchain_community.document_transformers import MarkdownifyTransformer
@@ -20,6 +19,7 @@ from langchain_core.documents import Document
 from langchain.schema import SystemMessage, HumanMessage
 
 from helpers.print_style import PrintStyle
+from helpers.localization import Localization
 from helpers import files, errors
 from helpers.network import HttpFetchResult, fetch_public_http_resource
 from agent import Agent
@@ -120,7 +120,7 @@ class DocumentQueryStore:
         # Initialize metadata
         doc_metadata = metadata or {}
         doc_metadata["document_uri"] = document_uri
-        doc_metadata["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        doc_metadata["timestamp"] = Localization.get().now_iso(timespec="seconds")
 
         # Split text into chunks
         text_splitter = RecursiveCharacterTextSplitter(

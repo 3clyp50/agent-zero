@@ -1,7 +1,6 @@
 """Core compaction logic for the compaction plugin."""
 import os
 from collections import deque
-from datetime import datetime
 
 import models as models_module
 from agent import Agent
@@ -14,6 +13,7 @@ from helpers.persist_chat import (
     remove_msg_files,
 )
 from helpers.state_monitor_integration import mark_dirty_all
+from helpers.localization import Localization
 
 MIN_COMPACTION_TOKENS = 1000
 COMPACTION_CHUNK_TARGET_RATIO = 0.9
@@ -34,7 +34,7 @@ def _save_pre_compaction_backup(context, full_text: str) -> dict[str, str]:
 
     Returns dict with 'json' and 'txt' absolute file paths.
     """
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    timestamp = Localization.get().now().strftime("%Y%m%d-%H%M%S")
     backup_dir = os.path.join(get_chat_folder_path(context.id), "backups")
     os.makedirs(backup_dir, exist_ok=True)
 

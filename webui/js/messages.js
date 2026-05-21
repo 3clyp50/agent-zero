@@ -10,7 +10,12 @@ import {
 } from "/components/messages/action-buttons/simple-action-buttons.js";
 import { store as stepDetailStore } from "/components/modals/process-step-detail/step-detail-store.js";
 import { store as preferencesStore } from "/components/sidebar/bottom/preferences/preferences-store.js";
-import { formatDuration } from "./time-utils.js";
+import {
+  formatDateTime,
+  formatDuration,
+  getUserHour12,
+  getUserTimezone,
+} from "./time-utils.js";
 import { Scroller } from "./scroller.js";
 import { callJsExtensions } from "/js/extensions.js";
 import { addBlankTargetsToLinks } from "/js/html-links.js";
@@ -2096,14 +2101,15 @@ function updateProcessGroupHeader(group) {
   const startTimestamp = group.getAttribute("data-start-timestamp");
   if (timeMetricEl && startTimestamp) {
     const date = new Date(parseFloat(startTimestamp) * 1000);
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    timeMetricEl.textContent = `${hours}:${minutes}`;
+    const hour12 = getUserHour12();
+    timeMetricEl.textContent = new Intl.DateTimeFormat(undefined, {
+      hour: hour12 ? "numeric" : "2-digit",
+      minute: "2-digit",
+      hour12,
+      timeZone: getUserTimezone(),
+    }).format(date);
     if (timeMetricContainerEl) {
-      const fullDateTime = date.toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      });
+      const fullDateTime = formatDateTime(date.toISOString(), "short");
       timeMetricContainerEl.title =
         timeMetricContainerEl.dataset.bsOriginalTitle = fullDateTime;
     }

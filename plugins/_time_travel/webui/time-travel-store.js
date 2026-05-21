@@ -2,6 +2,7 @@ import { createStore } from "/js/AlpineStore.js";
 import { callJsonApi } from "/js/api.js";
 import { getContext } from "/index.js";
 import { store as fileBrowserStore } from "/components/modals/file-browser/file-browser-store.js";
+import { formatDateTime } from "/js/time-utils.js";
 
 const REFRESH_DEBOUNCE_MS = 180;
 
@@ -392,12 +393,7 @@ const model = {
     if (!value) return "";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatDateTime(value, "short");
   },
 
   formatSigned(value, sign) {

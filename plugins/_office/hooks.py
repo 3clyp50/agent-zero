@@ -138,6 +138,20 @@ def cleanup_stale_runtime_state(force: bool = False) -> dict[str, Any]:
     }
 
 
+def timezone_changed(timezone: str, previous_timezone: str | None = None) -> dict[str, Any]:
+    try:
+        from plugins._office.helpers import libreoffice_desktop
+
+        return libreoffice_desktop.get_manager().sync_timezone(timezone)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+            "timezone": timezone,
+            "previous_timezone": previous_timezone,
+        }
+
+
 def retire_collabora_web_runtime(force: bool = False) -> dict[str, Any]:
     """Retire the legacy Collabora web runtime without preparing LibreOffice.
 
