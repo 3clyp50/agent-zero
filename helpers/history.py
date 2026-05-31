@@ -40,9 +40,12 @@ MessageContent = Union[
 ]
 
 
-class OutputMessage(TypedDict):
+class OutputMessage(TypedDict, total=False):
     ai: bool
     content: MessageContent
+    metadata: dict[str, Any]
+    id: str
+    sequence: int
 
 
 class Record:
@@ -82,10 +85,20 @@ class Record:
 
 
 class Message(Record):
-    def __init__(self, ai: bool, content: MessageContent, tokens: int = 0, id: str = ""):
+    def __init__(
+        self,
+        ai: bool,
+        content: MessageContent,
+        tokens: int = 0,
+        id: str = "",
+        metadata: dict[str, Any] | None = None,
+        sequence: int = 0,
+    ):
         self.id = id or str(uuid.uuid4())
         self.ai = ai
         self.content = content
+        self.metadata = metadata or {}
+        self.sequence = sequence
         self.summary: str = ""
         self.tokens: int = tokens or self.calculate_tokens()
 
@@ -106,7 +119,15 @@ class Message(Record):
         return False
 
     def output(self):
-        return [OutputMessage(ai=self.ai, content=self.summary or self.content)]
+        return [
+            OutputMessage(
+                ai=self.ai,
+                content=self.summary or self.content,
+                metadata=self.metadata,
+                id=self.id,
+                sequence=self.sequence,
+            )
+        ]
 
     def output_langchain(self):
         return output_langchain(self.output())
@@ -120,6 +141,8 @@ class Message(Record):
             "id": self.id,
             "ai": self.ai,
             "content": self.content,
+            "metadata": self.metadata,
+            "sequence": self.sequence,
             "summary": self.summary,
             "tokens": self.tokens,
         }
@@ -127,7 +150,13 @@ class Message(Record):
     @staticmethod
     def from_dict(data: dict, history: "History"):
         content = data.get("content", "Content lost")
-        msg = Message(ai=data["ai"], content=content, id=data.get("id", ""))
+        msg = Message(
+            ai=data["ai"],
+            content=content,
+            id=data.get("id", ""),
+            metadata=data.get("metadata", {}) if isinstance(data.get("metadata"), dict) else {},
+            sequence=int(data.get("sequence", 0) or 0),
+        )
         msg.summary = data.get("summary", "")
         msg.tokens = data.get("tokens", 0)
         return msg
@@ -146,9 +175,22 @@ class Topic(Record):
             return sum(msg.get_tokens() for msg in self.messages)
 
     def add_message(
-        self, ai: bool, content: MessageContent, tokens: int = 0, id: str = ""
+        self,
+        ai: bool,
+        content: MessageContent,
+        tokens: int = 0,
+        id: str = "",
+        metadata: dict[str, Any] | None = None,
+        sequence: int = 0,
     ) -> Message:
-        msg = Message(ai=ai, content=content, tokens=tokens, id=id)
+        msg = Message(
+            ai=ai,
+            content=content,
+            tokens=tokens,
+            id=id,
+            metadata=metadata,
+            sequence=sequence,
+        )
         self.messages.append(msg)
         return msg
 
@@ -335,10 +377,22 @@ class History(Record):
         return self.current.get_tokens()
 
     def add_message(
-        self, ai: bool, content: MessageContent, tokens: int = 0, id: str = ""
+        self,
+        ai: bool,
+        content: MessageContent,
+        tokens: int = 0,
+        id: str = "",
+        metadata: dict[str, Any] | None = None,
     ) -> Message:
         self.counter += 1
-        return self.current.add_message(ai, content=content, tokens=tokens, id=id)
+        return self.current.add_message(
+            ai,
+            content=content,
+            tokens=tokens,
+            id=id,
+            metadata=metadata,
+            sequence=self.counter,
+        )
 
     def new_topic(self):
         if self.current.messages:
@@ -352,6 +406,35 @@ class History(Record):
         result += [m for t in self.topics for m in t.output()]
         result += self.current.output()
         return result
+
+    def messages_since(self, sequence: int) -> list[Message]:
+        return [
+            message
+            for message in self.all_messages()
+            if int(message.sequence or 0) > int(sequence or 0)
+        ]
+
+    def all_messages(self) -> list[Message]:
+        messages: list[Message] = []
+        for bulk in self.bulks:
+            messages.extend(_messages_from_record(bulk))
+        for topic in self.topics:
+            messages.extend(topic.messages)
+        messages.extend(self.current.messages)
+        return messages
+
+    def latest_llm_result_for_model(self, provider_model_key: str):
+        from helpers.llm_result import result_from_metadata
+
+        for message in reversed(self.all_messages()):
+            if not message.ai:
+                continue
+            result = result_from_metadata(message.metadata)
+            if not result:
+                continue
+            if result.provider_model_key == provider_model_key and result.response_id:
+                return result
+        return None
 
     def trim_embeds(self, max_embeds: int) -> int:
         if max_embeds == -1:
@@ -677,6 +760,19 @@ def _is_raw_message(obj: object) -> bool:
 
 def _is_embedded_data(obj: object) -> bool:
     return isinstance(obj, Mapping) and obj.get("type") == "image_url"
+
+
+def _messages_from_record(record: Record) -> list[Message]:
+    if isinstance(record, Message):
+        return [record]
+    if isinstance(record, Topic):
+        return list(record.messages)
+    if isinstance(record, Bulk):
+        messages: list[Message] = []
+        for nested in record.records:
+            messages.extend(_messages_from_record(nested))
+        return messages
+    return []
 
 
 def _json_dumps(obj):

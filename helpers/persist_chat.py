@@ -4,6 +4,7 @@ from typing import Any
 import uuid
 from agent import Agent, AgentConfig, AgentContext, AgentContextType
 from helpers import files, history
+from helpers.litellm_transport import delete_stored_response_ids
 from helpers.localization import Localization
 import json
 from initialize import initialize_agent
@@ -118,6 +119,7 @@ def export_json_chat(context: AgentContext):
 
 def remove_chat(ctxid):
     """Remove a chat or task context"""
+    _delete_provider_responses_for_chat(ctxid)
     path = get_chat_folder_path(ctxid)
     files.delete_dir(path)
 
@@ -324,3 +326,70 @@ def _safe_json_serialize(obj, **kwargs):
             return False
 
     return json.dumps(obj, default=serializer, **kwargs)
+
+
+def _delete_provider_responses_for_chat(ctxid: str) -> None:
+    try:
+        data = json.loads(files.read_file(_get_chat_file_path(ctxid)))
+    except Exception:
+        return
+    if _responses_delete_disabled(data):
+        return
+    response_ids = _collect_response_ids(data)
+    if not response_ids:
+        return
+    delete_stored_response_ids(response_ids)
+
+
+def _responses_delete_disabled(data: dict[str, Any]) -> bool:
+    if data.get("responses_delete_on_chat_delete") is False:
+        return True
+    context_data = data.get("data")
+    if isinstance(context_data, dict) and context_data.get("responses_delete_on_chat_delete") is False:
+        return True
+    for agent_data in data.get("agents", []) or []:
+        if not isinstance(agent_data, dict):
+            continue
+        state = agent_data.get("data")
+        if isinstance(state, dict) and state.get("responses_delete_on_chat_delete") is False:
+            return True
+    return False
+
+
+def _collect_response_ids(data: Any) -> list[str]:
+    found: list[str] = []
+    seen: set[str] = set()
+
+    def add(value: Any) -> None:
+        response_id = str(value or "").strip()
+        if response_id and response_id not in seen:
+            seen.add(response_id)
+            found.append(response_id)
+
+    def walk(obj: Any) -> None:
+        if isinstance(obj, dict):
+            state = obj.get(Agent.DATA_NAME_RESPONSES_STATE)
+            if isinstance(state, dict):
+                add(state.get("response_id"))
+                for response_id in state.get("response_ids") or []:
+                    add(response_id)
+
+            metadata = obj.get("metadata")
+            if isinstance(metadata, dict):
+                responses = metadata.get("responses")
+                if isinstance(responses, dict):
+                    add(responses.get("response_id"))
+
+            for value in obj.values():
+                walk(value)
+        elif isinstance(obj, list):
+            for value in obj:
+                walk(value)
+        elif isinstance(obj, str) and '"response_id"' in obj:
+            try:
+                walk(json.loads(obj))
+            except Exception:
+                return
+
+    walk(data)
+    return found
