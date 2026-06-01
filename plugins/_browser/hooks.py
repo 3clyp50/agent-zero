@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import importlib
+import importlib.util
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 from helpers import files, plugins, yaml as yaml_helper
@@ -10,11 +14,16 @@ from plugins._browser.helpers.config import (
     normalize_browser_config,
 )
 from plugins._browser.helpers.playwright import (
+    find_full_chromium_payloads,
     find_playwright_binary,
     get_playwright_cache_dir,
     get_retired_playwright_cache_dirs,
 )
-from plugins._browser.helpers.runtime import close_all_runtimes_sync
+
+
+PYTHON_RUNTIME_DEPENDENCIES = (
+    ("aiohttp", "aiohttp>=3.10.0"),
+)
 
 
 def _load_saved_browser_config(project_name: str = "", agent_profile: str = "") -> dict:
@@ -55,6 +64,39 @@ def save_plugin_config(settings=None, project_name="", agent_profile="", **kwarg
     return normalized
 
 
+def close_all_runtimes_sync() -> None:
+    from plugins._browser.helpers.runtime import close_all_runtimes_sync as close_all
+
+    close_all()
+
+
+def ensure_python_runtime_dependencies() -> dict:
+    installed: list[str] = []
+    errors: list[str] = []
+    for import_name, requirement in PYTHON_RUNTIME_DEPENDENCIES:
+        if importlib.util.find_spec(import_name) is not None:
+            continue
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", requirement],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=300,
+        )
+        if result.returncode == 0:
+            importlib.invalidate_caches()
+            installed.append(requirement)
+            continue
+        output = (result.stderr or result.stdout or f"pip install {requirement} failed").strip()
+        errors.append(output)
+
+    return {
+        "ok": not errors,
+        "installed": installed,
+        "errors": errors,
+    }
+
+
 def cleanup_playwright_cache() -> dict:
     primary = Path(get_playwright_cache_dir())
     retired_dirs = [
@@ -63,6 +105,7 @@ def cleanup_playwright_cache() -> dict:
     result = {"primary": str(primary), "migrated": "", "removed": [], "errors": []}
 
     if find_playwright_binary(primary):
+        _remove_full_chromium_payloads([primary, *retired_dirs], result)
         _remove_cache_dirs(retired_dirs, result)
         return result
 
@@ -91,6 +134,7 @@ def cleanup_playwright_cache() -> dict:
 
     if backup:
         _remove_cache_dirs([backup], result)
+    _remove_full_chromium_payloads([primary, *retired_dirs], result)
     _remove_cache_dirs(retired_dirs, result)
     return result
 
@@ -128,3 +172,15 @@ def _remove_cache_dirs(paths: list[Path], result: dict) -> None:
             result["removed"].append(str(path))
         except Exception as exc:
             result["errors"].append(f"Failed to remove Playwright cache {path}: {exc}")
+
+
+def _remove_full_chromium_payloads(paths: list[Path], result: dict) -> None:
+    for cache_dir in paths:
+        if not cache_dir.exists():
+            continue
+        for payload in find_full_chromium_payloads(cache_dir):
+            try:
+                shutil.rmtree(payload)
+                result["removed"].append(str(payload))
+            except Exception as exc:
+                result["errors"].append(f"Failed to remove full Chromium payload {payload}: {exc}")

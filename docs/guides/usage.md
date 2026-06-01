@@ -169,7 +169,7 @@ Open my local app in the Browser. I will annotate the page, then you can fix the
 ```
 
 For screenshots, history, annotations, Docker browser mode, host-browser mode
-through A0 CLI, privacy controls, and Chrome extensions, see the
+through A0 CLI, and privacy controls, see the
 [Browser Guide](browser.md).
 
 External browser MCP tools are still useful for specialized setups. See

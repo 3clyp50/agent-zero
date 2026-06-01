@@ -14,7 +14,15 @@ from plugins._browser.helpers.selector import get_tool_runtime
 
 
 HISTORY_SCREENSHOT_QUALITY = 62
-HISTORY_SCREENSHOT_ACTION_DENYLIST = {"close", "close_all"}
+HISTORY_SCREENSHOT_ACTION_DENYLIST = {
+    "open",
+    "navigate",
+    "back",
+    "forward",
+    "reload",
+    "close",
+    "close_all",
+}
 
 
 async def get_runtime(context_id: str, create: bool = True, agent: Any | None = None):

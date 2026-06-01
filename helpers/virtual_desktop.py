@@ -122,9 +122,9 @@ def session_url(token: str, *, title: str = "Desktop") -> str:
         {
             "path": base_path,
             "title": title,
-            "encoding": "jpeg",
-            "quality": "85",
-            "speed": "80",
+            "encoding": "auto",
+            "quality": "0",
+            "speed": "0",
             "sharing": "true",
             "clipboard": "true",
             "clipboard_direction": "both",

@@ -11,52 +11,15 @@ from plugins._browser.helpers.config import (
     get_browser_main_model_summary,
     get_browser_model_preset_options,
 )
-from plugins._browser.helpers.extension_manager import (
-    get_extensions_root,
-    install_chrome_web_store_extension,
-    list_browser_extensions,
-    set_browser_extension_enabled,
-    uninstall_browser_extension,
-)
 
 
-class Extensions(ApiHandler):
+class Settings(ApiHandler):
     async def process(self, input: dict, request: Request) -> dict:
-        action = input.get("action", "list")
+        action = input.get("action", "get")
         agent = self._agent_from_input(input)
 
-        if action == "list":
-            return self._browser_extension_payload(agent=agent)
-
-        if action == "install_web_store":
-            try:
-                result = install_chrome_web_store_extension(str(input.get("url", "")))
-            except ValueError as exc:
-                return {"ok": False, "error": str(exc)}
-            return {
-                **self._browser_extension_payload(agent=agent),
-                **result,
-            }
-
-        if action == "set_extension_enabled":
-            try:
-                set_browser_extension_enabled(
-                    str(input.get("path", "")),
-                    bool(input.get("enabled", False)),
-                )
-            except ValueError as exc:
-                return {"ok": False, "error": str(exc)}
-            return self._browser_extension_payload(agent=agent)
-
-        if action == "uninstall_extension":
-            try:
-                result = uninstall_browser_extension(str(input.get("path", "")))
-            except ValueError as exc:
-                return {"ok": False, "error": str(exc)}
-            return {
-                **self._browser_extension_payload(agent=agent),
-                **result,
-            }
+        if action in {"get", "list"}:
+            return self._browser_settings_payload(agent=agent)
 
         if action == "set_model_preset":
             preset_name = str(input.get(MODEL_PRESET_KEY, "") or "").strip()
@@ -71,7 +34,7 @@ class Extensions(ApiHandler):
             config = get_browser_config()
             config[MODEL_PRESET_KEY] = preset_name
             plugins.save_plugin_config(PLUGIN_NAME, "", "", config)
-            return self._browser_extension_payload(agent=agent)
+            return self._browser_settings_payload(agent=agent)
 
         return {"ok": False, "error": f"Unknown action: {action}"}
 
@@ -88,13 +51,10 @@ class Extensions(ApiHandler):
             return None
         return SimpleNamespace(context=context, config=config)
 
-    def _browser_extension_payload(self, agent=None) -> dict:
+    def _browser_settings_payload(self, agent=None) -> dict:
         config = get_browser_config()
         return {
             "ok": True,
-            "root": str(get_extensions_root()),
-            "extensions": list_browser_extensions(),
-            "extension_paths": config["extension_paths"],
             DEFAULT_HOMEPAGE_KEY: config[DEFAULT_HOMEPAGE_KEY],
             AUTOFOCUS_ACTIVE_PAGE_KEY: config[AUTOFOCUS_ACTIVE_PAGE_KEY],
             MODEL_PRESET_KEY: config[MODEL_PRESET_KEY],

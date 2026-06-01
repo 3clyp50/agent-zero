@@ -16,7 +16,7 @@ import {
 const websocket = getNamespacedClient("/ws");
 websocket.addHandlers(["ws_webui"]);
 
-const EXTENSIONS_ROOT = "/a0/usr/_browser/extensions";
+const BROWSER_SETTINGS_API = "/plugins/_browser/settings";
 const BROWSER_SUBSCRIBE_TIMEOUT_MS = 60000;
 const BROWSER_FIRST_INSTALL_TIMEOUT_MS = 300000;
 const BROWSER_CONFIG_REFRESH_MS = 15000;
@@ -112,6 +112,16 @@ function loadFrameDimensions(src) {
   });
 }
 
+function dimensionsFromFrameMetadata(metadata = null) {
+  if (!metadata || typeof metadata !== "object") return null;
+  const width = Number(metadata.jpegWidth || metadata.width || 0);
+  const height = Number(metadata.jpegHeight || metadata.height || 0);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+  return { width, height };
+}
+
 const model = {
   loading: true,
   error: "",
@@ -142,9 +152,12 @@ const model = {
   _lastFrameDimensions: null,
   _pendingFrameSrc: "",
   _pendingFrameOptions: null,
+  _pendingFrameSequence: 0,
   _frameRenderHandle: null,
   _frameRenderCancel: null,
   _frameRenderSequence: 0,
+  _activeFrameStreamId: "",
+  _lastAcceptedFrameSequence: 0,
   _floatingCleanup: null,
   _stageElement: null,
   _stageResizeObserver: null,
@@ -173,15 +186,9 @@ const model = {
   _lastSelectedContextId: "",
   _sessionRefreshPromise: null,
   _sessionRefreshContextId: "",
-  extensionMenuOpen: false,
-  extensionInstallUrl: "",
-  extensionActionLoading: false,
-  extensionActionMessage: "",
-  extensionActionError: "",
-  extensionsRoot: "",
-  extensionsList: [],
-  extensionsListLoading: false,
-  extensionToggleLoadingPath: "",
+  settingsMenuOpen: false,
+  settingsActionMessage: "",
+  settingsActionError: "",
   modelPreset: "",
   modelPresetOptions: [],
   mainModelSummary: "",
@@ -197,30 +204,25 @@ const model = {
 
   async refreshStatus() {
     this.status = await callJsonApi("/plugins/_browser/status", {});
-    this.browserInstallExpected = Boolean(this.status?.playwright?.install_required);
+    this.browserInstallExpected = Boolean(this.status?.chromium?.install_required);
   },
 
-  async refreshExtensionsList() {
-    this.extensionsListLoading = true;
+  async refreshBrowserSettings() {
     try {
-      const response = await callJsonApi("/plugins/_browser/extensions", {
-        action: "list",
+      const response = await callJsonApi(BROWSER_SETTINGS_API, {
+        action: "get",
         context_id: this.resolveContextId() || this.contextId,
       });
       if (!response?.ok) {
-        throw new Error(response?.error || "Could not load browser extensions.");
+        throw new Error(response?.error || "Could not load browser settings.");
       }
-      this.applyExtensionPayload(response);
+      this.applyBrowserSettingsPayload(response);
     } catch (error) {
-      this.extensionActionError = error instanceof Error ? error.message : String(error);
-    } finally {
-      this.extensionsListLoading = false;
+      this.settingsActionError = error instanceof Error ? error.message : String(error);
     }
   },
 
-  applyExtensionPayload(response = {}) {
-    this.extensionsRoot = response.root || EXTENSIONS_ROOT;
-    this.extensionsList = Array.isArray(response.extensions) ? response.extensions : [];
+  applyBrowserSettingsPayload(response = {}) {
     this.defaultHomepage = String(response.default_homepage || "about:blank").trim() || "about:blank";
     this.autofocusActivePage = normalizeBool(response.autofocus_active_page, true);
     this.modelPreset = String(response.model_preset || "");
@@ -240,14 +242,14 @@ const model = {
       return;
     }
     this._configRefreshPromise = (async () => {
-      const response = await callJsonApi("/plugins/_browser/extensions", {
-        action: "list",
+      const response = await callJsonApi(BROWSER_SETTINGS_API, {
+        action: "get",
         context_id: this.resolveContextId() || this.contextId,
       });
       if (!response?.ok) {
         throw new Error(response?.error || "Could not load browser settings.");
       }
-      this.applyExtensionPayload(response);
+      this.applyBrowserSettingsPayload(response);
     })();
     try {
       await this._configRefreshPromise;
@@ -343,17 +345,17 @@ const model = {
     }
   },
 
-  toggleExtensionsMenu() {
-    this.extensionMenuOpen = !this.extensionMenuOpen;
-    if (this.extensionMenuOpen) {
-      this.extensionActionMessage = "";
-      this.extensionActionError = "";
-      void this.refreshExtensionsList();
+  toggleSettingsMenu() {
+    this.settingsMenuOpen = !this.settingsMenuOpen;
+    if (this.settingsMenuOpen) {
+      this.settingsActionMessage = "";
+      this.settingsActionError = "";
+      void this.refreshBrowserSettings();
     }
   },
 
-  closeExtensionsMenu() {
-    this.extensionMenuOpen = false;
+  closeSettingsMenu() {
+    this.settingsMenuOpen = false;
   },
 
   resolveContextId() {
@@ -413,13 +415,13 @@ const model = {
     return contextId;
   },
 
-  async openExtensionsSettings() {
+  async openBrowserSettings() {
     if (!pluginSettingsStore?.openConfig) {
       this.error = "Browser settings are unavailable.";
       return;
     }
     try {
-      this.closeExtensionsMenu();
+      this.closeSettingsMenu();
       await pluginSettingsStore.openConfig("_browser");
       await this.refreshAfterSettingsClose();
     } catch (error) {
@@ -432,13 +434,14 @@ const model = {
     this.error = "";
     try {
       await this.refreshStatus();
-      await this.refreshExtensionsList();
+      await this.ensureBrowserConfigLoaded(true);
       this.connected = false;
       this.browsers = [];
       this.setActiveBrowserId(null);
       this.address = "";
       this.frameState = null;
       this.frameSrc = "";
+      this.applyViewer(null);
       if (this.contextId) {
         await this.connectViewer();
       }
@@ -447,98 +450,14 @@ const model = {
     }
   },
 
-  createExtensionWithAgent() {
-    this._prefillAgentPrompt(
-      [
-        "Use the browser-extension-control skill to create a new Chrome extension for Agent Zero's Browser.",
-        "Start by asking me for the extension name, purpose, target websites, and required permissions.",
-        `Create it under ${this.extensionsRoot || EXTENSIONS_ROOT}/<extension-slug> and keep permissions minimal.`,
-      ].join("\n")
-    );
-  },
-
-  askAgentInstallExtension() {
-    const url = String(this.extensionInstallUrl || "").trim();
-    const prompt = url
-      ? [
-          "Use the browser-extension-control skill to review and optionally install this Chrome Web Store extension for Agent Zero's Browser.",
-          `Chrome Web Store URL or id: ${url}`,
-          "Explain the permissions and any sandbox risk before enabling it.",
-        ].join("\n")
-      : [
-          "Use the browser-extension-control skill to help me install and review a Chrome Web Store extension for Agent Zero's Browser.",
-          "Ask me for the Chrome Web Store URL or extension id first.",
-          "Explain the permissions and any sandbox risk before enabling it.",
-        ].join("\n");
-    this._prefillAgentPrompt(prompt);
-  },
-
-  async installExtensionFromUrl() {
-    const url = String(this.extensionInstallUrl || "").trim();
-    this.extensionActionMessage = "";
-    this.extensionActionError = "";
-    if (!url) {
-      this.extensionActionError = "Paste a Chrome Web Store URL or extension id first.";
-      return;
-    }
-
-    this.extensionActionLoading = true;
-    try {
-      const response = await callJsonApi("/plugins/_browser/extensions", {
-        action: "install_web_store",
-        context_id: this.resolveContextId() || this.contextId,
-        url,
-      });
-      if (!response?.ok) {
-        throw new Error(response?.error || "Install failed.");
-      }
-      this.applyExtensionPayload(response);
-      this.extensionInstallUrl = "";
-      this.extensionActionMessage = `Installed ${response.name || response.id}.`;
-      await this.refreshAfterSettingsClose();
-    } catch (error) {
-      this.extensionActionError = error instanceof Error ? error.message : String(error);
-    } finally {
-      this.extensionActionLoading = false;
-    }
-  },
-
-  async setExtensionEnabled(extension, enabled, input = null) {
-    const path = String(extension?.path || "");
-    if (!path) return;
-    const previous = Boolean(extension?.enabled);
-    this.extensionActionMessage = "";
-    this.extensionActionError = "";
-    this.extensionToggleLoadingPath = path;
-    try {
-      const response = await callJsonApi("/plugins/_browser/extensions", {
-        action: "set_extension_enabled",
-        context_id: this.resolveContextId() || this.contextId,
-        path,
-        enabled: Boolean(enabled),
-      });
-      if (!response?.ok) {
-        throw new Error(response?.error || "Could not update extension.");
-      }
-      this.applyExtensionPayload(response);
-      this.extensionActionMessage = `${enabled ? "Enabled" : "Disabled"} ${extension.name || "extension"}.`;
-      await this.refreshAfterSettingsClose();
-    } catch (error) {
-      if (input) input.checked = previous;
-      this.extensionActionError = error instanceof Error ? error.message : String(error);
-    } finally {
-      this.extensionToggleLoadingPath = "";
-    }
-  },
-
   async setBrowserModelPreset(value) {
     const presetName = String(value || "");
     this.modelPreset = presetName;
-    this.extensionActionMessage = "";
-    this.extensionActionError = "";
+    this.settingsActionMessage = "";
+    this.settingsActionError = "";
     this.modelPresetSaving = true;
     try {
-      const response = await callJsonApi("/plugins/_browser/extensions", {
+      const response = await callJsonApi(BROWSER_SETTINGS_API, {
         action: "set_model_preset",
         context_id: this.resolveContextId() || this.contextId,
         model_preset: presetName,
@@ -546,11 +465,11 @@ const model = {
       if (!response?.ok) {
         throw new Error(response?.error || "Could not update browser model preset.");
       }
-      this.applyExtensionPayload(response);
-      this.extensionActionMessage = "Browser model preset updated.";
+      this.applyBrowserSettingsPayload(response);
+      this.settingsActionMessage = "Browser model preset updated.";
     } catch (error) {
-      this.extensionActionError = error instanceof Error ? error.message : String(error);
-      await this.refreshExtensionsList();
+      this.settingsActionError = error instanceof Error ? error.message : String(error);
+      await this.refreshBrowserSettings();
     } finally {
       this.modelPresetSaving = false;
     }
@@ -562,56 +481,6 @@ const model = {
     }
     const option = this.modelPresetOptions.find((preset) => preset?.name === this.modelPreset);
     return option?.summary || option?.label || this.modelPreset;
-  },
-
-  hasExtensionInstallUrl() {
-    return Boolean(String(this.extensionInstallUrl || "").trim());
-  },
-
-  extensionAssistantActionLabel() {
-    return "Scan with A0";
-  },
-
-  extensionVersionLabel(extension) {
-    const version = String(extension?.version || "").trim();
-    return version ? `v${version}` : "Unpacked extension";
-  },
-
-  extensionOpenUrl(extension) {
-    return String(extension?.open_url || extension?.ui?.open_url || "").trim();
-  },
-
-  extensionHasOpenUi(extension) {
-    return Boolean(this.extensionOpenUrl(extension));
-  },
-
-  extensionOpenTitle(extension) {
-    const label = String(extension?.open_label || extension?.ui?.open_label || "Extension UI").trim();
-    const name = String(extension?.name || "extension").trim();
-    if (!extension?.enabled) {
-      return `Enable ${name} before opening ${label}.`;
-    }
-    return `Open ${label} for ${name}`;
-  },
-
-  async openExtensionUi(extension) {
-    const url = this.extensionOpenUrl(extension);
-    if (!url) return;
-    this.extensionActionMessage = "";
-    this.extensionActionError = "";
-    if (!extension?.enabled) {
-      this.extensionActionError = `Enable ${extension?.name || "this extension"} before opening it.`;
-      return;
-    }
-    this.closeExtensionsMenu();
-    await this.command("open", { url });
-  },
-
-  _prefillAgentPrompt(prompt) {
-    chatInputStore.message = prompt;
-    chatInputStore.adjustTextareaHeight?.();
-    chatInputStore.focus?.();
-    this.closeExtensionsMenu();
   },
 
   async onOpen(element = null, options = {}) {
@@ -832,6 +701,13 @@ const model = {
     this.frameSrc = "";
     this._lastFrameDimensions = null;
     this._lastFrameAt = 0;
+    this._activeFrameStreamId = "";
+    this._lastAcceptedFrameSequence = 0;
+  },
+
+  applyViewer(viewer = null) {
+    this.status = this.status || {};
+    this.status.viewer = viewer || null;
   },
 
   resetRenderedFrameIfViewportChanged(viewport = null, requestedBrowserId = null, requestedContextId = "") {
@@ -951,6 +827,7 @@ const model = {
           browser_id: requestedBrowserId,
           viewer_id: viewerToken,
           create_browser: Boolean(options.createBrowser || options.create_browser),
+          warm_runtime: true,
           viewport_width: initialViewport?.width,
           viewport_height: initialViewport?.height,
         },
@@ -972,6 +849,7 @@ const model = {
       return;
     }
     const data = firstOk(response);
+    this.applyViewer(data.viewer);
     this.applyBrowserListing(data.browsers || [], contextId, { replaceAll: Boolean(data.all_browsers) });
     this.setActiveBrowserId(
       data.active_browser_id || requestedBrowserId || this.activeBrowserId || null,
@@ -989,6 +867,9 @@ const model = {
         if (data?.viewer_id && data.viewer_id !== this._viewerToken) return;
         const incomingContextId = this.normalizeContextId(data.context_id || this.contextId);
         const incomingBrowserId = this.normalizeBrowserId(data.browser_id || data.state?.id);
+        if (data.viewer) {
+          this.applyViewer(data.viewer);
+        }
         this.applyBrowserListing(data.browsers || [], incomingContextId, { replaceContext: true });
         if (incomingBrowserId && !this.activeBrowserId) {
           this.setActiveBrowserId(incomingBrowserId, incomingContextId);
@@ -1041,8 +922,11 @@ const model = {
 	      const stateHandler = ({ data }) => {
 	        if (data?.context_id !== this.contextId) return;
 	        if (data?.viewer_id && data.viewer_id !== this._viewerToken) return;
-        const commandContextId = this.normalizeContextId(data.active_browser_context_id || data.context_id || this.contextId);
-        this.applyBrowserListing(data.browsers || [], commandContextId, { replaceAll: Boolean(data.all_browsers) });
+	        const commandContextId = this.normalizeContextId(data.active_browser_context_id || data.context_id || this.contextId);
+        if (data.viewer) {
+          this.applyViewer(data.viewer);
+        }
+	        this.applyBrowserListing(data.browsers || [], commandContextId, { replaceAll: Boolean(data.all_browsers) });
         const command = String(data.command || "").toLowerCase();
         const commandBrowserId = this.normalizeBrowserId(data.browser_id);
         const result = data.result || {};
@@ -1076,8 +960,11 @@ const model = {
   },
 
   queueFrameRender(frameSrc, options = {}) {
+    const sequence = this._frameRenderSequence + 1;
+    this._frameRenderSequence = sequence;
     this._pendingFrameSrc = frameSrc;
     this._pendingFrameOptions = options || null;
+    this._pendingFrameSequence = sequence;
     if (this._frameRenderHandle) return;
     const schedule = globalThis.requestAnimationFrame?.bind(globalThis);
     if (schedule) {
@@ -1094,11 +981,11 @@ const model = {
     this._frameRenderCancel = null;
     const frameSrc = this._pendingFrameSrc || "";
     const options = this._pendingFrameOptions || {};
+    const sequence = this._pendingFrameSequence || this._frameRenderSequence;
     this._pendingFrameSrc = "";
     this._pendingFrameOptions = null;
-    const sequence = this._frameRenderSequence + 1;
+    this._pendingFrameSequence = 0;
     const surfaceSequence = this._surfaceOpenSequence;
-    this._frameRenderSequence = sequence;
     void this.renderDecodedFrame(frameSrc, options, sequence, surfaceSequence);
   },
 
@@ -1109,7 +996,7 @@ const model = {
       }
       return;
     }
-    const dimensions = await loadFrameDimensions(frameSrc);
+    const dimensions = options?.dimensions || (await loadFrameDimensions(frameSrc));
     if (sequence !== this._frameRenderSequence || surfaceSequence !== this._surfaceOpenSequence) {
       return;
     }
@@ -1123,6 +1010,15 @@ const model = {
     this.frameSrc = frameSrc;
     this._lastFrameDimensions = dimensions;
     this._lastFrameAt = Date.now();
+    if (options?.streamId) {
+      this._activeFrameStreamId = String(options.streamId);
+    }
+    if (Number.isFinite(options?.frameSequence) && options.frameSequence > 0) {
+      this._lastAcceptedFrameSequence = Math.max(
+        this._lastAcceptedFrameSequence,
+        Number(options.frameSequence),
+      );
+    }
     options?.onAccepted?.();
     this._canvasFirstFrameAcceptedSequence = surfaceSequence;
     this.scheduleCanvasWidthNudgeAfterFirstFrame();
@@ -1221,6 +1117,7 @@ const model = {
     this._frameRenderCancel = null;
     this._pendingFrameSrc = "";
     this._pendingFrameOptions = null;
+    this._pendingFrameSequence = 0;
     this._frameRenderSequence += 1;
   },
 
@@ -1412,7 +1309,12 @@ const model = {
   },
 
   async openNewBrowser() {
+    if (this.isTabActionBusy()) return;
     await this.command("open");
+  },
+
+  isTabActionBusy() {
+    return Boolean(this.loading || this.commandInFlight);
   },
 
   isClosingBrowser(id, contextId = "") {
@@ -1610,9 +1512,26 @@ const model = {
 	      this.applyActiveFrameState(snapshot.state);
 	    }
 	    const frameBrowserId = snapshotId || this.activeBrowserId;
+    const streamId = String(snapshot.stream_id || "");
+    const frameSequence = Number(snapshot.sequence || snapshot.metadata?.frameSequence || 0);
+    if (streamId && streamId !== this._activeFrameStreamId) {
+      this._activeFrameStreamId = streamId;
+      this._lastAcceptedFrameSequence = 0;
+    }
+    if (
+      streamId
+      && frameSequence
+      && this._lastAcceptedFrameSequence
+      && frameSequence <= this._lastAcceptedFrameSequence
+    ) {
+      return;
+    }
 	    this.queueFrameRender(`data:${snapshot.mime || "image/jpeg"};base64,${snapshot.image}`, {
 	      browserId: frameBrowserId,
       contextId: snapshotContextId,
+      streamId,
+      frameSequence,
+      dimensions: dimensionsFromFrameMetadata(snapshot.metadata),
 	      onAccepted: () => {
 	        if (
           this.sameBrowserId(this.switchingBrowserId, frameBrowserId)
@@ -1779,7 +1698,7 @@ const model = {
   visualBrowserStageForEvent(event) {
     const element = elementFromTarget(event?.target);
     const blockingUi = element?.closest?.(
-      ".browser-toolbar, .browser-meta, .browser-extension-dropdown, .browser-annotation-popover, .browser-annotation-tray, button, a",
+      ".browser-toolbar, .browser-meta, .browser-settings-dropdown, .browser-annotation-popover, .browser-annotation-tray, button, a",
     );
     if (blockingUi) return null;
 
@@ -1803,7 +1722,7 @@ const model = {
 
     this.annotating = nextValue;
     this.annotationError = "";
-    this.closeExtensionsMenu();
+    this.closeSettingsMenu();
     if (!nextValue) {
       this.cancelAnnotationDraft();
       this.annotationDragRect = null;
@@ -2507,7 +2426,7 @@ const model = {
   async cleanup() {
     if (this._surfaceHandoff) {
       this.releaseSurfaceBindings();
-      this.extensionMenuOpen = false;
+      this.settingsMenuOpen = false;
       return;
     }
     this._surfaceOpenSequence += 1;
@@ -2543,10 +2462,9 @@ const model = {
       this._viewportSyncTimer = null;
     }
     this.resetViewportTracking();
-    this.extensionMenuOpen = false;
-    this.extensionActionLoading = false;
-    this.extensionsListLoading = false;
-    this.extensionToggleLoadingPath = "";
+    this.settingsMenuOpen = false;
+    this.settingsActionMessage = "";
+    this.settingsActionError = "";
     this.modelPresetSaving = false;
     this.connected = false;
   },
@@ -2648,7 +2566,7 @@ const model = {
     `;
     const newButton = newAction.querySelector(".browser-header-new-button");
     const onNewClick = async () => {
-      if (!newButton || newButton.disabled || this.isBusy()) return;
+      if (!newButton || newButton.disabled || this.isTabActionBusy()) return;
       newButton.disabled = true;
       try {
         await this.openNewBrowser();
@@ -2788,8 +2706,8 @@ const model = {
 
   loadingMessage() {
     if (this.browserInstallExpected) {
-      const cacheDir = this.status?.playwright?.cache_dir || "/a0/tmp/playwright";
-      return `Installing Chromium for the first Browser run. This can take a few minutes; future starts reuse ${cacheDir}.`;
+      const source = this.status?.chromium?.env || "A0_BROWSER_CHROMIUM_BINARY";
+      return `Chromium is not ready for the CDP Browser runtime. Set ${source} or prepare the Docker Chromium cache.`;
     }
     return "Loading";
   },

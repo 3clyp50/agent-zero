@@ -138,7 +138,7 @@ MCP tool in the same Docker network is usually cleaner.
 
 For most browsing tasks, use Agent Zero's built-in `_browser` plugin and direct
 `browser` tool. It covers the Docker browser surface, screenshots, annotations,
-Chrome extensions, and optional A0 CLI host-browser mode.
+and optional A0 CLI host-browser mode.
 
 MCP-based browser tools are still useful when another browser tool is required
 for a specific workflow.

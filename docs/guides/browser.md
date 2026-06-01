@@ -111,7 +111,6 @@ Open Browser settings from the Browser toolbar or from the Browser plugin settin
 The toolbar menu includes:
 
 - **Browser LLM Preset:** Optional model choice for Browser helper work.
-- **Chrome Extensions:** Install a Chrome Web Store URL, create a new extension with Agent Zero, or scan an extension with Agent Zero.
 - **Settings:** Opens the full Browser plugin settings.
 
 ![Browser plugin settings](../res/usage/browser/browser-plugin-settings.png)
@@ -122,7 +121,6 @@ The full settings include:
 - **Page content access:** Controls host-browser page text and screenshots.
 - **Starting page:** The default URL for new Browser sessions.
 - **Autofocus active page:** Lets an already-open Browser surface follow the agent's browsing.
-- **Extensions:** Choose which installed Chrome extensions load in the Docker browser.
 
 ## Docker Browser
 
@@ -175,13 +173,6 @@ from your own browser:
 > Canvas is not a stream of your personal browser window.
 
 For setup details, profiles, and troubleshooting, see the [A0 CLI Connector guide](a0-cli-connector.md#host-browser).
-
-## Chrome Extensions
-
-Browser can load Chrome extensions into the Docker browser.
-
-Only enable extensions you trust. They run inside the Docker browser, but they
-can still change what happens in that browser.
 
 ## MCP Alternatives
 

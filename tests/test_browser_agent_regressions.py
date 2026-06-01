@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 import sys
 import threading
@@ -89,16 +88,8 @@ from plugins._browser.helpers.config import (
     normalize_browser_config,
     resolve_browser_model_selection,
 )
-from plugins._browser.helpers.extension_manager import (
-    _build_web_store_download_url,
-    _crx_zip_payload,
-    _detect_chrome_prodversion,
-    _normalize_chrome_prodversion,
-    get_extensions_root,
-    parse_chrome_web_store_extension_id,
-    uninstall_browser_extension,
-)
-import plugins._browser.helpers.extension_manager as browser_extension_manager_module
+from plugins._browser.helpers.chromium import describe_chromium_binary, get_chromium_binary
+import plugins._browser.helpers.chromium as browser_chromium_module
 from plugins._browser.helpers.runtime import (
     BrowserPage,
     _BrowserRuntimeCore,
@@ -142,18 +133,10 @@ def test_browser_url_normalization_matches_address_bar_hosts():
         normalize_url("/docs")
 
 
-def test_browser_config_normalizes_extension_paths(tmp_path):
-    extension_dir = tmp_path / "extension"
-    extension_dir.mkdir()
-
-    config = normalize_browser_config(
-        {
-            "extension_paths": [str(extension_dir), "", "  ", str(extension_dir)],
-        }
-    )
+def test_browser_config_ignores_retired_extension_paths():
+    config = normalize_browser_config({"extension_paths": ["/tmp/legacy-browser-addon"]})
 
     assert config == {
-        "extension_paths": [str(extension_dir)],
         "default_homepage": "about:blank",
         "autofocus_active_page": True,
         "max_open_tabs": 32,
@@ -201,7 +184,7 @@ def test_browser_model_selection_uses_presets(monkeypatch):
     monkeypatch.setattr(
         browser_config_module,
         "get_browser_config",
-        lambda agent=None: {"model_preset": "Research", "extension_paths": []},
+        lambda agent=None: {"model_preset": "Research"},
     )
     monkeypatch.setattr(
         model_config,
@@ -262,33 +245,18 @@ def test_browser_main_model_summary_shows_current_model(monkeypatch):
     assert get_browser_main_model_summary() == "openrouter / example/main"
 
 
-def test_browser_launch_config_uses_full_chromium_for_all_sessions(tmp_path):
-    default_launch = build_browser_launch_config(
-        {
-            "extension_paths": [],
-        }
-    )
-
-    assert default_launch["browser_mode"] == "chromium"
-    assert default_launch["channel"] is None
-    assert default_launch["requires_full_browser"] is True
-    assert not any(arg.startswith("--load-extension=") for arg in default_launch["args"])
-    assert "--headless=new" not in default_launch["args"]
-
-    extension_dir = tmp_path / "extension"
-    extension_dir.mkdir()
-
-    launch = build_browser_launch_config(
-        {
-            "extension_paths": [str(extension_dir)],
-        }
-    )
+def test_browser_launch_config_uses_headless_shell_for_container_sessions(tmp_path):
+    legacy_path = tmp_path / "legacy-browser-addon"
+    legacy_path.mkdir()
+    launch = build_browser_launch_config({"extension_paths": [str(legacy_path)]})
 
     assert launch["browser_mode"] == "chromium"
     assert launch["channel"] is None
-    assert launch["requires_full_browser"] is True
-    assert launch["extensions"]["active"] is True
-    assert any(arg.startswith("--load-extension=") for arg in launch["args"])
+    assert launch["requires_full_browser"] is False
+    assert launch["requires_headless_shell"] is True
+    assert "extensions" not in launch
+    assert not any(arg.startswith("--load-extension=") for arg in launch["args"])
+    assert not any(arg.startswith("--disable-extensions-except=") for arg in launch["args"])
     assert "--headless=new" not in launch["args"]
 
 
@@ -302,10 +270,22 @@ def _patch_playwright_cache_root(monkeypatch, tmp_path):
 
 
 def _write_playwright_binary(cache_dir: Path) -> Path:
-    browser_binary = cache_dir / "chromium-1169" / "chrome-linux" / "chrome"
+    browser_binary = (
+        cache_dir
+        / "chromium_headless_shell-1169"
+        / "chrome-linux"
+        / "headless_shell"
+    )
     browser_binary.parent.mkdir(parents=True)
     browser_binary.write_text("#!/bin/sh\n", encoding="utf-8")
     return browser_binary
+
+
+def _write_full_chromium_payload(cache_dir: Path) -> Path:
+    browser_binary = cache_dir / "chromium-1169" / "chrome-linux" / "chrome"
+    browser_binary.parent.mkdir(parents=True)
+    browser_binary.write_text("#!/bin/sh\n", encoding="utf-8")
+    return browser_binary.parents[1]
 
 
 def test_browser_playwright_cache_uses_tmp_path(monkeypatch, tmp_path):
@@ -318,6 +298,7 @@ def test_browser_playwright_cache_uses_tmp_path(monkeypatch, tmp_path):
     )
     assert browser_playwright_module.get_playwright_cache_dirs() == [
         tmp_path / "tmp" / "playwright",
+        tmp_path / "usr" / "cache" / "ms-playwright",
         tmp_path / "usr" / "plugins" / "_browser" / "playwright",
         tmp_path / "usr" / "browser" / "playwright",
     ]
@@ -343,7 +324,12 @@ def test_browser_playwright_cache_migrates_valid_retired_usr_cache(monkeypatch, 
     assert result["errors"] == []
     assert result["migrated"] == str(retired_cache)
     assert get_playwright_binary() == (
-        tmp_path / "tmp" / "playwright" / "chromium-1169" / "chrome-linux" / "chrome"
+        tmp_path
+        / "tmp"
+        / "playwright"
+        / "chromium_headless_shell-1169"
+        / "chrome-linux"
+        / "headless_shell"
     )
     assert not retired_cache.exists()
 
@@ -353,18 +339,28 @@ def test_browser_playwright_cache_removes_retired_usr_cache_when_tmp_valid(
 ):
     _patch_playwright_cache_root(monkeypatch, tmp_path)
     primary_cache = tmp_path / "tmp" / "playwright"
+    default_cache = tmp_path / "usr" / "cache" / "ms-playwright"
     retired_cache = tmp_path / "usr" / "plugins" / "_browser" / "playwright"
     _write_playwright_binary(primary_cache)
+    _write_playwright_binary(default_cache)
     _write_playwright_binary(retired_cache)
+    full_payload = _write_full_chromium_payload(primary_cache)
 
     result = browser_hooks_module.cleanup_playwright_cache()
 
     assert result["errors"] == []
     assert result["migrated"] == ""
+    assert str(full_payload) in result["removed"]
+    assert str(default_cache) in result["removed"]
     assert str(retired_cache) in result["removed"]
     assert get_playwright_binary() == (
-        primary_cache / "chromium-1169" / "chrome-linux" / "chrome"
+        primary_cache
+        / "chromium_headless_shell-1169"
+        / "chrome-linux"
+        / "headless_shell"
     )
+    assert not full_payload.exists()
+    assert not default_cache.exists()
     assert not retired_cache.exists()
 
 
@@ -379,186 +375,121 @@ def test_browser_playwright_cache_missing_dirs_do_not_raise(monkeypatch, tmp_pat
     assert not (tmp_path / "tmp" / "playwright").exists()
     assert browser_playwright_module.get_playwright_cache_dirs() == [
         tmp_path / "tmp" / "playwright",
+        tmp_path / "usr" / "cache" / "ms-playwright",
         tmp_path / "usr" / "plugins" / "_browser" / "playwright",
         tmp_path / "usr" / "browser" / "playwright",
     ]
     assert get_playwright_binary() is None
 
 
-def test_browser_extension_storage_uses_plugin_user_path(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        browser_extension_manager_module.files,
-        "get_abs_path",
-        lambda *parts: str(tmp_path.joinpath(*parts)),
-    )
+def test_browser_hooks_install_missing_python_runtime_dependencies(monkeypatch):
+    commands = []
 
-    assert get_extensions_root() == tmp_path / "usr" / "_browser" / "extensions"
+    monkeypatch.setattr(browser_hooks_module.importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(browser_hooks_module.importlib, "invalidate_caches", lambda: None)
 
+    def fake_run(command, **kwargs):
+        commands.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
 
-def test_browser_extension_manager_uninstalls_only_managed_extensions(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        browser_extension_manager_module.files,
-        "get_abs_path",
-        lambda *parts: str(tmp_path.joinpath(*parts)),
-    )
-    managed_extension = get_extensions_root() / "chrome-web-store" / ("a" * 32)
-    external_extension = tmp_path / "external-extension"
-    for extension_dir, name in (
-        (managed_extension, "Managed Extension"),
-        (external_extension, "External Extension"),
-    ):
-        extension_dir.mkdir(parents=True)
-        (extension_dir / "manifest.json").write_text(
-            json.dumps({"name": name, "version": "1.0.0"}),
-            encoding="utf-8",
-        )
+    monkeypatch.setattr(browser_hooks_module.subprocess, "run", fake_run)
 
-    saved_configs = []
-    monkeypatch.setattr(
-        browser_extension_manager_module,
-        "get_browser_config",
-        lambda: {
-            "extension_paths": [str(managed_extension), str(external_extension)],
-        },
-    )
-    monkeypatch.setattr(
-        browser_extension_manager_module.plugins,
-        "save_plugin_config",
-        lambda _plugin, _project, _agent, config: saved_configs.append(config.copy()),
-    )
+    result = browser_hooks_module.ensure_python_runtime_dependencies()
 
-    entries = browser_extension_manager_module.list_browser_extensions()
-    managed_entry = next(item for item in entries if item["path"] == str(managed_extension))
-    external_entry = next(item for item in entries if item["path"] == str(external_extension))
-
-    assert managed_entry["can_delete"] is True
-    assert managed_entry["managed"] is True
-    assert external_entry["can_delete"] is False
-
-    result = uninstall_browser_extension(str(managed_extension))
-
-    assert result["name"] == "Managed Extension"
-    assert result["extension_paths"] == [str(external_extension)]
-    assert not managed_extension.exists()
-    assert external_extension.exists()
-    assert saved_configs[-1]["extension_paths"] == [str(external_extension)]
-
-    with pytest.raises(ValueError, match="Only Browser-managed"):
-        uninstall_browser_extension(str(external_extension))
-    assert external_extension.exists()
+    assert result == {"ok": True, "installed": ["aiohttp>=3.10.0"], "errors": []}
+    assert commands[0][0] == [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "aiohttp>=3.10.0",
+    ]
+    assert commands[0][1]["timeout"] == 300
 
 
-def test_browser_extension_manager_exposes_openable_manifest_ui(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        browser_extension_manager_module.files,
-        "get_abs_path",
-        lambda *parts: str(tmp_path.joinpath(*parts)),
-    )
-    extension_dir = get_extensions_root() / "local-options"
-    extension_dir.mkdir(parents=True)
-    (extension_dir / "manifest.json").write_text(
-        json.dumps(
-            {
-                "manifest_version": 3,
-                "name": "Openable Extension",
-                "version": "1.0.0",
-                "options_ui": {"page": "options/index.html"},
-                "action": {"default_popup": "popup.html"},
-            }
-        ),
-        encoding="utf-8",
-    )
+def test_browser_chromium_runtime_uses_cached_headless_shell_without_playwright_control(
+    monkeypatch, tmp_path
+):
+    _patch_playwright_cache_root(monkeypatch, tmp_path)
+    monkeypatch.delenv("A0_BROWSER_CHROMIUM_BINARY", raising=False)
+    monkeypatch.setattr(browser_chromium_module.shutil, "which", lambda _name: None)
+    browser_binary = _write_playwright_binary(tmp_path / "tmp" / "playwright")
 
-    monkeypatch.setattr(
-        browser_extension_manager_module,
-        "get_browser_config",
-        lambda: {"extension_paths": [str(extension_dir)]},
-    )
-
-    entry = browser_extension_manager_module.list_browser_extensions()[0]
-    expected_id = browser_extension_manager_module._extension_id_from_path(extension_dir)
-
-    assert entry["id"] == expected_id
-    assert entry["has_ui"] is True
-    assert entry["open_label"] == "Options"
-    assert entry["open_url"] == f"chrome-extension://{expected_id}/options/index.html"
-    assert entry["ui"]["targets"][1]["url"] == f"chrome-extension://{expected_id}/popup.html"
+    assert get_chromium_binary() == browser_binary
+    assert describe_chromium_binary() == {
+        "binary_found": True,
+        "binary_path": str(browser_binary),
+        "source": "playwright_cache",
+        "install_required": False,
+        "env": "A0_BROWSER_CHROMIUM_BINARY",
+        "system_candidates": list(browser_chromium_module.SYSTEM_CHROMIUM_CANDIDATES),
+    }
 
 
-def test_browser_extension_manager_parses_web_store_urls():
-    extension_id = "a" * 32
+def test_browser_chromium_runtime_can_be_pointed_at_explicit_binary(monkeypatch, tmp_path):
+    _patch_playwright_cache_root(monkeypatch, tmp_path)
+    monkeypatch.setattr(browser_chromium_module.shutil, "which", lambda _name: None)
+    explicit = tmp_path / "bin" / "chromium"
+    explicit.parent.mkdir()
+    explicit.write_text("#!/bin/sh\n", encoding="utf-8")
+    explicit.chmod(0o755)
+    monkeypatch.setenv("A0_BROWSER_CHROMIUM_BINARY", str(explicit))
 
-    assert parse_chrome_web_store_extension_id(extension_id) == extension_id
-    assert (
-        parse_chrome_web_store_extension_id(
-            f"https://chromewebstore.google.com/detail/example/{extension_id}"
-        )
-        == extension_id
-    )
-    assert (
-        parse_chrome_web_store_extension_id(
-            f"https://chrome.google.com/webstore/detail/example/{extension_id}?hl=en"
-        )
-        == extension_id
-    )
+    assert get_chromium_binary() == explicit
+    assert describe_chromium_binary()["source"] == "env"
 
 
-def test_browser_extension_manager_extracts_crx3_zip_payload():
-    payload = b"PK\x03\x04zip-payload"
-    header = b"metadata"
-    crx = b"Cr24" + (3).to_bytes(4, "little") + len(header).to_bytes(4, "little") + header + payload
-
-    assert _crx_zip_payload(crx) == payload
-
-
-def test_browser_extension_manager_uses_modern_chrome_prodversion(monkeypatch):
-    extension_id = "a" * 32
-
-    assert _normalize_chrome_prodversion("Google Chrome 147.0.7727.55") == "147.0.7727.55"
-    assert _normalize_chrome_prodversion("Chromium 124") == "124.0.0.0"
-
-    monkeypatch.setenv("A0_BROWSER_EXTENSION_PRODVERSION", "147.0.7727.55")
-    assert _detect_chrome_prodversion() == "147.0.7727.55"
-
-    url = _build_web_store_download_url(extension_id, prodversion=_detect_chrome_prodversion())
-    assert "prod=chromecrx" in url
-    assert "prodversion=147.0.7727.55" in url
-    assert "prodversion=120.0.0.0" not in url
-
-
-def test_browser_extension_menu_exposes_agent_and_url_paths():
-    html = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-panel.html").read_text(
-        encoding="utf-8"
-    )
-    skill = (
+def test_browser_chrome_extension_runtime_files_are_removed():
+    assert not (PROJECT_ROOT / "plugins" / "_browser" / "api" / "extensions.py").exists()
+    assert not (PROJECT_ROOT / "plugins" / "_browser" / "helpers" / "extension_manager.py").exists()
+    assert not (
         PROJECT_ROOT
         / "plugins"
         / "_browser"
         / "skills"
         / "browser-extension-control"
         / "SKILL.md"
+    ).exists()
+
+    launch = build_browser_launch_config({"extension_paths": ["/tmp/legacy-browser-addon"]})
+    joined_args = "\n".join(launch["args"])
+
+    assert "extension_paths" not in normalize_browser_config({"extension_paths": ["/tmp/a"]})
+    assert "--load-extension" not in joined_args
+    assert "--disable-extensions-except" not in joined_args
+    assert "extensions" not in launch
+
+
+def test_browser_settings_menu_omits_chrome_extension_affordances():
+    html = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-panel.html").read_text(
+        encoding="utf-8"
+    )
+    store = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-store.js").read_text(
+        encoding="utf-8"
     )
 
-    assert "Create New Extension with A0" in html
-    assert "+ Create New with A0" not in html
-    assert "Input a Chrome Web Store URL" in html
-    assert "My Browser Extensions" not in html
     assert "Browser LLM Preset" in html
-    assert "Chrome Extensions" in html
-    assert "Installed extensions" in html
-    assert "deleteExtension(extension)" not in html
-    assert "No extensions installed yet." not in html
-    assert "Browser Extension Settings" not in html
+    assert "browser-settings-dropdown" in html
     assert "<span>Settings</span>" in html
-    assert "extensionHasOpenUi(extension)" in html
-    assert "openExtensionUi(extension)" in html
-    assert "<span>Open</span>" in html
-    assert "hasExtensionInstallUrl()" in html
-    assert "malicious or buggy extensions" in html
-    assert skill.exists()
+    assert "/plugins/_browser/settings" in store
+    for retired in (
+        "Create New Extension with A0",
+        "Input a Chrome Web Store URL",
+        "Chrome Extensions",
+        "Installed extensions",
+        "browser-extension",
+        "/plugins/_browser/extensions",
+        "browser-extension-control",
+        "extensionHasOpenUi",
+        "openExtensionUi",
+        "hasExtensionInstallUrl",
+        "malicious or buggy extensions",
+    ):
+        assert retired not in html
+        assert retired not in store
 
 
-def test_browser_viewer_allows_slow_extension_startup():
+def test_browser_viewer_allows_slow_chromium_startup():
     js = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-store.js").read_text(
         encoding="utf-8"
     )
@@ -567,7 +498,7 @@ def test_browser_viewer_allows_slow_extension_startup():
     assert "const BROWSER_FIRST_INSTALL_TIMEOUT_MS = 300000;" in js
     assert "? BROWSER_FIRST_INSTALL_TIMEOUT_MS" in js
     assert ": BROWSER_SUBSCRIBE_TIMEOUT_MS" in js
-    assert "Installing Chromium for the first Browser run" in js
+    assert "Chromium is not ready for the CDP Browser runtime" in js
 
 
 def test_browser_viewer_creates_chat_when_no_context_is_selected():
@@ -904,8 +835,8 @@ def test_browser_tool_does_not_auto_open_canvas_policy_is_documented():
     )
 
     assert "must not open a Browser surface automatically" in prompt
-    assert "Use the tool headlessly unless the user opens the Browser surface" in prompt
-    assert "optional visible WebUI viewer" in prompt
+    assert "headless CDP-controlled Chromium" in prompt
+    assert "canvas/modal screencast viewer" in config
     assert "screenshot" in prompt
     assert "vision_load" in prompt
     assert "select_option" in prompt
@@ -981,12 +912,11 @@ def test_browser_ui_spinners_have_browser_local_animation():
         encoding="utf-8"
     )
 
-    assert ":class=\"{ spinning: $store.browserPage.extensionActionLoading }\"" in main_html
     assert "@keyframes browser-spin" in main_html
     assert "@keyframes browser-config-spin" in config_html
 
 
-def test_browser_extension_settings_stay_user_facing():
+def test_browser_config_settings_omit_chrome_extension_affordances():
     config_html = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "config.html").read_text(
         encoding="utf-8"
     )
@@ -994,14 +924,20 @@ def test_browser_extension_settings_stay_user_facing():
         PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-config-store.js"
     ).read_text(encoding="utf-8")
 
-    assert "Choose which installed Chrome extensions Browser loads." in config_html
-    assert "Installed extensions" in config_html
-    assert "extensionDeleteTitle(extension)" in config_html
-    assert "deleteExtension(extension)" in config_html
-    assert "Delete extension" in config_store
+    for retired in (
+        "Choose which installed Chrome extensions Browser loads.",
+        "Installed extensions",
+        "extensionDeleteTitle",
+        "deleteExtension",
+        "Delete extension",
+        "Enabled extension directories",
+        "Chrome Web Store URL installs",
+    ):
+        assert retired not in config_html
+        assert retired not in config_store
+    assert "Browser Runtime" in config_html
+    assert "Browsing" in config_html
     assert "<textarea" not in config_html
-    assert "Enabled extension directories" not in config_html
-    assert "Chrome Web Store URL installs" not in config_html
     assert "Browser caches Playwright Chromium" not in config_html
 
 
@@ -1035,13 +971,66 @@ def test_browser_viewer_uses_tabs_for_session_switching():
     assert "contextId.slice" not in browser_store
     assert '"browser_viewer_sessions"' in browser_store
     assert "$store.browserPage.openNewBrowser()" in main_html
+    assert ':disabled="$store.browserPage.isTabActionBusy()"' in main_html
+    assert "isTabActionBusy()" in browser_store
     assert "browser-select" not in main_html
     assert "browser-live-dot" not in main_html
     assert "async openNewBrowser()" in browser_store
     assert "browserTabTitle(browser)" in browser_store
-    assert "Scan with A0" in browser_store
     assert "Review with A0" not in browser_store
+    assert "toggleSettingsMenu()" in browser_store
     assert "Using ${this.mainModelSummary}" in browser_store
+
+
+def test_browser_canvas_uses_headless_cdp_screencast_without_xpra():
+    cdp = (PROJECT_ROOT / "plugins" / "_browser" / "helpers" / "cdp.py").read_text(encoding="utf-8")
+    runtime = (PROJECT_ROOT / "plugins" / "_browser" / "helpers" / "runtime.py").read_text(
+        encoding="utf-8"
+    )
+    ws_browser = (PROJECT_ROOT / "plugins" / "_browser" / "api" / "ws_browser.py").read_text(
+        encoding="utf-8"
+    )
+    status = (PROJECT_ROOT / "plugins" / "_browser" / "api" / "status.py").read_text(
+        encoding="utf-8"
+    )
+    browser_store = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-store.js").read_text(
+        encoding="utf-8"
+    )
+    main_html = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-panel.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert "headless: bool = True" in cdp
+    assert "*(CDP_HEADLESS_LAUNCH_ARGS if self.headless else ())" in cdp
+    assert "self._attach_lock = asyncio.Lock()" in cdp
+    assert "async with self._attach_lock:" in cdp
+    assert "async def _attach_discovered_page" in cdp
+    assert "await asyncio.sleep(0.05)" in cdp
+    assert 'async def new_page(self, url: str = "about:blank")' in cdp
+    assert "headless=True" in runtime
+    assert "page = await self.context.new_page(normalized_target_url)" in runtime
+    assert "viewer_surface" in runtime
+    assert '"transport": "cdp-screencast"' in runtime
+    assert "ensure_browser_desktop" not in runtime
+    assert "headless=desktop is None" not in runtime
+    assert "resize_browser_desktop" not in runtime
+    assert '"visual_transport": "cdp-screencast"' in status
+    assert '"frame_source": "desktop"' not in ws_browser
+    assert "start_screencast" in ws_browser
+    assert 'frame["frame_source"] = "screencast"' in ws_browser
+    assert "_warm_browser_runtime" in ws_browser
+    assert "warm_runtime = self._bool" in ws_browser
+    assert "_is_desktop_viewer" not in ws_browser
+    assert "desktopViewer" not in browser_store
+    assert "applyViewer(data.viewer)" in browser_store
+    assert "warm_runtime: true" in browser_store
+    assert "`/desktop/resize?${params.toString()}`" not in browser_store
+    assert 'data-browser-desktop-host' not in main_html
+    assert 'class="browser-desktop-wrap"' not in main_html
+    assert ".browser-desktop-frame" not in main_html
+    assert "NAVIGATION_VISUAL_HANDOFF_TIMEOUT_MS = 1500" in runtime
+    assert "start_navigation = getattr(page, \"start_navigation\", None)" in runtime
+    assert "STATE_READ_TIMEOUT_SECONDS = 0.6" in runtime
 
 
 def test_browser_tabs_close_without_confirmation_or_busy_lock():
@@ -1055,8 +1044,8 @@ def test_browser_tabs_close_without_confirmation_or_busy_lock():
     close_end = main_html.index("</button>", close_start)
     close_markup = main_html[close_start:close_end]
 
-    assert '@click.stop="$store.browserPage.closeBrowser(browser.id, browser.context_id)"' in main_html
-    assert "@pointerdown.stop" in close_markup
+    assert '@click.stop.prevent="$store.browserPage.closeBrowser(browser.id, browser.context_id)"' in main_html
+    assert "@pointerdown.stop.prevent" in close_markup
     assert "$confirmClick" not in main_html
     assert "isBusy()" not in close_markup
     assert ':disabled="$store.browserPage.isClosingBrowser(browser.id, browser.context_id)"' in close_markup
@@ -1085,11 +1074,13 @@ def test_browser_viewer_uses_cdp_screencast_transport():
     ).read_text(encoding="utf-8")
 
     assert 'runtime.call("screenshot"' in ws_browser
-    assert "SCREENCAST_QUALITY = 92" in ws_browser
+    assert "SCREENCAST_QUALITY = 86" in ws_browser
     assert "initial_viewport = self._viewport_from_data(data)" in ws_browser
     assert '"set_viewport"' in ws_browser
     assert "start_screencast" in ws_browser
+    assert "read_screencast_frame" in ws_browser
     assert "pop_screencast_frame" in ws_browser
+    assert "FRAME_WAIT_TIMEOUT_SECONDS" in ws_browser
     assert "stop_screencast" in ws_browser
     assert '"Page.startScreencast"' in runtime
     assert '"Page.screencastFrame"' in runtime
@@ -1101,6 +1092,10 @@ def test_browser_viewer_uses_cdp_screencast_transport():
     assert "await self._stop_screencasts_for_browser(resolved_id)" in runtime
     assert "queueFrameRender" in browser_store
     assert "requestAnimationFrame" in browser_store
+    assert "dimensionsFromFrameMetadata" in browser_store
+    assert "this._frameRenderSequence = sequence;" in browser_store
+    assert "stream_id" in ws_browser
+    assert "frameSequence" in runtime
     assert "viewport_width: initialViewport?.width" in browser_store
     assert "viewport_height: initialViewport?.height" in browser_store
     assert "restart_stream: restartStream" in browser_store
@@ -1116,6 +1111,7 @@ def test_browser_viewer_uses_cdp_screencast_transport():
     assert 'await this.syncViewport(true, { restartStream: this._mode === "canvas" });' in browser_store
     assert "this.frameState = data.state || null" not in browser_store
     assert "function loadFrameDimensions(src)" in browser_store
+    assert "options?.dimensions || (await loadFrameDimensions(frameSrc))" in browser_store
     assert "frameMatchesViewport(dimensions = null, viewport = null)" in browser_store
     assert "shouldAcceptMismatchedFrame(dimensions = null)" in browser_store
     assert "requestViewportSyncAfterRejectedFrame()" in browser_store
@@ -1147,11 +1143,35 @@ def test_browser_navigation_errors_stay_inside_native_browser_page():
         PROJECT_ROOT / "plugins" / "_browser" / "helpers" / "runtime.py"
     ).read_text(encoding="utf-8")
 
-    assert "Error as PlaywrightError" in runtime
-    assert "except PlaywrightError as exc:" in runtime
+    assert "CDPError" in runtime
+    assert "except CDPError as exc:" in runtime
     assert "Browser navigation showed a native error page" in runtime
     assert "await self._settle(page)" in runtime
-    assert "except (PlaywrightError, PlaywrightTimeoutError):" in runtime
+    assert "except (CDPError, asyncio.TimeoutError):" in runtime
+
+
+def test_browser_container_runtime_has_no_playwright_control_fallback():
+    runtime = (
+        PROJECT_ROOT / "plugins" / "_browser" / "helpers" / "runtime.py"
+    ).read_text(encoding="utf-8")
+    status = (PROJECT_ROOT / "plugins" / "_browser" / "api" / "status.py").read_text(
+        encoding="utf-8"
+    )
+    cdp = (PROJECT_ROOT / "plugins" / "_browser" / "helpers" / "cdp.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "CDPBrowserProcess" in runtime
+    assert "ensure_chromium_binary" in runtime
+    assert "async_playwright" not in runtime
+    assert "launch_persistent_context" not in runtime
+    assert "ensure_playwright_binary" not in runtime
+    assert "configure_playwright_env" not in runtime
+    assert '"backend": "container_cdp"' in status
+    assert '"purpose": "compatibility"' in status
+    assert '"install_required": False' in status
+    assert "class CDPConnection" in cdp
+    assert "class CDPBrowserProcess" in cdp
 
 
 def test_browser_annotate_mode_ui_and_prompt_hooks():
@@ -1402,7 +1422,9 @@ async def test_browser_screencast_acknowledges_and_drops_stale_frames():
 
     assert frame["browser_id"] == 7
     assert frame["image"] == "second"
+    assert frame["sequence"] == 2
     assert frame["metadata"]["deviceWidth"] == 200
+    assert frame["metadata"]["frameSequence"] == 2
     assert frame["metadata"]["expectedWidth"] == 1118
     assert frame["metadata"]["expectedHeight"] == 662
     metrics_calls = [
@@ -1498,8 +1520,10 @@ async def test_browser_screencast_passes_wrong_viewport_frames_to_frontend_valid
 
     assert frame is not None
     assert frame["image"] == SMALL_JPEG_10X10
+    assert frame["sequence"] == 13
     assert frame["metadata"]["jpegWidth"] == 10
     assert frame["metadata"]["jpegHeight"] == 10
+    assert frame["metadata"]["frameSequence"] == 13
     assert frame["metadata"]["expectedWidth"] == 1118
     assert frame["metadata"]["expectedHeight"] == 662
     assert ("Page.screencastFrameAck", {"sessionId": 13}) in session.sent
@@ -1507,14 +1531,13 @@ async def test_browser_screencast_passes_wrong_viewport_frames_to_frontend_valid
     await screencast.stop()
 
 
-def test_browser_docker_installs_full_chromium_to_tmp_cache():
+def test_browser_docker_installs_chromium_headless_shell_to_tmp_cache():
     script = (
         PROJECT_ROOT / "docker" / "run" / "fs" / "ins" / "install_playwright.sh"
     ).read_text(encoding="utf-8")
 
     assert "PLAYWRIGHT_BROWSERS_PATH=/a0/tmp/playwright" in script
-    assert "playwright install chromium" in script
-    assert "--only-shell" not in script
+    assert "playwright install --only-shell chromium" in script
 
 
 def test_browser_startup_migration_runs_playwright_cache_cleanup():
@@ -1529,6 +1552,7 @@ def test_browser_startup_migration_runs_playwright_cache_cleanup():
     ).read_text(encoding="utf-8")
 
     assert "class BrowserPlaywrightCacheMigration(Extension)" in extension
+    assert "hooks.ensure_python_runtime_dependencies()" in extension
     assert "hooks.cleanup_playwright_cache()" in extension
     assert "PrintStyle.warning" in extension
 
@@ -1566,13 +1590,16 @@ async def test_browser_runtime_restarts_when_cached_context_is_stale():
     class LiveContext:
         pages = []
 
-    class FakePlaywright:
-        async def stop(self):
+    class FakeBrowser:
+        def is_alive(self):
+            return True
+
+        async def close(self):
             stopped.append(True)
 
     core = _BrowserRuntimeCore("ctx")
     core.context = StaleContext()
-    core.playwright = FakePlaywright()
+    core.browser = FakeBrowser()
     core.pages[4] = browser_runtime_module.BrowserPage(id=4, page=object())
     core.last_interacted_browser_id = 4
 
@@ -1604,16 +1631,15 @@ def test_browser_runtime_context_close_event_clears_cached_state():
     assert core.last_interacted_browser_id is None
 
 
-def test_browser_save_plugin_config_restarts_runtimes_on_change(monkeypatch, tmp_path):
-    extension_dir = tmp_path / "extension"
-    extension_dir.mkdir()
+def test_browser_save_plugin_config_restarts_runtimes_on_runtime_backend_change(monkeypatch):
     restarted = []
 
     monkeypatch.setattr(
         browser_hooks_module,
         "_load_saved_browser_config",
         lambda project_name="", agent_profile="": {
-            "extension_paths": [],
+            "runtime_backend": "container",
+            "host_browser_profile_mode": "existing",
         },
     )
     monkeypatch.setattr(
@@ -1624,13 +1650,16 @@ def test_browser_save_plugin_config_restarts_runtimes_on_change(monkeypatch, tmp
 
     result = browser_hooks_module.save_plugin_config(
         {
-            "extension_paths": [str(extension_dir)],
+            "runtime_backend": "host_required",
+            "host_browser_profile_mode": "agent",
         },
         project_name="",
         agent_profile="",
     )
 
-    assert result["extension_paths"] == [str(extension_dir)]
+    assert "extension_paths" not in result
+    assert result["runtime_backend"] == "host_required"
+    assert result["host_browser_profile_mode"] == "agent"
     assert result["model_preset"] == ""
     assert restarted == [True]
 
@@ -1642,7 +1671,8 @@ def test_browser_save_plugin_config_does_not_restart_runtimes_for_preset_only(mo
         browser_hooks_module,
         "_load_saved_browser_config",
         lambda project_name="", agent_profile="": {
-            "extension_paths": [],
+            "runtime_backend": "container",
+            "host_browser_profile_mode": "existing",
             "model_preset": "",
         },
     )
@@ -1654,7 +1684,8 @@ def test_browser_save_plugin_config_does_not_restart_runtimes_for_preset_only(mo
 
     result = browser_hooks_module.save_plugin_config(
         {
-            "extension_paths": [],
+            "runtime_backend": "container",
+            "host_browser_profile_mode": "existing",
             "model_preset": "Research",
         },
         project_name="",
@@ -1875,7 +1906,7 @@ async def test_browser_runtime_multi_accepts_human_shaped_input_calls():
 
 
 @pytest.mark.anyio
-async def test_browser_tool_records_static_history_screenshot(monkeypatch, tmp_path):
+async def test_browser_tool_skips_static_history_screenshot_for_navigation(monkeypatch):
     calls = []
 
     class FakeRuntime:
@@ -1890,6 +1921,45 @@ async def test_browser_tool_records_static_history_screenshot(monkeypatch, tmp_p
                         "currentUrl": "https://example.com/",
                         "title": "Example Domain",
                     },
+                }
+            raise AssertionError(method)
+
+    async def fake_get_runtime(context_id, create=True, agent=None):
+        del create, agent
+        assert context_id == "chat"
+        return FakeRuntime()
+
+    monkeypatch.setattr(browser_tool_module, "get_runtime", fake_get_runtime)
+
+    tool = browser_tool_module.Browser(
+        agent=SimpleNamespace(context=SimpleNamespace(id="chat")),
+        name="browser",
+        method=None,
+        args={"action": "state", "browser_id": 1},
+        message="",
+        loop_data=None,
+    )
+    tool.log = SimpleNamespace(id="tool-log-id", update=lambda **kwargs: calls.append(("log", (), kwargs)))
+
+    response = await tool.execute(action="open", url="https://example.com")
+
+    assert response.break_loop is False
+    assert calls == [("open", ("https://example.com",), {})]
+
+
+@pytest.mark.anyio
+async def test_browser_tool_records_static_history_screenshot_for_non_navigation(monkeypatch, tmp_path):
+    calls = []
+
+    class FakeRuntime:
+        async def call(self, method, *args, **kwargs):
+            calls.append((method, args, kwargs))
+            if method == "state":
+                return {
+                    "id": 1,
+                    "context_id": "browser-context",
+                    "currentUrl": "https://example.com/",
+                    "title": "Example Domain",
                 }
             if method == "screenshot_file":
                 return {
@@ -1935,10 +2005,10 @@ async def test_browser_tool_records_static_history_screenshot(monkeypatch, tmp_p
     )
     tool.log = log
 
-    response = await tool.execute(action="open", url="https://example.com")
+    response = await tool.execute(action="state", browser_id=1)
 
     assert response.break_loop is False
-    assert calls[0] == ("open", ("https://example.com",), {})
+    assert calls[0] == ("state", (1,), {})
     assert calls[1][0] == "screenshot_file"
     assert calls[1][1] == (1,)
     assert calls[1][2]["quality"] == browser_tool_module.HISTORY_SCREENSHOT_QUALITY

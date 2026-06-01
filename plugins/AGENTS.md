@@ -60,4 +60,8 @@
 
 ## Child DOX Index
 
-No child DOX files.
+Direct child DOX files:
+
+| Child | Scope |
+| --- | --- |
+| [_browser/AGENTS.md](_browser/AGENTS.md) | Built-in Browser plugin: agent browser tool, CDP/headless Chromium runtime, Browser Canvas/modal viewer, settings, host-browser bridge, and Browser skills. |

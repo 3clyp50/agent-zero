@@ -1,30 +1,13 @@
 import { createStore } from "/js/AlpineStore.js";
 import { callJsonApi } from "/js/api.js";
 
-const BROWSER_EXTENSIONS_API = "/plugins/_browser/extensions";
 const BROWSER_STATUS_API = "/plugins/_browser/status";
 const RUNTIME_BACKENDS = new Set(["container", "host_required"]);
 const HOST_PRIVACY_POLICIES = new Set(["enforce_local", "warn", "allow"]);
 const HOST_PROFILE_MODES = new Set(["existing", "agent"]);
 
-function normalizePathList(value) {
-  const source = Array.isArray(value)
-    ? value
-    : String(value || "").split(/\r?\n/);
-  const seen = new Set();
-  const paths = [];
-  for (const item of source) {
-    const path = String(item || "").trim();
-    if (!path || seen.has(path)) continue;
-    seen.add(path);
-    paths.push(path);
-  }
-  return paths;
-}
-
 function ensureConfig(config) {
   if (!config || typeof config !== "object") return null;
-  config.extension_paths = normalizePathList(config.extension_paths);
   config.default_homepage = String(config.default_homepage || "about:blank").trim() || "about:blank";
   config.autofocus_active_page = normalizeBoolean(config.autofocus_active_page, true);
   config.runtime_backend = normalizeRuntimeBackend(config.runtime_backend);
@@ -92,25 +75,16 @@ function hostBrowserStatusLabel(value) {
 
 export const store = createStore("browserConfig", {
   config: null,
-  extensionsList: [],
-  extensionsLoading: false,
-  extensionsError: "",
-  extensionsMessage: "",
-  extensionDeleteLoadingPath: "",
   hostBrowserStatus: null,
   hostBrowserStatusLoading: false,
 
   async init(config) {
     this.bindConfig(config);
-    await Promise.all([this.loadExtensionsList(), this.loadHostBrowserStatus()]);
+    await this.loadHostBrowserStatus();
   },
 
   cleanup() {
     this.config = null;
-    this.extensionsList = [];
-    this.extensionsError = "";
-    this.extensionsMessage = "";
-    this.extensionDeleteLoadingPath = "";
     this.hostBrowserStatus = null;
     this.hostBrowserStatusLoading = false;
   },
@@ -181,122 +155,12 @@ export const store = createStore("browserConfig", {
 
   browserRuntimeStatusLabel() {
     if (this.config?.runtime_backend !== "host_required") {
-      return "Docker browser runs inside Agent Zero; A0 CLI host-browser status does not affect it.";
+      return "Docker browser runs as CDP-controlled Chromium inside Agent Zero; A0 CLI host-browser status does not affect it.";
     }
     const label = this.hostBrowserConnectorLabel();
     if (label.startsWith("Connect A0 CLI") || label.includes("unavailable")) {
       return `${label}. Switch Browser location to Internal Docker browser to browse without A0 CLI.`;
     }
     return label;
-  },
-
-  hasPaths() {
-    return this.pathCount() > 0;
-  },
-
-  pathCount() {
-    return normalizePathList(this.config?.extension_paths).length;
-  },
-
-  pathCountLabel() {
-    const count = this.pathCount();
-    if (!count) return "No extensions enabled";
-    return `${count} extension${count === 1 ? "" : "s"} enabled`;
-  },
-
-  extensionModeReady() {
-    return this.pathCount() > 0;
-  },
-
-  async loadExtensionsList() {
-    if (this.extensionsLoading) return;
-    this.extensionsLoading = true;
-    this.extensionsError = "";
-    try {
-      const response = await callJsonApi(BROWSER_EXTENSIONS_API, { action: "list" });
-      if (!response?.ok) {
-        throw new Error(response?.error || "Could not load browser extensions.");
-      }
-      this.applyExtensionPayload(response);
-    } catch (error) {
-      this.extensionsList = [];
-      this.extensionsError = error instanceof Error ? error.message : String(error);
-    } finally {
-      this.extensionsLoading = false;
-    }
-  },
-
-  applyExtensionPayload(response = {}) {
-    this.extensionsList = Array.isArray(response.extensions) ? response.extensions : [];
-    if (Array.isArray(response.extension_paths) && this.config) {
-      this.config.extension_paths = normalizePathList(response.extension_paths);
-    }
-  },
-
-  extensionEnabled(extension) {
-    const path = typeof extension === "string" ? extension : extension?.path;
-    return normalizePathList(this.config?.extension_paths).includes(String(path || ""));
-  },
-
-  setExtensionEnabled(extension, enabled) {
-    const path = String((typeof extension === "string" ? extension : extension?.path) || "").trim();
-    if (!path) return;
-    const safeConfig = ensureConfig(this.config);
-    if (!safeConfig) return;
-    const paths = normalizePathList(safeConfig.extension_paths);
-    if (enabled && !paths.includes(path)) {
-      paths.push(path);
-    } else if (!enabled) {
-      const index = paths.indexOf(path);
-      if (index >= 0) paths.splice(index, 1);
-    }
-    safeConfig.extension_paths = paths;
-  },
-
-  extensionCanDelete(extension) {
-    return Boolean(extension?.can_delete);
-  },
-
-  extensionDeleteTitle(extension) {
-    return this.extensionCanDelete(extension)
-      ? "Delete extension"
-      : "Only Browser-managed extensions can be deleted";
-  },
-
-  async deleteExtension(extension) {
-    const path = String(extension?.path || "").trim();
-    if (!path) return;
-    this.extensionsError = "";
-    this.extensionsMessage = "";
-    if (!this.extensionCanDelete(extension)) {
-      this.extensionsError = "Only Browser-managed extensions can be deleted.";
-      return;
-    }
-    const name = String(extension?.name || "this extension").trim();
-    if (globalThis.confirm && !globalThis.confirm(`Delete ${name}? This removes the extension folder from Browser.`)) {
-      return;
-    }
-
-    this.extensionDeleteLoadingPath = path;
-    try {
-      const response = await callJsonApi(BROWSER_EXTENSIONS_API, {
-        action: "uninstall_extension",
-        path,
-      });
-      if (!response?.ok) {
-        throw new Error(response?.error || "Could not delete extension.");
-      }
-      this.applyExtensionPayload(response);
-      this.extensionsMessage = `Deleted ${response.name || name}.`;
-    } catch (error) {
-      this.extensionsError = error instanceof Error ? error.message : String(error);
-    } finally {
-      this.extensionDeleteLoadingPath = "";
-    }
-  },
-
-  extensionVersionLabel(extension) {
-    const version = String(extension?.version || "").trim();
-    return version ? `v${version}` : "Unpacked extension";
   },
 });

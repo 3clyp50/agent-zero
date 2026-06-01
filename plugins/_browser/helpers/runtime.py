@@ -20,6 +20,7 @@ from helpers.defer import DeferredTask
 from helpers.errors import RepairableException
 from helpers.print_style import PrintStyle
 
+from plugins._browser.helpers.chromium import ensure_chromium_binary
 from plugins._browser.helpers.config import (
     DEFAULT_HOMEPAGE_KEY,
     DEFAULT_MAX_OPEN_TABS,
@@ -27,7 +28,6 @@ from plugins._browser.helpers.config import (
     build_browser_launch_config,
     get_browser_config,
 )
-from plugins._browser.helpers.playwright import configure_playwright_env, ensure_playwright_binary
 from plugins._browser.helpers.url import normalize_url
 
 
@@ -41,6 +41,9 @@ SCREENCAST_MAX_WIDTH = 4096
 SCREENCAST_MAX_HEIGHT = 4096
 VIEWPORT_SIZE_TOLERANCE = 4
 VIEWPORT_REMOUNT_PAUSE_SECONDS = 0.05
+NAVIGATION_VISUAL_HANDOFF_TIMEOUT_MS = 1500
+STATE_READ_TIMEOUT_SECONDS = 0.6
+CDPError: type[Exception] = RuntimeError
 CLIPBOARD_BRIDGE_SCRIPT = r"""
 (payload) => {
   const action = String(payload?.action || "").trim().toLowerCase();
@@ -279,6 +282,22 @@ CLIPBOARD_BRIDGE_SCRIPT = r"""
 }
 """
 
+
+def _load_cdp_browser_process():
+    global CDPError
+    try:
+        from plugins._browser.helpers.cdp import CDPBrowserProcess, CDPError as ImportedCDPError
+    except ModuleNotFoundError as exc:
+        if exc.name != "aiohttp":
+            raise
+        from plugins._browser import hooks
+
+        hooks.ensure_python_runtime_dependencies()
+        from plugins._browser.helpers.cdp import CDPBrowserProcess, CDPError as ImportedCDPError
+
+    CDPError = ImportedCDPError
+    return CDPBrowserProcess
+
 _SAFE_CONTEXT_RE = re.compile(r"[^a-zA-Z0-9_.-]+")
 
 
@@ -322,6 +341,7 @@ class _BrowserScreencast:
         self._ack_tasks: set[asyncio.Task] = set()
         self._expected_width = 0
         self._expected_height = 0
+        self._frame_sequence = 0
 
     async def start(
         self,
@@ -414,36 +434,51 @@ class _BrowserScreencast:
     def _on_frame(self, params: dict[str, Any]) -> None:
         if self.stopped:
             return
-        task = asyncio.create_task(self._handle_frame(params or {}))
+        params = params or {}
+        session_id = params.get("sessionId")
+        if session_id is not None:
+            self._schedule_ack(session_id)
+        self._queue_frame(params)
+
+    def _schedule_ack(self, session_id: Any) -> None:
+        try:
+            normalized_session_id = int(session_id)
+        except (TypeError, ValueError):
+            return
+        task = asyncio.create_task(self._ack_frame(normalized_session_id))
         self._ack_tasks.add(task)
         task.add_done_callback(self._ack_tasks.discard)
 
-    async def _handle_frame(self, params: dict[str, Any]) -> None:
-        try:
-            data = params.get("data") or ""
-            if data:
-                metadata = dict(params.get("metadata") or {})
-                size = self._jpeg_size(data)
-                if size:
-                    metadata["jpegWidth"], metadata["jpegHeight"] = size
-                metadata["expectedWidth"] = self._expected_width
-                metadata["expectedHeight"] = self._expected_height
-                self._queue_latest(
-                    {
-                        "browser_id": self.browser_id,
-                        "mime": self.mime,
-                        "image": data,
-                        "metadata": metadata,
-                    }
-                )
-        finally:
-            session_id = params.get("sessionId")
-            if session_id is not None and not self.stopped:
-                with contextlib.suppress(Exception):
-                    await self.session.send(
-                        "Page.screencastFrameAck",
-                        {"sessionId": int(session_id)},
-                    )
+    async def _ack_frame(self, session_id: int) -> None:
+        if self.stopped:
+            return
+        with contextlib.suppress(Exception):
+            await self.session.send(
+                "Page.screencastFrameAck",
+                {"sessionId": session_id},
+            )
+
+    def _queue_frame(self, params: dict[str, Any]) -> None:
+        data = params.get("data") or ""
+        if not data:
+            return
+        metadata = dict(params.get("metadata") or {})
+        size = self._jpeg_size(data)
+        if size:
+            metadata["jpegWidth"], metadata["jpegHeight"] = size
+        metadata["expectedWidth"] = self._expected_width
+        metadata["expectedHeight"] = self._expected_height
+        self._frame_sequence += 1
+        metadata["frameSequence"] = self._frame_sequence
+        self._queue_latest(
+            {
+                "browser_id": self.browser_id,
+                "mime": self.mime,
+                "image": data,
+                "metadata": metadata,
+                "sequence": self._frame_sequence,
+            }
+        )
 
     def _queue_latest(self, frame: dict[str, Any]) -> None:
         self._drop_queued_frames()
@@ -453,7 +488,9 @@ class _BrowserScreencast:
     @staticmethod
     def _jpeg_size(data: str) -> tuple[int, int] | None:
         try:
-            raw = base64.b64decode(data, validate=False)
+            prefix = data[:8192]
+            prefix += "=" * (-len(prefix) % 4)
+            raw = base64.b64decode(prefix, validate=False)
         except Exception:
             return None
         if len(raw) < 10 or raw[:2] != b"\xff\xd8":
@@ -553,7 +590,7 @@ class _BrowserRuntimeCore:
     def __init__(self, context_id: str):
         self.context_id = context_id
         self.safe_context_id = _safe_context_id(context_id)
-        self.playwright = None
+        self.browser: Any | None = None
         self.context = None
         self.pages: dict[int, BrowserPage] = {}
         self.screencasts: dict[str, _BrowserScreencast] = {}
@@ -720,19 +757,19 @@ class _BrowserRuntimeCore:
                 return
             if self.context:
                 await self._discard_stale_context("Browser context is stale; restarting.")
-            elif self.playwright and not self._closing:
-                await self._stop_playwright("Browser context closed; restarting Playwright.")
             await self._start()
 
     def _context_is_alive(self) -> bool:
         if not self.context:
+            return False
+        if self.browser is not None and not self.browser.is_alive():
             return False
         try:
             pages = getattr(self.context, "pages")
             len(pages() if callable(pages) else pages)
             return True
         except AttributeError:
-            # Lightweight test doubles may not model Playwright's pages property.
+            # Lightweight test doubles may not model the CDP pages property.
             return True
         except Exception:
             return False
@@ -740,7 +777,7 @@ class _BrowserRuntimeCore:
     async def _discard_stale_context(self, message: str) -> None:
         PrintStyle.warning(message)
         self._discard_context_state()
-        await self._stop_playwright("Playwright stop after Browser context loss failed")
+        await self._stop_browser("Chromium CDP stop after Browser context loss failed")
 
     def _discard_context_state(self) -> None:
         for waiter in self._pending_popups:
@@ -761,53 +798,40 @@ class _BrowserRuntimeCore:
         self.screencasts.clear()
         self.context = None
 
-    async def _stop_playwright(self, warning: str) -> None:
-        if not self.playwright:
+    async def _stop_browser(self, warning: str) -> None:
+        if not self.browser:
             return
         try:
-            await self.playwright.stop()
+            await self.browser.close()
         except Exception as exc:
             PrintStyle.warning(f"{warning}: {exc}")
         finally:
-            self.playwright = None
+            self.browser = None
 
     async def _start(self) -> None:
-        from playwright.async_api import async_playwright
-
         self.profile_dir.mkdir(parents=True, exist_ok=True)
         self.downloads_dir.mkdir(parents=True, exist_ok=True)
         self._release_orphaned_profile_singleton()
         browser_config = get_browser_config()
         launch_config = build_browser_launch_config(browser_config)
-        configure_playwright_env()
-        browser_binary = ensure_playwright_binary()
+        browser_binary = ensure_chromium_binary()
+        cdp_browser_process = _load_cdp_browser_process()
 
-        self.playwright = await async_playwright().start()
-        launch_kwargs: dict[str, Any] = {
-            "user_data_dir": str(self.profile_dir),
-            "headless": True,
-            "accept_downloads": True,
-            "downloads_path": str(self.downloads_dir),
-            "viewport": DEFAULT_VIEWPORT,
-            "screen": DEFAULT_VIEWPORT,
-            "no_viewport": False,
-            "args": launch_config["args"],
-        }
-        if launch_config["channel"]:
-            launch_kwargs["channel"] = launch_config["channel"]
-        else:
-            launch_kwargs["executable_path"] = str(browser_binary)
+        self.browser = cdp_browser_process(
+            executable_path=browser_binary,
+            profile_dir=self.profile_dir,
+            downloads_dir=self.downloads_dir,
+            launch_args=launch_config["args"],
+            viewport=DEFAULT_VIEWPORT,
+            headless=True,
+        )
         try:
-            self.context = await self.playwright.chromium.launch_persistent_context(
-                **launch_kwargs
-            )
+            self.context = await self.browser.start()
         except Exception:
-            if self.playwright:
-                try:
-                    await self.playwright.stop()
-                except Exception:
-                    pass
-                self.playwright = None
+            if self.browser:
+                with contextlib.suppress(Exception):
+                    await self.browser.close()
+                self.browser = None
             raise
         self.context.set_default_timeout(30000)
         self.context.set_default_navigation_timeout(30000)
@@ -888,14 +912,17 @@ class _BrowserRuntimeCore:
     async def open(self, url: str = "") -> dict[str, Any]:
         await self.ensure_started()
         self._ensure_can_open_page()
-        page = await self.context.new_page()
+        target_url = self._initial_url(url)
+        normalized_target_url = (
+            normalize_url(target_url)
+            if target_url and target_url != "about:blank"
+            else "about:blank"
+        )
+        page = await self.context.new_page(normalized_target_url)
         browser_page = await self._register_page(page)
         self.last_interacted_browser_id = browser_page.id
-        target_url = self._initial_url(url)
-        if target_url and target_url != "about:blank":
-            await self._goto(page, normalize_url(target_url))
-        else:
-            await self._settle(page)
+        await self._bring_to_front(browser_page.id)
+        await self._settle(page, short=normalized_target_url != "about:blank")
         return {"id": browser_page.id, "state": await self._state(browser_page.id)}
 
     def _initial_url(self, url: str = "") -> str:
@@ -992,6 +1019,11 @@ class _BrowserRuntimeCore:
             return await self.list(include_content=bool(call.get("include_content")))
         if action == "state":
             return await self.state(bid)
+        if action in {"viewer_surface", "viewer", "surface"}:
+            return await self.viewer_surface(
+                width=int(call.get("width") or 0),
+                height=int(call.get("height") or 0),
+            )
         if action in {"set_active", "setactive", "activate", "focus"}:
             return await self.set_active(bid)
         if action == "navigate":
@@ -1195,16 +1227,27 @@ class _BrowserRuntimeCore:
         resolved_id = self._resolve_browser_id(browser_id)
         # Explicit focus change — bypass _maybe_promote.
         self.last_interacted_browser_id = int(resolved_id)
+        await self._bring_to_front(resolved_id)
         return await self._state(resolved_id)
 
     async def state(self, browser_id: int | str | None = None) -> dict[str, Any]:
         await self.ensure_started()
         return await self._state(self._resolve_browser_id(browser_id))
 
+    async def viewer_surface(self, *, width: int = 0, height: int = 0) -> dict[str, Any]:
+        await self.ensure_started()
+        return {
+            "mode": "screencast",
+            "transport": "cdp-screencast",
+            "control": "cdp",
+            "headless": True,
+        }
+
     async def navigate(self, browser_id: int | str | None, url: str) -> dict[str, Any]:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
+        await self._bring_to_front(resolved_id)
         await self._goto(page, normalize_url(url))
         self._maybe_promote(resolved_id)
         return await self._state(resolved_id)
@@ -1213,6 +1256,7 @@ class _BrowserRuntimeCore:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
+        await self._bring_to_front(resolved_id)
         await page.go_back(wait_until="domcontentloaded", timeout=10000)
         await self._settle(page)
         self._maybe_promote(resolved_id)
@@ -1222,6 +1266,7 @@ class _BrowserRuntimeCore:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
+        await self._bring_to_front(resolved_id)
         await page.go_forward(wait_until="domcontentloaded", timeout=10000)
         await self._settle(page)
         self._maybe_promote(resolved_id)
@@ -1231,6 +1276,7 @@ class _BrowserRuntimeCore:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
+        await self._bring_to_front(resolved_id)
         await page.reload(wait_until="domcontentloaded", timeout=15000)
         await self._settle(page)
         self._maybe_promote(resolved_id)
@@ -2124,12 +2170,7 @@ class _BrowserRuntimeCore:
             except Exception as exc:
                 PrintStyle.warning(f"Browser context close failed: {exc}")
             self.context = None
-        if self.playwright:
-            try:
-                await self.playwright.stop()
-            except Exception as exc:
-                PrintStyle.warning(f"Playwright stop failed: {exc}")
-            self.playwright = None
+        await self._stop_browser("Chromium CDP stop failed")
         self.last_interacted_browser_id = None
         if delete_profile:
             shutil.rmtree(self.profile_dir, ignore_errors=True)
@@ -2165,27 +2206,34 @@ class _BrowserRuntimeCore:
         return {"action": action or {}, "state": await self._state(resolved_id)}
 
     async def _goto(self, page: Any, url: str) -> None:
-        from playwright.async_api import Error as PlaywrightError
-        from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-        except PlaywrightTimeoutError:
-            PrintStyle.warning(f"Browser navigation timed out after DOM handoff: {url}")
-        except PlaywrightError as exc:
+            start_navigation = getattr(page, "start_navigation", None)
+            if callable(start_navigation):
+                result = await start_navigation(url)
+                if isinstance(result, dict) and result.get("errorText"):
+                    PrintStyle.warning(
+                        f"Browser navigation reported {result.get('errorText')}: {url}"
+                    )
+                await self._settle(page, short=True)
+                return
+            await page.goto(
+                url,
+                wait_until="domcontentloaded",
+                timeout=NAVIGATION_VISUAL_HANDOFF_TIMEOUT_MS,
+            )
+        except asyncio.TimeoutError:
+            PrintStyle.warning(f"Browser navigation is still loading after visual handoff: {url}")
+        except CDPError as exc:
             PrintStyle.warning(f"Browser navigation showed a native error page for {url}: {exc}")
-        await self._settle(page)
+        await self._settle(page, short=True)
 
     async def _settle(self, page: Any, short: bool = False) -> None:
-        from playwright.async_api import Error as PlaywrightError
-        from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-
         try:
             await page.wait_for_load_state(
                 "domcontentloaded",
                 timeout=1000 if short else 5000,
             )
-        except (PlaywrightError, PlaywrightTimeoutError):
+        except (CDPError, asyncio.TimeoutError):
             pass
         await asyncio.sleep(0.1 if short else 0.35)
 
@@ -2194,22 +2242,44 @@ class _BrowserRuntimeCore:
         if not browser_page:
             raise KeyError(f"Browser {browser_id} is not open.")
         page = browser_page.page
+        current_url = str(getattr(page, "url", "") or "")
+        if not current_url and hasattr(page, "current_url"):
+            with contextlib.suppress(Exception):
+                current_url = str(
+                    await asyncio.wait_for(
+                        page.current_url(),
+                        timeout=STATE_READ_TIMEOUT_SECONDS,
+                    )
+                )
         try:
-            title = await page.title()
+            title = await asyncio.wait_for(
+                page.title(),
+                timeout=STATE_READ_TIMEOUT_SECONDS,
+            )
         except Exception:
             title = ""
         try:
-            history_length = await page.evaluate("() => globalThis.history?.length || 0")
+            history_length = await asyncio.wait_for(
+                page.evaluate("() => globalThis.history?.length || 0"),
+                timeout=STATE_READ_TIMEOUT_SECONDS,
+            )
         except Exception:
             history_length = 0
+        try:
+            ready_state = await asyncio.wait_for(
+                page.evaluate("() => document.readyState"),
+                timeout=STATE_READ_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            ready_state = ""
         return {
             "id": browser_page.id,
             "context_id": self.context_id,
-            "currentUrl": page.url,
+            "currentUrl": current_url,
             "title": title,
             "canGoBack": bool(history_length and int(history_length) > 1),
             "canGoForward": False,
-            "loading": False,
+            "loading": str(ready_state or "").lower() == "loading",
         }
 
     def _register_page_locked(self, page: Any) -> BrowserPage:
@@ -2317,6 +2387,11 @@ class _BrowserRuntimeCore:
 
     def _page(self, browser_id: int) -> Any:
         return self.pages[int(browser_id)].page
+
+    async def _bring_to_front(self, browser_id: int) -> None:
+        page = self._page(browser_id)
+        with contextlib.suppress(Exception):
+            await page.bring_to_front()
 
     async def _stop_screencasts_for_browser(self, browser_id: int) -> None:
         stream_ids = [

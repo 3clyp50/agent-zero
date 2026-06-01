@@ -1,7 +1,7 @@
 ### browser
 Rendered browser automation for pages that need interaction, JavaScript, forms, downloads, screenshots, or visual inspection.
 
-Prefer `search_engine` or `document_query` for plain text research. The tool must not open a Browser surface automatically. Use the tool headlessly unless the user opens the Browser surface or asks for the optional visible WebUI viewer.
+Prefer `search_engine` or `document_query` for plain text research. The tool must not open a Browser surface automatically. In container mode the browser is headless CDP-controlled Chromium, and the visible Browser surface uses Agent Zero's canvas/modal screencast viewer.
 
 The browser may run in Docker container mode or A0 CLI host-browser mode depending on settings. Container-mode paths resolve inside Agent Zero; host-mode paths resolve on the connected A0 CLI host.
 

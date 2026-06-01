@@ -1,7 +1,3 @@
-# Enabled unpacked Chromium extension directories.
-# Paths must be readable from the Agent Zero runtime itself.
-extension_paths: []
-
 # Page opened by new Browser sessions when no URL is provided.
 default_homepage: "about:blank"
 
@@ -13,7 +9,7 @@ autofocus_active_page: true
 max_open_tabs: 32
 
 # Runtime used by the agent-facing browser tool:
-# - container: use Agent Zero's Docker/server Playwright browser.
+# - container: use Agent Zero's Docker/server headless CDP-controlled Chromium browser; the Browser surface uses the built-in canvas/modal screencast viewer.
 # - host_required: Bring Your Own Browser through A0 CLI and prepare it on first browser use when possible.
 runtime_backend: "container"
 

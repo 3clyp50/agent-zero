@@ -11,14 +11,15 @@ from helpers.ws_manager import WsResult
 from plugins._browser.helpers.runtime import get_runtime, list_runtime_sessions
 
 
-FRAME_IDLE_POLL_SECONDS = 0.05
+FRAME_WAIT_TIMEOUT_SECONDS = 0.25
 FRAME_RETRY_DELAY_SECONDS = 0.5
 FRAME_STATE_REFRESH_SECONDS = 0.75
-SCREENCAST_QUALITY = 92
+SCREENCAST_QUALITY = 86
 
 
 class WsBrowser(WsHandler):
     _streams: ClassVar[dict[tuple[str, str], asyncio.Task[None]]] = {}
+    _warmups: ClassVar[dict[str, asyncio.Task[None]]] = {}
 
     async def on_disconnect(self, sid: str) -> None:
         for key in [key for key in self._streams if key[0] == sid]:
@@ -63,12 +64,15 @@ class WsBrowser(WsHandler):
             return self._error("CONTEXT_NOT_FOUND", f"Context '{context_id}' was not found", data)
 
         create_browser = self._bool(data.get("create_browser", data.get("createBrowser")))
+        warm_runtime = self._bool(data.get("warm_runtime", data.get("warmRuntime")))
         runtime = await get_runtime(context_id, create=create_browser)
         listing = {"browsers": [], "last_interacted_browser_id": None}
         browsers: list[dict[str, Any]] = []
         if runtime:
             listing = await runtime.call("list")
             browsers = listing.get("browsers") or []
+        elif warm_runtime:
+            self._warm_browser_runtime(context_id)
         if runtime and not browsers and create_browser:
             opened = await runtime.call("open", "")
             listing = await runtime.call("list")
@@ -86,6 +90,13 @@ class WsBrowser(WsHandler):
             )
             listing = await runtime.call("list")
             browsers = listing.get("browsers") or []
+        viewer = None
+        if runtime:
+            viewer = await self._viewer_surface(
+                runtime,
+                width=initial_viewport["width"] if initial_viewport else 0,
+                height=initial_viewport["height"] if initial_viewport else 0,
+            )
 
         stream_key = (sid, context_id)
         existing = self._streams.pop(stream_key, None)
@@ -104,10 +115,27 @@ class WsBrowser(WsHandler):
             "active_browser_context_id": context_id,
             "active_browser_id": active_id,
             "snapshot": snapshot,
+            "viewer": viewer,
             "browsers": await self._all_browser_tabs(),
             "all_browsers": True,
             "viewer_id": viewer_id,
         }
+
+    @classmethod
+    def _warm_browser_runtime(cls, context_id: str) -> None:
+        if context_id in cls._warmups:
+            return
+        task = asyncio.create_task(cls._warm_browser_runtime_async(context_id))
+        cls._warmups[context_id] = task
+        task.add_done_callback(lambda _task: cls._warmups.pop(context_id, None))
+
+    @staticmethod
+    async def _warm_browser_runtime_async(context_id: str) -> None:
+        runtime = await get_runtime(context_id, create=True)
+        if not runtime:
+            return
+        with contextlib.suppress(Exception):
+            await runtime.call("list")
 
     def _unsubscribe(self, data: dict[str, Any], sid: str) -> dict[str, Any] | WsResult:
         context_id = self._context_id(data)
@@ -199,6 +227,7 @@ class WsBrowser(WsHandler):
 
         listing = await runtime.call("list")
         last_interacted_browser_id = listing.get("last_interacted_browser_id")
+        viewer = await self._viewer_surface(runtime)
         snapshot = await self._snapshot_for_result(runtime, result)
         all_browsers = await self._all_browser_tabs()
         await self.emit_to(
@@ -212,6 +241,7 @@ class WsBrowser(WsHandler):
                 "browser_id": browser_id,
                 "result": result,
                 "snapshot": snapshot,
+                "viewer": viewer,
                 "browsers": all_browsers,
                 "all_browsers": True,
                 "last_interacted_browser_id": last_interacted_browser_id,
@@ -221,6 +251,7 @@ class WsBrowser(WsHandler):
         return {
             "result": result,
             "snapshot": snapshot,
+            "viewer": viewer,
             "browsers": all_browsers,
             "all_browsers": True,
             "active_browser_context_id": context_id,
@@ -386,6 +417,7 @@ class WsBrowser(WsHandler):
                     await asyncio.sleep(FRAME_RETRY_DELAY_SECONDS)
                     continue
 
+                viewer = await self._viewer_surface(runtime)
                 screencast = await runtime.call(
                     "start_screencast",
                     active_id,
@@ -405,7 +437,9 @@ class WsBrowser(WsHandler):
                         "browsers": browsers,
                         "image": "",
                         "mime": "",
+                        "viewer": viewer,
                         "state": state,
+                        "stream_id": stream_id,
                         "frame_source": "state",
                     },
                 )
@@ -423,18 +457,31 @@ class WsBrowser(WsHandler):
                         last_state_refresh = now
 
                     try:
-                        frame = await runtime.call("pop_screencast_frame", stream_id)
+                        frame = await runtime.call(
+                            "read_screencast_frame",
+                            stream_id,
+                            timeout=FRAME_WAIT_TIMEOUT_SECONDS,
+                        )
+                    except (asyncio.TimeoutError, TimeoutError):
+                        continue
                     except KeyError:
                         break
-                    if frame is None:
-                        await asyncio.sleep(FRAME_IDLE_POLL_SECONDS)
-                        continue
+
+                    while True:
+                        try:
+                            newer_frame = await runtime.call("pop_screencast_frame", stream_id)
+                        except KeyError:
+                            break
+                        if not newer_frame:
+                            break
+                        frame = newer_frame
 
                     frame["context_id"] = context_id
                     frame["viewer_id"] = viewer_id
                     frame["browser_id"] = active_id
                     frame["browsers"] = browsers
                     frame["state"] = state
+                    frame["stream_id"] = stream_id
                     frame["frame_source"] = "screencast"
                     await self.emit_to(sid, "browser_viewer_frame", frame)
             except asyncio.CancelledError:
@@ -476,6 +523,13 @@ class WsBrowser(WsHandler):
             if str(browser.get("id")) == str(browser_id):
                 return browser
         return current_state
+
+    async def _viewer_surface(self, runtime: Any, *, width: int = 0, height: int = 0) -> dict[str, Any] | None:
+        with contextlib.suppress(Exception):
+            return await runtime.call("viewer_surface", width=width, height=height)
+        with contextlib.suppress(Exception):
+            return await runtime.call("viewer_surface")
+        return None
 
     async def _emit_empty_frame(
         self,

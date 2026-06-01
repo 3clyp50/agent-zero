@@ -31,7 +31,7 @@
               class="browser-config-field-help"
               x-show="$store.browserConfig.config.runtime_backend !== 'host_required'"
             >
-              Runs inside Agent Zero's Docker environment. No A0 CLI connection or host browser setup is needed.
+              Runs headless CDP-controlled Chromium inside Agent Zero's Docker environment. The Browser surface stays in its canvas/modal viewer.
             </span>
             <span
               class="browser-config-field-help"
@@ -46,7 +46,7 @@
             x-show="$store.browserConfig.config.runtime_backend !== 'host_required'"
           >
             <span class="material-symbols-outlined">deployed_code</span>
-            <span>Internal Docker browser selected. Host-browser CLI settings are ignored for Browser tool runs.</span>
+            <span>Internal CDP browser selected. Host-browser CLI settings are ignored for Browser tool runs.</span>
           </div>
 
           <label
@@ -63,6 +63,12 @@
               x-show="$store.browserConfig.config.host_browser_profile_mode === 'agent'"
             >
               Uses a separate A0-controlled local profile on this computer.
+            </span>
+            <span
+              class="browser-config-field-help"
+              x-show="$store.browserConfig.config.host_browser_profile_mode !== 'agent'"
+            >
+              For an already-open Chrome-family browser, authorize remote debugging at chrome://inspect/#remote-debugging.
             </span>
           </label>
 
@@ -131,78 +137,6 @@
           </label>
         </div>
 
-        <div class="browser-config-card">
-          <div class="section-title">Extensions</div>
-          <div class="section-description">
-            Choose which installed Chrome extensions Browser loads.
-          </div>
-
-          <div class="browser-config-warning">
-            <span class="material-symbols-outlined">warning</span>
-            <span>
-              Extensions run inside the Docker browser sandbox, but malicious or buggy extensions can
-              still damage that environment. Keep only the extensions you trust enabled.
-            </span>
-          </div>
-
-          <div class="browser-config-extension-list">
-            <div class="browser-config-subtitle">
-              <span>Installed extensions</span>
-              <span class="material-symbols-outlined spinning" x-show="$store.browserConfig.extensionsLoading">progress_activity</span>
-            </div>
-            <template x-if="!$store.browserConfig.extensionsLoading && !$store.browserConfig.extensionsList.length">
-              <div class="browser-config-empty">No installed extensions found.</div>
-            </template>
-            <template x-for="extension in $store.browserConfig.extensionsList" :key="extension.path">
-              <div class="browser-config-extension-row" :title="extension.path">
-                <span class="browser-config-extension-text">
-                  <span class="browser-config-extension-name" x-text="extension.name || 'Unnamed extension'"></span>
-                  <span class="browser-config-extension-meta" x-text="$store.browserConfig.extensionVersionLabel(extension)"></span>
-                </span>
-                <span class="browser-config-extension-actions">
-                  <label class="browser-config-toggle">
-                    <input
-                      type="checkbox"
-                      :checked="$store.browserConfig.extensionEnabled(extension)"
-                      :disabled="$store.browserConfig.extensionDeleteLoadingPath === extension.path"
-                      @change="$store.browserConfig.setExtensionEnabled(extension, $event.target.checked)"
-                    />
-                    <span class="browser-config-switch"></span>
-                  </label>
-                  <button
-                    type="button"
-                    class="browser-config-extension-delete"
-                    :disabled="!$store.browserConfig.extensionCanDelete(extension) || $store.browserConfig.extensionDeleteLoadingPath === extension.path"
-                    :title="$store.browserConfig.extensionDeleteTitle(extension)"
-                    :aria-label="'Delete ' + (extension.name || 'extension')"
-                    @click.stop="$store.browserConfig.deleteExtension(extension)"
-                  >
-                    <span
-                      class="material-symbols-outlined"
-                      :class="{ spinning: $store.browserConfig.extensionDeleteLoadingPath === extension.path }"
-                      x-text="$store.browserConfig.extensionDeleteLoadingPath === extension.path ? 'progress_activity' : 'delete'"
-                    ></span>
-                  </button>
-                </span>
-              </div>
-            </template>
-            <div class="browser-config-note browser-config-success" x-show="$store.browserConfig.extensionsMessage">
-              <span class="material-symbols-outlined">check_circle</span>
-              <span x-text="$store.browserConfig.extensionsMessage"></span>
-            </div>
-            <div class="browser-config-note" x-show="$store.browserConfig.extensionsError">
-              <span class="material-symbols-outlined">error</span>
-              <span x-text="$store.browserConfig.extensionsError"></span>
-            </div>
-          </div>
-
-          <div class="browser-config-pill-row">
-            <span class="browser-config-pill" x-text="$store.browserConfig.pathCountLabel()"></span>
-            <span class="browser-config-pill tone-active" x-show="$store.browserConfig.extensionModeReady()">
-              Ready
-            </span>
-          </div>
-        </div>
       </div>
     </template>
   </div>
@@ -283,16 +217,6 @@
       text-align: right;
     }
 
-    .browser-config-extension-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 12px;
-      border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-      border-radius: 8px;
-      background: color-mix(in srgb, var(--color-panel) 78%, transparent);
-    }
-
     .browser-config-subtitle {
       display: flex;
       align-items: center;
@@ -307,44 +231,9 @@
       font-size: 18px;
     }
 
-    .browser-config-empty,
-    .browser-config-extension-meta {
+    .browser-config-empty {
       color: var(--color-text-secondary);
       font-size: 0.78rem;
-    }
-
-    .browser-config-extension-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 14px;
-      min-height: 42px;
-      padding: 8px 0;
-    }
-
-    .browser-config-extension-row + .browser-config-extension-row {
-      border-top: 1px solid color-mix(in srgb, var(--color-border) 52%, transparent);
-    }
-
-    .browser-config-extension-text {
-      display: flex;
-      min-width: 0;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .browser-config-extension-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: var(--color-text);
-      font-weight: 650;
-    }
-
-    .browser-config-extension-actions {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
     }
 
     .browser-config-toggle {
@@ -400,36 +289,6 @@
 
     .browser-config-toggle input:disabled + .browser-config-switch {
       opacity: 0.58;
-    }
-
-    .browser-config-extension-delete {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      min-width: 28px;
-      height: 28px;
-      min-height: 28px;
-      padding: 0;
-      border: 1px solid color-mix(in srgb, #be123c 30%, var(--color-border));
-      border-radius: 7px;
-      background: transparent;
-      color: color-mix(in srgb, #be123c 78%, var(--color-text));
-      cursor: pointer;
-    }
-
-    .browser-config-extension-delete:hover:not(:disabled) {
-      background: color-mix(in srgb, #be123c 12%, var(--color-background));
-      color: #be123c;
-    }
-
-    .browser-config-extension-delete:disabled {
-      cursor: not-allowed;
-      opacity: 0.48;
-    }
-
-    .browser-config-extension-delete .material-symbols-outlined {
-      font-size: 17px;
     }
 
     .browser-config-note {

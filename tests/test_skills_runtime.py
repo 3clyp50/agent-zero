@@ -320,7 +320,6 @@ def test_renamed_skills_use_standard_frontmatter_only():
         PROJECT_ROOT / "plugins" / "_a0_connector" / "skills" / "host-file-editing" / "SKILL.md",
         PROJECT_ROOT / "plugins" / "_a0_connector" / "skills" / "setup-a0-cli" / "SKILL.md",
         PROJECT_ROOT / "plugins" / "_browser" / "skills" / "browser-automation" / "SKILL.md",
-        PROJECT_ROOT / "plugins" / "_browser" / "skills" / "browser-extension-control" / "SKILL.md",
         PROJECT_ROOT / "plugins" / "_browser" / "skills" / "browser-form-workflows" / "SKILL.md",
     ]
 

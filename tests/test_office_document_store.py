@@ -660,9 +660,9 @@ def test_official_desktop_session_status_and_url_contract(tmp_path, monkeypatch)
     assert "floating_menu=false" in url
     assert "file_transfer=true" in url
     assert "sound=false" in url
-    assert "encoding=jpeg" in url
-    assert "quality=85" in url
-    assert "speed=80" in url
+    assert "encoding=auto" in url
+    assert "quality=0" in url
+    assert "speed=0" in url
     assert "printing=true" in url
 
 

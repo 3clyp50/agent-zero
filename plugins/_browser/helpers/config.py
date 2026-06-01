@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -25,30 +24,7 @@ DEFAULT_HOST_BROWSER_PRIVACY_POLICY = "allow"
 BASE_BROWSER_ARGS = [
     "--no-sandbox",
     "--disable-dev-shm-usage",
-    "--disable-gpu",
 ]
-
-
-def _normalize_extension_paths(value: Any) -> list[str]:
-    if isinstance(value, str):
-        candidates = value.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    elif isinstance(value, (list, tuple, set)):
-        candidates = list(value)
-    else:
-        candidates = []
-
-    normalized_paths: list[str] = []
-    seen: set[str] = set()
-    for entry in candidates:
-        raw_path = str(entry or "").strip()
-        if not raw_path:
-            continue
-        normalized = str(Path(raw_path).expanduser())
-        if normalized in seen:
-            continue
-        seen.add(normalized)
-        normalized_paths.append(normalized)
-    return normalized_paths
 
 
 def _normalize_model_preset(value: Any) -> str:
@@ -107,9 +83,7 @@ def _model_config_summary(config: dict[str, Any] | None) -> str:
 
 def normalize_browser_config(settings: dict[str, Any] | None) -> dict[str, Any]:
     raw = settings if isinstance(settings, dict) else {}
-    extension_paths = _normalize_extension_paths(raw.get("extension_paths", []))
     return {
-        "extension_paths": extension_paths,
         DEFAULT_HOMEPAGE_KEY: _normalize_default_homepage(
             raw.get(DEFAULT_HOMEPAGE_KEY, raw.get("starting_page", "about:blank"))
         ),
@@ -143,7 +117,8 @@ def normalize_browser_config(settings: dict[str, Any] | None) -> dict[str, Any]:
 def browser_runtime_config(settings: dict[str, Any] | None) -> dict[str, Any]:
     config = normalize_browser_config(settings)
     return {
-        "extension_paths": config["extension_paths"],
+        RUNTIME_BACKEND_KEY: config[RUNTIME_BACKEND_KEY],
+        HOST_BROWSER_PROFILE_MODE_KEY: config[HOST_BROWSER_PROFILE_MODE_KEY],
     }
 
 
@@ -224,9 +199,15 @@ def resolve_browser_model_selection(
         preset = model_config.get_preset_by_name(preset_name)
         if isinstance(preset, dict):
             if hasattr(model_config, "build_config_from_preset"):
+                base_config = {}
+                if hasattr(model_config, "get_config"):
+                    try:
+                        base_config = model_config.get_config(agent)
+                    except AttributeError:
+                        base_config = {}
                 preset_config = model_config.build_config_from_preset(
                     preset,
-                    model_config.get_config(agent) if hasattr(model_config, "get_config") else {},
+                    base_config,
                     strip_api_key=False,
                     slots=("chat",),
                 )
@@ -299,66 +280,15 @@ def resolve_browser_model(agent: "Agent", settings: dict[str, Any] | None = None
     )
 
 
-def describe_browser_extensions(settings: dict[str, Any] | None) -> dict[str, Any]:
-    config = normalize_browser_config(settings)
-    path_details: list[dict[str, Any]] = []
-    for extension_path in config["extension_paths"]:
-        path = Path(extension_path)
-        exists = path.exists()
-        is_dir = path.is_dir() if exists else False
-        path_details.append(
-            {
-                "path": extension_path,
-                "exists": exists,
-                "is_dir": is_dir,
-                "loadable": exists and is_dir,
-            }
-        )
-
-    active_paths = [item["path"] for item in path_details if item["loadable"]]
-    invalid_paths = [item["path"] for item in path_details if not item["loadable"]]
-    active = bool(active_paths)
-
-    warnings: list[str] = []
-    if config["extension_paths"] and not active_paths:
-        warnings.append(
-            "None of the enabled extension directories are readable unpacked folders."
-        )
-    elif invalid_paths:
-        warnings.append(
-            "Some configured extension directories are missing or not directories, so they will be skipped."
-        )
-
-    return {
-        "active": active,
-        "configured_paths": config["extension_paths"],
-        "active_paths": active_paths,
-        "invalid_paths": invalid_paths,
-        "path_details": path_details,
-        "active_path_count": len(active_paths),
-        "warnings": warnings,
-    }
-
-
 def build_browser_launch_config(settings: dict[str, Any] | None) -> dict[str, Any]:
-    extensions = describe_browser_extensions(settings)
     args = list(BASE_BROWSER_ARGS)
     channel: str | None = None
     browser_mode = "chromium"
-
-    if extensions["active"]:
-        joined_paths = ",".join(extensions["active_paths"])
-        args.extend(
-            [
-                f"--disable-extensions-except={joined_paths}",
-                f"--load-extension={joined_paths}",
-            ]
-        )
 
     return {
         "args": args,
         "browser_mode": browser_mode,
         "channel": channel,
-        "extensions": extensions,
-        "requires_full_browser": True,
+        "requires_full_browser": False,
+        "requires_headless_shell": True,
     }

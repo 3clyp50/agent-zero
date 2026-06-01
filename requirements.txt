@@ -1,4 +1,5 @@
 a2wsgi==1.10.8
+aiohttp>=3.10.0
 ansio==0.0.1
 agent-client-protocol==0.10.1
 docker==7.1.0

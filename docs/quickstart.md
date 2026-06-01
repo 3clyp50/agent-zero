@@ -129,7 +129,7 @@ Now that you've run a simple task, you can experiment with more complex requests
 
 ### [Open A0 Browser Guide](guides/browser.md)
 
-Explains the built-in Browser, live Browser Canvas, screenshots, annotations, host-browser mode through A0 CLI, and Chrome extensions.
+Explains the built-in Browser, live Browser Canvas, screenshots, annotations, and host-browser mode through A0 CLI.
 
 ### [Open A0 Desktop Guide](guides/desktop.md)
 
