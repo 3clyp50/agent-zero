@@ -6,6 +6,8 @@ from helpers import dirty_json, files, projects
 def _prepare_project_tree(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(files, "_base_dir", str(tmp_path))
     (tmp_path / "usr" / "projects").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "usr" / "plugins").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "plugins").mkdir(parents=True, exist_ok=True)
 
 
 def test_project_include_agents_md_defaults_true_and_saves(monkeypatch, tmp_path):
@@ -22,6 +24,39 @@ def test_project_include_agents_md_defaults_true_and_saves(monkeypatch, tmp_path
     saved = dirty_json.parse((meta / "project.json").read_text(encoding="utf-8"))
 
     assert saved["include_agents_md"] is True
+
+
+def test_project_mcp_servers_persist_in_project_meta(monkeypatch, tmp_path):
+    _prepare_project_tree(monkeypatch, tmp_path)
+    config = '{"mcpServers":{"demo":{"url":"https://example.com/mcp"}}}'
+
+    projects.create_project(
+        "demo",
+        {
+            "title": "Demo",
+            "mcp_servers": config,
+        },
+    )
+
+    assert projects.load_project_mcp_servers("demo") == config
+    assert projects.load_edit_project_data("demo")["mcp_servers"] == config
+
+    updated = '{"mcpServers":{"other":{"command":"uvx","args":["pkg"]}}}'
+    projects.save_project_mcp_servers("demo", updated)
+
+    assert projects.load_project_mcp_servers("demo") == updated
+
+
+def test_project_mcp_servers_reject_path_names(monkeypatch, tmp_path):
+    _prepare_project_tree(monkeypatch, tmp_path)
+
+    for name in ("../escape", "nested/project", ".", "..", ""):
+        try:
+            projects.save_project_mcp_servers(name, '{"mcpServers":{}}')
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Expected invalid project name: {name!r}")
 
 
 def test_project_system_prompt_includes_root_agents_md_with_path(monkeypatch, tmp_path):

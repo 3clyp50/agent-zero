@@ -13,7 +13,9 @@ PROJECT_META_DIR = ".a0proj"
 PROJECT_INSTRUCTIONS_DIR = "instructions"
 PROJECT_KNOWLEDGE_DIR = "knowledge"
 PROJECT_HEADER_FILE = "project.json"
+PROJECT_MCP_SERVERS_FILE = "mcp_servers.json"
 PROJECT_AGENTS_MD_FILES = ("AGENTS.md", "Agents.md", "agents.md")
+DEFAULT_MCP_SERVERS_CONFIG = '{\n    "mcpServers": {}\n}'
 
 CONTEXT_DATA_KEY_PROJECT = "project"
 
@@ -34,6 +36,7 @@ class BasicProjectData(TypedDict):
     description: str
     instructions: str
     include_agents_md: NotRequired[bool]
+    mcp_servers: NotRequired[str]
     color: str
     git_url: str
     file_structure: FileStructureInjectionSettings
@@ -53,6 +56,7 @@ class EditProjectData(BasicProjectData):
     knowledge_files_count: int
     variables: str
     secrets: str
+    mcp_servers: str
     subagents: dict[str, SubAgentSettings]
     git_status: GitStatusData
 
@@ -70,6 +74,17 @@ def get_project_meta(name: str, *sub_dirs: str):
     return files.get_abs_path(get_project_folder(name), PROJECT_META_DIR, *sub_dirs)
 
 
+def validate_project_name(name: str | None) -> str:
+    candidate = str(name or "").strip()
+    if (
+        not candidate
+        or candidate in {".", ".."}
+        or os.path.basename(candidate) != candidate
+    ):
+        raise ValueError("Invalid project name")
+    return candidate
+
+
 def delete_project(name: str):
     abs_path = files.get_abs_path(PROJECTS_PARENT_DIR, name)
     files.delete_dir(abs_path)
@@ -79,12 +94,14 @@ def delete_project(name: str):
 
 def create_project(name: str, data: BasicProjectData):
     llm_data = data.get("llm") if isinstance(data, dict) else None
+    mcp_servers = data.get("mcp_servers") if isinstance(data, dict) else None
     abs_path = files.create_dir_safe(
         files.get_abs_path(PROJECTS_PARENT_DIR, name), rename_format="{name}_{number}"
     )
     create_project_meta_folders(name)
     data = _normalizeBasicData(data)
     save_project_header(name, data)
+    save_project_mcp_servers(name, mcp_servers or DEFAULT_MCP_SERVERS_CONFIG)
     save_project_llm_settings(name, llm_data)
     return name
 
@@ -94,6 +111,7 @@ def clone_git_project(name: str, git_url: str, git_token: str, data: BasicProjec
     from helpers import git
 
     llm_data = data.get("llm") if isinstance(data, dict) else None
+    mcp_servers = data.get("mcp_servers") if isinstance(data, dict) else None
     
     abs_path = files.create_dir_safe(
         files.get_abs_path(PROJECTS_PARENT_DIR, name), rename_format="{name}_{number}"
@@ -121,6 +139,8 @@ def clone_git_project(name: str, git_url: str, git_token: str, data: BasicProjec
             data["git_url"] = clean_url
             save_project_header(actual_name, data)
 
+        if mcp_servers:
+            save_project_mcp_servers(actual_name, mcp_servers)
         save_project_llm_settings(actual_name, llm_data)
         
         return actual_name
@@ -183,6 +203,7 @@ def _normalizeEditData(data: EditProjectData) -> EditProjectData:
             data.get("include_agents_md", True)
         ),
         "variables": data.get("variables", ""),
+        "mcp_servers": data.get("mcp_servers", DEFAULT_MCP_SERVERS_CONFIG),
         "color": data.get("color", ""),
         "git_url": data.get("git_url", ""),
         "git_status": data.get("git_status", {"is_git_repo": False}),
@@ -234,6 +255,7 @@ def update_project(name: str, data: EditProjectData):
     # save secrets
     save_project_variables(name, current["variables"])
     save_project_secrets(name, current["secrets"])
+    save_project_mcp_servers(name, current["mcp_servers"])
     save_project_subagents(name, current["subagents"])
     save_project_llm_settings(name, llm_data)
 
@@ -253,6 +275,7 @@ def load_edit_project_data(name: str) -> EditProjectData:
     data = load_basic_project_data(name)
     additional_instructions = get_additional_instructions_files(name)
     variables = load_project_variables(name)
+    mcp_servers = load_project_mcp_servers(name)
     secrets = load_project_secrets_masked(name)
     subagents = load_project_subagents(name)
     knowledge_files_count = get_knowledge_files_count(name)
@@ -266,6 +289,7 @@ def load_edit_project_data(name: str) -> EditProjectData:
             "instruction_files_count": len(additional_instructions),
             "knowledge_files_count": knowledge_files_count,
             "variables": variables,
+            "mcp_servers": mcp_servers,
             "secrets": secrets,
             "subagents": subagents,
             "git_status": git_status,
@@ -333,6 +357,20 @@ def save_project_llm_settings(name: str, llm_data: object):
 
     if config_to_save is not None:
         plugins.save_plugin_config("_model_config", name, "", config_to_save)
+
+
+def load_project_mcp_servers(name: str) -> str:
+    project_name = validate_project_name(name)
+    try:
+        return files.read_file(get_project_meta(project_name, PROJECT_MCP_SERVERS_FILE))
+    except Exception:
+        return DEFAULT_MCP_SERVERS_CONFIG
+
+
+def save_project_mcp_servers(name: str, mcp_servers: str):
+    project_name = validate_project_name(name)
+    content = mcp_servers if isinstance(mcp_servers, str) else DEFAULT_MCP_SERVERS_CONFIG
+    files.write_file(get_project_meta(project_name, PROJECT_MCP_SERVERS_FILE), content)
 
 
 def get_active_projects_list():

@@ -6,6 +6,7 @@
     import { store as historyStore } from "/components/modals/history/history-store.js";
     import { store as contextStore } from "/components/modals/context/context-store.js";
     import { store as chatsStore } from "/components/sidebar/chats/chats-store.js";
+    import { store as mcpServersStore } from "/components/settings/mcp/client/mcp-servers-store.js";
   </script>
 </head>
 <body>
@@ -46,6 +47,15 @@
       >
         <span class="material-symbols-outlined" aria-hidden="true">drive_folder_upload</span>
         <span>Attach folder</span>
+      </button>
+
+      <button
+        type="button"
+        class="chat-bottom-menu-item"
+        @click="$store.mcpServersStore.openFromComposer($store.chats.selectedContext?.project?.name || ''); $store.chatInput.closeChatMoreMenu()"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">hub</span>
+        <span>MCP Servers</span>
       </button>
 
       <button

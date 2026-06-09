@@ -3,7 +3,7 @@
 ## Purpose
 
 - Own the `mcp_server_get_detail.py` API endpoint.
-- This module handles MCP server server get detail requests.
+- This module handles MCP server detail requests for global or project scope.
 - Keep this file-level DOX profile synchronized with `mcp_server_get_detail.py` because this directory is intentionally flat.
 
 ## Ownership
@@ -17,6 +17,7 @@
 ## Runtime Contracts
 
 - HTTP handlers must derive from `helpers.api.ApiHandler`; WebSocket handlers must derive from `helpers.ws.WsHandler`.
+- The request accepts `server_name` and optional `project_name`; when `project_name` is present, detail resolves through the project-scoped MCP configuration.
 - Update this file whenever request payloads, authentication or CSRF requirements, response shapes, route side effects, or WebSocket event contracts change.
 - `McpServerGetDetail` is an `ApiHandler`.
 - `McpServerGetDetail` defines `process(...)`.
@@ -24,7 +25,7 @@
 
 ## Key Concepts
 
-- Important called helpers/classes observed in the source: `MCPConfig.get_instance.get_server_detail`, `MCPConfig.get_instance`.
+- Important called helpers/classes observed in the source: `MCPConfig.get_instance.get_server_detail`, `MCPConfig.get_project_instance`, `MCPConfig.get_instance`.
 - Keep request/response, tool, or helper semantics documented here at the same time as source changes.
 
 ## Work Guidance

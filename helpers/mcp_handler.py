@@ -47,6 +47,7 @@ from helpers.tool import Tool, Response
 
 MCP_MEDIA_TOKENS_ESTIMATE = 1500
 MAX_MCP_RESOURCE_TEXT_CHARS = 12_000
+DEFAULT_MCP_SERVERS_CONFIG = '{\n    "mcpServers": {}\n}'
 
 
 def _mcp_get(item: Any, key: str, default: Any = None) -> Any:
@@ -90,6 +91,16 @@ def _determine_server_type(config_dict: dict) -> str:
 def _is_streaming_http_type(server_type: str) -> bool:
     """Check if the server type is a streaming HTTP variant."""
     return server_type.lower() in ["http-stream", "streaming-http", "streamable-http", "http-streaming"]
+
+
+def _split_qualified_tool_name(tool_name: str) -> tuple[str, str]:
+    """Split Agent Zero's server.tool MCP name while preserving dots in MCP tool names."""
+    if "." not in tool_name:
+        raise ValueError(f"Tool {tool_name} not found")
+    server_name_part, tool_name_part = tool_name.split(".", 1)
+    if not server_name_part or not tool_name_part:
+        raise ValueError(f"Tool {tool_name} not found")
+    return server_name_part, tool_name_part
 
 
 def initialize_mcp(mcp_servers_config: str):
@@ -344,7 +355,7 @@ class MCPTool(Tool):
         error = ""
         additional: dict[str, Any] | None = None
         try:
-            response: CallToolResult = await MCPConfig.get_instance().call_tool(
+            response: CallToolResult = await MCPConfig.get_for_agent(self.agent).call_tool(
                 self.name, kwargs
             )
             message, additional = self._format_tool_result(response)
@@ -439,6 +450,7 @@ class MCPServerRemote(BaseModel):
     tool_timeout: int = Field(default=0)
     verify: bool = Field(default=True, description="Verify SSL certificates")
     disabled: bool = Field(default=False)
+    scope: str = Field(default="global")
 
     __lock: ClassVar[threading.Lock] = PrivateAttr(default=threading.Lock())
     __client: Optional["MCPClientRemote"] = PrivateAttr(default=None)
@@ -459,7 +471,7 @@ class MCPServerRemote(BaseModel):
     def get_tools(self) -> List[dict[str, Any]]:
         """Get all tools from the server"""
         with self.__lock:
-            return self.__client.tools  # type: ignore
+            return self.__client.get_tools()  # type: ignore
 
     def has_tool(self, tool_name: str) -> bool:
         """Check if a tool is available"""
@@ -470,9 +482,10 @@ class MCPServerRemote(BaseModel):
         self, tool_name: str, input_data: Dict[str, Any]
     ) -> CallToolResult:
         """Call a tool with the given input data"""
-        with self.__lock:
-            # We already run in an event loop, dont believe Pylance
-            return await self.__client.call_tool(tool_name, input_data)  # type: ignore
+        client = self.__client
+        if client is None:
+            raise RuntimeError("MCP remote client is not initialized")
+        return await client.call_tool(tool_name, input_data)
 
     def update(self, config: dict[str, Any]) -> "MCPServerRemote":
         with self.__lock:
@@ -488,6 +501,7 @@ class MCPServerRemote(BaseModel):
                     "tool_timeout",
                     "disabled",
                     "verify",
+                    "scope",
                 ]:
                     if key == "name":
                         value = normalize_name(value)
@@ -517,6 +531,7 @@ class MCPServerLocal(BaseModel):
     tool_timeout: int = Field(default=0)
     verify: bool = Field(default=True, description="Verify SSL certificates")
     disabled: bool = Field(default=False)
+    scope: str = Field(default="global")
 
     __lock: ClassVar[threading.Lock] = PrivateAttr(default=threading.Lock())
     __client: Optional["MCPClientLocal"] = PrivateAttr(default=None)
@@ -537,7 +552,7 @@ class MCPServerLocal(BaseModel):
     def get_tools(self) -> List[dict[str, Any]]:
         """Get all tools from the server"""
         with self.__lock:
-            return self.__client.tools  # type: ignore
+            return self.__client.get_tools()  # type: ignore
 
     def has_tool(self, tool_name: str) -> bool:
         """Check if a tool is available"""
@@ -548,9 +563,10 @@ class MCPServerLocal(BaseModel):
         self, tool_name: str, input_data: Dict[str, Any]
     ) -> CallToolResult:
         """Call a tool with the given input data"""
-        with self.__lock:
-            # We already run in an event loop, dont believe Pylance
-            return await self.__client.call_tool(tool_name, input_data)  # type: ignore
+        client = self.__client
+        if client is None:
+            raise RuntimeError("MCP local client is not initialized")
+        return await client.call_tool(tool_name, input_data)
 
     def update(self, config: dict[str, Any]) -> "MCPServerLocal":
         with self.__lock:
@@ -567,6 +583,7 @@ class MCPServerLocal(BaseModel):
                     "init_timeout",
                     "tool_timeout",
                     "disabled",
+                    "scope",
                 ]:
                     if key == "name":
                         value = normalize_name(value)
@@ -590,16 +607,136 @@ MCPServer = Annotated[
 class MCPConfig(BaseModel):
     servers: list[MCPServer] = Field(default_factory=list)
     disconnected_servers: list[dict[str, Any]] = Field(default_factory=list)
+    config_scope: str = Field(default="global")
     __lock: ClassVar[threading.Lock] = PrivateAttr(default=threading.Lock())
     __instance: ClassVar[Any] = PrivateAttr(default=None)
     __initialized: ClassVar[bool] = PrivateAttr(default=False)
+    __project_instances: ClassVar[dict[str, tuple[str, "MCPConfig"]]] = {}
 
     @classmethod
     def get_instance(cls) -> "MCPConfig":
         # with cls.__lock:
         if cls.__instance is None:
-            cls.__instance = cls(servers_list=[])
+            cls.__instance = cls(servers_list=[], config_scope="global")
         return cls.__instance
+
+    @classmethod
+    def clear_project_instances(cls):
+        with cls.__lock:
+            cls.__project_instances = {}
+
+    @classmethod
+    def parse_config_string(cls, config_str: str) -> List[Dict[str, Any]]:
+        servers_data: List[Dict[str, Any]] = []
+
+        if not (config_str and config_str.strip()):
+            return servers_data
+
+        try:
+            parsed_value = dirty_json.try_parse(config_str)
+            normalized = cls.normalize_config(parsed_value)
+
+            if isinstance(normalized, list):
+                for item in normalized:
+                    if isinstance(item, dict):
+                        servers_data.append(dict(item))
+                    else:
+                        PrintStyle(
+                            background_color="yellow",
+                            font_color="black",
+                            padding=True,
+                        ).print(
+                            f"Warning: MCP config item was not a dictionary and was ignored: {item}"
+                        )
+            else:
+                PrintStyle(
+                    background_color="red", font_color="white", padding=True
+                ).print(
+                    f"Error: Parsed MCP config top-level structure is not a list. Config string was: '{config_str}'"
+                )
+        except Exception as e_json:
+            PrintStyle.error(
+                f"Error parsing MCP config string: {e_json}. Config string was: '{config_str}'"
+            )
+
+        return servers_data
+
+    @classmethod
+    def merge_config_strings(
+        cls, global_config: str, project_config: str
+    ) -> tuple[list[dict[str, Any]], str]:
+        merged: dict[str, dict[str, Any]] = {}
+        unnamed: list[dict[str, Any]] = []
+
+        def add_servers(config_str: str, scope: str):
+            for server in cls.parse_config_string(config_str):
+                server_copy = dict(server)
+                server_copy["scope"] = scope
+                name = str(server_copy.get("name", "") or "").strip()
+                if not name:
+                    unnamed.append(server_copy)
+                    continue
+                normalized_name = normalize_name(name)
+                server_copy["name"] = normalized_name
+                merged[normalized_name] = server_copy
+
+        add_servers(global_config or DEFAULT_MCP_SERVERS_CONFIG, "global")
+        add_servers(project_config or DEFAULT_MCP_SERVERS_CONFIG, "project")
+
+        servers = [*unnamed, *merged.values()]
+        cache_key = dirty_json.stringify(
+            {
+                "mcpServers": {
+                    s.get("name", f"unnamed_{i}"): s
+                    for i, s in enumerate(servers)
+                }
+            }
+        )
+        return servers, cache_key
+
+    @classmethod
+    def get_project_instance(cls, project_name: str | None, *, force: bool = False) -> "MCPConfig":
+        project_key = str(project_name or "").strip()
+        if not project_key:
+            return cls.get_instance()
+
+        from helpers import projects
+        project_key = projects.validate_project_name(project_key)
+
+        global_config = settings.get_settings().get(
+            "mcp_servers", DEFAULT_MCP_SERVERS_CONFIG
+        )
+        project_config = projects.load_project_mcp_servers(project_key)
+        servers_data, cache_key = cls.merge_config_strings(global_config, project_config)
+
+        with cls.__lock:
+            cached = cls.__project_instances.get(project_key)
+            if cached and cached[0] == cache_key and not force:
+                return cached[1]
+
+        instance = cls(servers_list=servers_data, config_scope=f"project:{project_key}")
+        with cls.__lock:
+            cls.__project_instances[project_key] = (cache_key, instance)
+        return instance
+
+    @classmethod
+    def refresh_project(cls, project_name: str) -> "MCPConfig":
+        project_key = str(project_name or "").strip()
+        with cls.__lock:
+            cls.__project_instances.pop(project_key, None)
+        return cls.get_project_instance(project_key, force=True)
+
+    @classmethod
+    def get_for_agent(cls, agent: Any) -> "MCPConfig":
+        try:
+            from helpers import projects
+
+            project_name = projects.get_context_project_name(agent.context)
+            if project_name:
+                return cls.get_project_instance(project_name)
+        except Exception:
+            pass
+        return cls.get_instance()
 
     @classmethod
     def wait_for_lock(cls):
@@ -609,70 +746,7 @@ class MCPConfig(BaseModel):
     @classmethod
     def update(cls, config_str: str) -> Any:
         with cls.__lock:
-            servers_data: List[Dict[str, Any]] = []  # Default to empty list
-
-            if (
-                config_str and config_str.strip()
-            ):  # Only parse if non-empty and not just whitespace
-                try:
-                    # Try with standard json.loads first, as it should handle escaped strings correctly
-                    parsed_value = dirty_json.try_parse(config_str)
-                    normalized = cls.normalize_config(parsed_value)
-
-                    if isinstance(normalized, list):
-                        valid_servers = []
-                        for item in normalized:
-                            if isinstance(item, dict):
-                                valid_servers.append(item)
-                            else:
-                                PrintStyle(
-                                    background_color="yellow",
-                                    font_color="black",
-                                    padding=True,
-                                ).print(
-                                    f"Warning: MCP config item (from json.loads) was not a dictionary and was ignored: {item}"
-                                )
-                        servers_data = valid_servers
-                    else:
-                        PrintStyle(
-                            background_color="red", font_color="white", padding=True
-                        ).print(
-                            f"Error: Parsed MCP config (from json.loads) top-level structure is not a list. Config string was: '{config_str}'"
-                        )
-                        # servers_data remains empty
-                except (
-                    Exception
-                ) as e_json:  # Catch json.JSONDecodeError specifically if possible, or general Exception
-                    PrintStyle.error(
-                        f"Error parsing MCP config string: {e_json}. Config string was: '{config_str}'"
-                    )
-
-                    # # Fallback to DirtyJson or log error if standard json.loads fails
-                    # PrintStyle(background_color="orange", font_color="black", padding=True).print(
-                    #     f"Standard json.loads failed for MCP config: {e_json}. Attempting DirtyJson as fallback."
-                    # )
-                    # try:
-                    #     parsed_value = DirtyJson.parse_string(config_str)
-                    #     if isinstance(parsed_value, list):
-                    #         valid_servers = []
-                    #         for item in parsed_value:
-                    #             if isinstance(item, dict):
-                    #                 valid_servers.append(item)
-                    #             else:
-                    #                 PrintStyle(background_color="yellow", font_color="black", padding=True).print(
-                    #                     f"Warning: MCP config item (from DirtyJson) was not a dictionary and was ignored: {item}"
-                    #                 )
-                    #         servers_data = valid_servers
-                    #     else:
-                    #         PrintStyle(background_color="red", font_color="white", padding=True).print(
-                    #             f"Error: Parsed MCP config (from DirtyJson) top-level structure is not a list. Config string was: '{config_str}'"
-                    #         )
-                    #         # servers_data remains empty
-                    # except Exception as e_dirty:
-                    #     PrintStyle(background_color="red", font_color="white", padding=True).print(
-                    #         f"Error parsing MCP config string with DirtyJson as well: {e_dirty}. Config string was: '{config_str}'"
-                    #     )
-                    #     # servers_data remains empty, allowing graceful degradation
+            servers_data = cls.parse_config_string(config_str)
 
             # Initialize/update the singleton instance with the (potentially empty) list of server data
             instance = cls.get_instance()
@@ -683,7 +757,8 @@ class MCPConfig(BaseModel):
             }  # Prepare data for re-initialization or update
 
             # Option 1: Re-initialize the existing instance (if __init__ is idempotent for other fields)
-            instance.__init__(servers_list=servers_data)
+            instance.__init__(servers_list=servers_data, config_scope="global")
+            cls.__project_instances = {}
 
             # Option 2: Or, if __init__ has side effects we don't want to repeat,
             # and 'servers' is the primary thing 'update' changes:
@@ -708,23 +783,24 @@ class MCPConfig(BaseModel):
         if isinstance(servers, list):
             for server in servers:
                 if isinstance(server, dict):
-                    normalized.append(server)
+                    normalized.append(dict(server))
         elif isinstance(servers, dict):
             if "mcpServers" in servers:
                 if isinstance(servers["mcpServers"], dict):
                     for key, value in servers["mcpServers"].items():
                         if isinstance(value, dict):
-                            value["name"] = key
-                            normalized.append(value)
+                            server = dict(value)
+                            server["name"] = key
+                            normalized.append(server)
                 elif isinstance(servers["mcpServers"], list):
                     for server in servers["mcpServers"]:
                         if isinstance(server, dict):
-                            normalized.append(server)
+                            normalized.append(dict(server))
             else:
-                normalized.append(servers)  # single server?
+                normalized.append(dict(servers))  # single server?
         return normalized
 
-    def __init__(self, servers_list: List[Dict[str, Any]]):
+    def __init__(self, servers_list: List[Dict[str, Any]], config_scope: str = "global"):
         from collections.abc import Mapping, Iterable
 
         # # DEBUG: Print the received servers_list
@@ -741,6 +817,7 @@ class MCPConfig(BaseModel):
 
         # Clear any servers potentially initialized by super().__init__() before we populate based on servers_list
         self.servers = []
+        self.config_scope = config_scope
         # initialize failed servers list
         self.disconnected_servers = []
 
@@ -867,10 +944,10 @@ class MCPConfig(BaseModel):
                 name = server.name
                 # get tool count
                 tool_count = len(server.get_tools())
-                # check if server is connected
-                connected = True  # tool_count > 0
                 # get error message if any
                 error = server.get_error()
+                # A server object can exist while its initialization failed.
+                connected = not bool(error)
                 # get log bool
                 has_log = server.get_log() != ""
 
@@ -878,6 +955,9 @@ class MCPConfig(BaseModel):
                 result.append(
                     {
                         "name": name,
+                        "scope": getattr(server, "scope", self.config_scope),
+                        "type": getattr(server, "type", ""),
+                        "description": getattr(server, "description", ""),
                         "connected": connected,
                         "error": error,
                         "tool_count": tool_count,
@@ -890,6 +970,9 @@ class MCPConfig(BaseModel):
                 result.append(
                     {
                         "name": disconnected["name"],
+                        "scope": disconnected.get("config", {}).get("scope", self.config_scope),
+                        "type": disconnected.get("config", {}).get("type", ""),
+                        "description": disconnected.get("config", {}).get("description", ""),
                         "connected": False,
                         "error": disconnected["error"],
                         "tool_count": 0,
@@ -910,6 +993,8 @@ class MCPConfig(BaseModel):
                     return {
                         "name": server.name,
                         "description": server.description,
+                        "scope": getattr(server, "scope", self.config_scope),
+                        "type": getattr(server, "type", ""),
                         "tools": tools,
                     }
             return {}
@@ -986,9 +1071,10 @@ class MCPConfig(BaseModel):
 
     def has_tool(self, tool_name: str) -> bool:
         """Check if a tool is available"""
-        if "." not in tool_name:
+        try:
+            server_name_part, tool_name_part = _split_qualified_tool_name(tool_name)
+        except ValueError:
             return False
-        server_name_part, tool_name_part = tool_name.split(".")
         with self.__lock:
             for server in self.servers:
                 if server.name == server_name_part:
@@ -996,6 +1082,9 @@ class MCPConfig(BaseModel):
             return False
 
     def get_tool(self, agent: Any, tool_name: str) -> MCPTool | None:
+        effective_config = MCPConfig.get_for_agent(agent)
+        if effective_config is not self:
+            return effective_config.get_tool(agent, tool_name)
         if not self.has_tool(tool_name):
             return None
         return MCPTool(agent=agent, name=tool_name, method=None, args={}, message="", loop_data=None)
@@ -1004,9 +1093,7 @@ class MCPConfig(BaseModel):
         self, tool_name: str, input_data: Dict[str, Any]
     ) -> CallToolResult:
         """Call a tool with the given input data"""
-        if "." not in tool_name:
-            raise ValueError(f"Tool {tool_name} not found")
-        server_name_part, tool_name_part = tool_name.split(".")
+        server_name_part, tool_name_part = _split_qualified_tool_name(tool_name)
         with self.__lock:
             for server in self.servers:
                 if server.name == server_name_part and server.has_tool(tool_name_part):
@@ -1119,16 +1206,21 @@ class MCPClientBase(ABC):
                     }
                     for tool in response.tools
                 ]
+                self.error = ""
             PrintStyle(font_color="green").print(
                 f"MCPClientBase ({self.server.name}): Tools updated. Found {len(self.tools)} tools."
             )
 
         try:
-            set = settings.get_settings()
+            current_settings = settings.get_settings()
+            init_timeout = (
+                self.server.init_timeout
+                or current_settings.get("mcp_client_init_timeout", 10)
+                or 10
+            )
             await self._execute_with_session(
                 list_tools_op,
-                read_timeout_seconds=self.server.init_timeout
-                or set["mcp_client_init_timeout"],
+                read_timeout_seconds=init_timeout,
             )
         except Exception as e:
             # e = eg.exceptions[0]
@@ -1155,7 +1247,7 @@ class MCPClientBase(ABC):
     def get_tools(self) -> List[dict[str, Any]]:
         """Get all tools from the server (uses cached tools)"""
         with self.__lock:
-            return self.tools
+            return [dict(tool) for tool in self.tools]
 
     async def call_tool(
         self, tool_name: str, input_data: Dict[str, Any]
@@ -1177,19 +1269,28 @@ class MCPClientBase(ABC):
                 f"MCPClientBase ({self.server.name}): Tool '{tool_name}' found after updating tools."
             )
 
+        current_settings = settings.get_settings()
+        tool_timeout = (
+            self.server.tool_timeout
+            or current_settings.get("mcp_client_tool_timeout", 120)
+            or 120
+        )
+
         async def call_tool_op(current_session: ClientSession):
-            set = settings.get_settings()
             # PrintStyle(font_color="cyan").print(f"MCPClientBase ({self.server.name}): Executing 'call_tool' for '{tool_name}' via MCP session...")
             response: CallToolResult = await current_session.call_tool(
                 tool_name,
                 input_data,
-                read_timeout_seconds=timedelta(seconds=set["mcp_client_tool_timeout"]),
+                read_timeout_seconds=timedelta(seconds=tool_timeout),
             )
             # PrintStyle(font_color="green").print(f"MCPClientBase ({self.server.name}): Tool '{tool_name}' call successful via session.")
             return response
 
         try:
-            return await self._execute_with_session(call_tool_op)
+            return await self._execute_with_session(
+                call_tool_op,
+                read_timeout_seconds=tool_timeout,
+            )
         except Exception as e:
             # Error logged by _execute_with_session. Re-raise a specific error for the caller.
             PrintStyle(
@@ -1304,11 +1405,19 @@ class MCPClientRemote(MCPClientBase):
     ]:
         """Connect to an MCP server, init client and save stdio/write streams"""
         server: MCPServerRemote = cast(MCPServerRemote, self.server)
-        set = settings.get_settings()
+        current_settings = settings.get_settings()
 
         # Resolve timeout: check server config first, then settings, defaulting to 5s/10s
-        init_timeout = server.init_timeout or set["mcp_client_init_timeout"] or 5
-        tool_timeout = server.tool_timeout or set["mcp_client_tool_timeout"] or 10
+        init_timeout = (
+            server.init_timeout
+            or current_settings.get("mcp_client_init_timeout", 10)
+            or 10
+        )
+        tool_timeout = (
+            server.tool_timeout
+            or current_settings.get("mcp_client_tool_timeout", 120)
+            or 120
+        )
 
         client_factory = CustomHTTPClientFactory(verify=server.verify)
         # Check if this is a streaming HTTP type

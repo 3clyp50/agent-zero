@@ -2,7 +2,7 @@
 
 ## Purpose
 
-- Own WebUI project creation, selection, editing, secrets, model, skill, and file-structure components.
+- Own WebUI project creation, selection, editing, secrets, model, skill, MCP server, and file-structure components.
 
 ## Ownership
 
@@ -15,7 +15,7 @@
 
 - Keep project API payloads synchronized with backend project handlers.
 - Do not expose project secrets in logs, URLs, or long-lived frontend state unnecessarily.
-- Preserve scoped settings interactions with plugins, models, and skills.
+- Preserve scoped settings interactions with plugins, models, skills, and MCP servers.
 
 ## Work Guidance
 
@@ -23,7 +23,7 @@
 
 ## Verification
 
-- Smoke-test create, select, edit, secrets, LLM, skills, and file-structure flows after changes.
+- Smoke-test create, select, edit, secrets, LLM, skills, MCP servers, and file-structure flows after changes.
 
 ## Child DOX Index
 
