@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import time
 from typing import Any, ClassVar
@@ -15,7 +16,8 @@ FRAME_READ_TIMEOUT_SECONDS = 0.5
 FRAME_RETRY_DELAY_SECONDS = 0.5
 FRAME_STATE_REFRESH_SECONDS = 0.75
 SNAPSHOT_STATE_POLL_SECONDS = 0.75
-SCREENCAST_QUALITY = 92
+SCREENCAST_STREAM_QUALITY = 80
+SCREENSHOT_QUALITY = 92
 VIEWER_TRANSPORT_SCREENCAST = "screencast"
 VIEWER_TRANSPORT_SNAPSHOT = "snapshot"
 VIEWER_TRANSPORTS = {VIEWER_TRANSPORT_SCREENCAST, VIEWER_TRANSPORT_SNAPSHOT}
@@ -97,10 +99,21 @@ class WsBrowser(WsHandler):
             existing.cancel()
         viewer_id = str(data.get("viewer_id") or "")
         viewer_transport = self._viewer_transport(data)
+        binary_frames = self._bool(data.get("binary_frames", data.get("binaryFrames")))
+        slim_frames = self._bool(data.get("slim_frames", data.get("slimFrames", binary_frames)))
+        capture_scale = self._capture_scale_from_data(data)
         snapshot = None
         if runtime:
             if viewer_transport == VIEWER_TRANSPORT_SCREENCAST:
-                stream_task = self._stream_frames(sid, context_id, active_id, viewer_id)
+                stream_task = self._stream_frames(
+                    sid,
+                    context_id,
+                    active_id,
+                    viewer_id,
+                    binary_frames=binary_frames,
+                    slim_frames=slim_frames,
+                    capture_scale=capture_scale,
+                )
             else:
                 stream_task = self._stream_state(sid, context_id, active_id, viewer_id)
             self._streams[stream_key] = asyncio.create_task(stream_task)
@@ -115,6 +128,8 @@ class WsBrowser(WsHandler):
             "all_browsers": True,
             "viewer_id": viewer_id,
             "viewer_transport": viewer_transport,
+            "binary_frames": binary_frames,
+            "slim_frames": slim_frames,
         }
 
     def _unsubscribe(self, data: dict[str, Any], sid: str) -> dict[str, Any] | WsResult:
@@ -157,9 +172,9 @@ class WsBrowser(WsHandler):
         snapshot = None
         if active_id:
             try:
-                quality = int(data.get("quality") or SCREENCAST_QUALITY)
+                quality = int(data.get("quality") or SCREENSHOT_QUALITY)
             except (TypeError, ValueError):
-                quality = SCREENCAST_QUALITY
+                quality = SCREENSHOT_QUALITY
             with contextlib.suppress(Exception):
                 snapshot = await runtime.call(
                     "screenshot",
@@ -347,7 +362,7 @@ class WsBrowser(WsHandler):
         if not browser_id:
             return None
         with contextlib.suppress(Exception):
-            return await runtime.call("screenshot", browser_id, quality=SCREENCAST_QUALITY)
+            return await runtime.call("screenshot", browser_id, quality=SCREENSHOT_QUALITY)
         return None
 
     async def _snapshot_for_browser(
@@ -358,7 +373,7 @@ class WsBrowser(WsHandler):
         if not browser_id:
             return None
         with contextlib.suppress(Exception):
-            return await runtime.call("screenshot", browser_id, quality=SCREENCAST_QUALITY)
+            return await runtime.call("screenshot", browser_id, quality=SCREENSHOT_QUALITY)
         return None
 
     async def _all_browser_tabs(self) -> list[dict[str, Any]]:
@@ -377,6 +392,10 @@ class WsBrowser(WsHandler):
         context_id: str,
         browser_id: int | str | None,
         viewer_id: str = "",
+        *,
+        binary_frames: bool = False,
+        slim_frames: bool = False,
+        capture_scale: float = 1.0,
     ) -> None:
         runtime = None
         stream_id = None
@@ -397,12 +416,14 @@ class WsBrowser(WsHandler):
                 browsers = listing.get("browsers") or []
                 active_id = self._active_browser_id(listing, browser_id)
                 if not active_id:
-                    await self._emit_empty_frame(
+                    await self._emit_viewer_state(
                         sid,
                         context_id,
+                        active_id,
                         browsers=browsers,
                         viewer_id=viewer_id,
-                        frame_source=VIEWER_TRANSPORT_SCREENCAST,
+                        state=None,
+                        viewer_transport=VIEWER_TRANSPORT_SCREENCAST,
                     )
                     await asyncio.sleep(FRAME_RETRY_DELAY_SECONDS)
                     continue
@@ -410,29 +431,26 @@ class WsBrowser(WsHandler):
                 screencast = await runtime.call(
                     "start_screencast",
                     active_id,
-                    quality=SCREENCAST_QUALITY,
+                    quality=SCREENCAST_STREAM_QUALITY,
                     every_nth_frame=1,
+                    capture_scale=capture_scale,
                 )
                 stream_id = screencast["stream_id"]
                 active_id = screencast["browser_id"]
                 state = screencast.get("state")
-                await self.emit_to(
+                await self._emit_viewer_state(
                     sid,
-                    "browser_viewer_frame",
-                    {
-                        "context_id": context_id,
-                        "viewer_id": viewer_id,
-                        "browser_id": active_id,
-                        "browsers": browsers,
-                        "image": "",
-                        "mime": "",
-                        "state": state,
-                        "frame_source": "state",
-                        "viewer_transport": VIEWER_TRANSPORT_SCREENCAST,
-                    },
+                    context_id,
+                    active_id,
+                    browsers=browsers,
+                    viewer_id=viewer_id,
+                    state=state,
+                    viewer_transport=VIEWER_TRANSPORT_SCREENCAST,
                 )
 
                 last_state_refresh = 0.0
+                last_state_signature = self._state_signature(active_id, browsers)
+                frame_sequence = 0
                 while True:
                     now = time.monotonic()
                     if now - last_state_refresh >= FRAME_STATE_REFRESH_SECONDS:
@@ -442,6 +460,18 @@ class WsBrowser(WsHandler):
                         if str(active_id) not in browser_ids:
                             break
                         state = self._state_for_browser(browsers, active_id, state)
+                        state_signature = self._state_signature(active_id, browsers)
+                        if state_signature != last_state_signature:
+                            await self._emit_viewer_state(
+                                sid,
+                                context_id,
+                                active_id,
+                                browsers=browsers,
+                                viewer_id=viewer_id,
+                                state=state,
+                                viewer_transport=VIEWER_TRANSPORT_SCREENCAST,
+                            )
+                            last_state_signature = state_signature
                         last_state_refresh = now
 
                     try:
@@ -455,14 +485,19 @@ class WsBrowser(WsHandler):
                     except TimeoutError:
                         continue
 
-                    frame["context_id"] = context_id
-                    frame["viewer_id"] = viewer_id
-                    frame["browser_id"] = active_id
-                    frame["browsers"] = browsers
-                    frame["state"] = state
-                    frame["frame_source"] = VIEWER_TRANSPORT_SCREENCAST
-                    frame["viewer_transport"] = VIEWER_TRANSPORT_SCREENCAST
-                    await self.emit_to(sid, "browser_viewer_frame", frame)
+                    frame_sequence += 1
+                    payload = self._frame_payload(
+                        frame,
+                        context_id=context_id,
+                        viewer_id=viewer_id,
+                        browser_id=active_id,
+                        sequence=frame_sequence,
+                        binary_frames=binary_frames,
+                    )
+                    if not slim_frames:
+                        payload["browsers"] = browsers
+                        payload["state"] = state
+                    await self._emit_to_connected_viewer(sid, "browser_viewer_frame", payload)
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -515,20 +550,14 @@ class WsBrowser(WsHandler):
                     ),
                 )
                 if signature != last_signature:
-                    await self.emit_to(
+                    await self._emit_viewer_state(
                         sid,
-                        "browser_viewer_frame",
-                        {
-                            "context_id": context_id,
-                            "viewer_id": viewer_id,
-                            "browser_id": active_id,
-                            "browsers": browsers,
-                            "image": "",
-                            "mime": "",
-                            "state": state,
-                            "frame_source": VIEWER_TRANSPORT_SNAPSHOT,
-                            "viewer_transport": VIEWER_TRANSPORT_SNAPSHOT,
-                        },
+                        context_id,
+                        active_id,
+                        browsers=browsers,
+                        viewer_id=viewer_id,
+                        state=state,
+                        viewer_transport=VIEWER_TRANSPORT_SNAPSHOT,
                     )
                     last_signature = signature
                 await asyncio.sleep(SNAPSHOT_STATE_POLL_SECONDS)
@@ -567,6 +596,105 @@ class WsBrowser(WsHandler):
                 return browser
         return current_state
 
+    @staticmethod
+    def _state_signature(
+        active_id: int | str | None,
+        browsers: list[dict[str, Any]],
+    ) -> tuple[str, tuple[tuple[str, str, str, str, bool], ...]]:
+        return (
+            str(active_id or ""),
+            tuple(
+                (
+                    str(browser.get("context_id") or ""),
+                    str(browser.get("id") or ""),
+                    str(browser.get("currentUrl") or ""),
+                    str(browser.get("title") or ""),
+                    bool(browser.get("loading")),
+                )
+                for browser in browsers
+            ),
+        )
+
+    @staticmethod
+    def _frame_payload(
+        frame: dict[str, Any],
+        *,
+        context_id: str,
+        viewer_id: str,
+        browser_id: int | str,
+        sequence: int,
+        binary_frames: bool,
+    ) -> dict[str, Any]:
+        image = str(frame.get("image") or "")
+        payload: dict[str, Any] = {
+            "context_id": context_id,
+            "viewer_id": viewer_id,
+            "browser_id": browser_id,
+            "seq": sequence,
+            "mime": frame.get("mime") or "image/jpeg",
+            "frame_source": VIEWER_TRANSPORT_SCREENCAST,
+            "viewer_transport": VIEWER_TRANSPORT_SCREENCAST,
+        }
+        dimensions = WsBrowser._frame_dimensions(frame.get("metadata"))
+        if dimensions:
+            payload.update(dimensions)
+        if binary_frames:
+            try:
+                payload["image"] = base64.b64decode(image, validate=False)
+                payload["encoding"] = "binary"
+            except Exception:
+                payload["image"] = image
+                payload["encoding"] = "base64"
+        else:
+            payload["image"] = image
+            payload["encoding"] = "base64"
+        return payload
+
+    @staticmethod
+    def _frame_dimensions(metadata: Any) -> dict[str, int]:
+        if not isinstance(metadata, dict):
+            return {}
+        for width_key, height_key in (
+            ("expectedWidth", "expectedHeight"),
+            ("deviceWidth", "deviceHeight"),
+            ("jpegWidth", "jpegHeight"),
+        ):
+            try:
+                width = int(metadata.get(width_key) or 0)
+                height = int(metadata.get(height_key) or 0)
+            except (TypeError, ValueError):
+                continue
+            if width > 0 and height > 0:
+                return {"width": width, "height": height}
+        return {}
+
+    async def _emit_viewer_state(
+        self,
+        sid: str,
+        context_id: str,
+        browser_id: int | str | None,
+        *,
+        browsers: list[dict[str, Any]] | None = None,
+        viewer_id: str = "",
+        state: dict[str, Any] | None = None,
+        viewer_transport: str = VIEWER_TRANSPORT_SNAPSHOT,
+    ) -> None:
+        await self._emit_to_connected_viewer(
+            sid,
+            "browser_viewer_state",
+            {
+                "context_id": context_id,
+                "active_browser_context_id": context_id,
+                "viewer_id": viewer_id,
+                "browser_id": browser_id,
+                "active_browser_id": browser_id,
+                "browsers": browsers or [],
+                "state": state,
+                "all_browsers": False,
+                "viewer_transport": viewer_transport,
+            },
+        )
+
     async def _emit_empty_frame(
         self,
         sid: str,
@@ -576,7 +704,7 @@ class WsBrowser(WsHandler):
         viewer_id: str = "",
         frame_source: str = "",
     ) -> None:
-        await self.emit_to(
+        await self._emit_to_connected_viewer(
             sid,
             "browser_viewer_frame",
             {
@@ -591,6 +719,20 @@ class WsBrowser(WsHandler):
                 "viewer_transport": frame_source or VIEWER_TRANSPORT_SNAPSHOT,
             },
         )
+
+    async def _emit_to_connected_viewer(
+        self,
+        sid: str,
+        event: str,
+        data: dict[str, Any],
+    ) -> None:
+        manager = getattr(self, "_manager", None)
+        if manager is not None:
+            with manager.lock:
+                connected = (getattr(self, "namespace", "/ws"), sid) in manager.connections
+            if not connected:
+                raise asyncio.CancelledError()
+        await self.emit_to(sid, event, data)
 
     @staticmethod
     def _viewer_transport(data: dict[str, Any]) -> str:
@@ -622,6 +764,20 @@ class WsBrowser(WsHandler):
             "width": max(320, min(4096, width)),
             "height": max(200, min(4096, height)),
         }
+
+    @staticmethod
+    def _capture_scale_from_data(data: dict[str, Any]) -> float:
+        try:
+            scale = float(
+                data.get("device_pixel_ratio")
+                or data.get("devicePixelRatio")
+                or data.get("pixel_ratio")
+                or data.get("pixelRatio")
+                or 1
+            )
+        except (TypeError, ValueError):
+            return 1.0
+        return max(1.0, min(2.0, scale))
 
     @staticmethod
     def _context_id(data: dict[str, Any]) -> str:

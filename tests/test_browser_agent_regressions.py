@@ -1158,7 +1158,8 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "def _viewer_transport(data: dict[str, Any])" in ws_browser
     assert "return VIEWER_TRANSPORT_SNAPSHOT" in ws_browser
     assert "self._stream_state" in ws_browser
-    assert "SCREENCAST_QUALITY = 92" in ws_browser
+    assert "SCREENCAST_STREAM_QUALITY = 80" in ws_browser
+    assert "SCREENSHOT_QUALITY = 92" in ws_browser
     assert "initial_viewport = self._viewport_from_data(data)" in ws_browser
     assert '"set_viewport"' in ws_browser
     assert "start_screencast" in ws_browser
@@ -1169,7 +1170,7 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "stop_screencast" in ws_browser
     assert "viewer_transport == VIEWER_TRANSPORT_SCREENCAST" in ws_browser
     assert '"viewer_transport": viewer_transport' in ws_browser
-    assert '"viewer_transport": VIEWER_TRANSPORT_SNAPSHOT' in ws_browser
+    assert "viewer_transport: str = VIEWER_TRANSPORT_SNAPSHOT" in ws_browser
     assert '"Page.startScreencast"' in runtime
     assert '"Page.screencastFrame"' in runtime
     assert '"Page.screencastFrameAck"' in runtime
@@ -1180,6 +1181,7 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "await self._stop_screencasts_for_browser(resolved_id)" in runtime
     assert "queueFrameRender" in browser_store
     assert "requestAnimationFrame" in browser_store
+    assert "function frameImageSource(data = {})" in browser_store
     assert 'const BROWSER_VIEWER_TRANSPORT_SNAPSHOT = "snapshot";' in browser_store
     assert 'const BROWSER_VIEWER_TRANSPORT_SCREENCAST = "screencast";' in browser_store
     assert "viewerTransport: BROWSER_VIEWER_TRANSPORT_SCREENCAST" in browser_store
@@ -1187,11 +1189,17 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "requestedViewerTransport()" in browser_store
     assert "normalizeViewerTransport(value = \"\")" in browser_store
     assert "usesScreencastTransport()" in browser_store
+    assert "supportsBinaryFrames()" in browser_store
+    assert "captureDevicePixelRatio()" in browser_store
+    assert "frameDimensionsFromData(data = null)" in browser_store
     assert "frameDimensionsFromMetadata(metadata = null)" in browser_store
     assert "metadata.expectedWidth || metadata.deviceWidth || metadata.jpegWidth" in browser_store
-    assert "dimensions: this.frameDimensionsFromMetadata(data.metadata)" in browser_store
+    assert "dimensions: this.frameDimensionsFromData(data)" in browser_store
     assert "const dimensions = options?.dimensions || await loadFrameDimensions(frameSrc)" in browser_store
     assert "viewer_transport: this.requestedViewerTransport()" in browser_store
+    assert "binary_frames: this.supportsBinaryFrames()" in browser_store
+    assert "slim_frames: true" in browser_store
+    assert "device_pixel_ratio: this.captureDevicePixelRatio()" in browser_store
     assert "viewport_width: initialViewport?.width" in browser_store
     assert "viewport_height: initialViewport?.height" in browser_store
     assert "restart_stream: restartStream && this.usesScreencastTransport()" in browser_store
@@ -1213,6 +1221,13 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "this.applySnapshot(data.snapshot);" in browser_store
     assert "else if (!data.state)" in browser_store
     assert '"snapshot": snapshot' in ws_browser
+    assert '"binary_frames": binary_frames' in ws_browser
+    assert '"slim_frames": slim_frames' in ws_browser
+    assert "capture_scale=capture_scale" in ws_browser
+    assert "base64.b64decode(image, validate=False)" in ws_browser
+    assert '"encoding"] = "binary"' in ws_browser
+    assert "def _frame_payload(" in ws_browser
+    assert "def _emit_viewer_state(" in ws_browser
     assert 'const BROWSER_SNAPSHOT_META_KEY = "browser_snapshot";' in browser_tool_handler
     assert "staticScreenshotUri(kvps)" in browser_tool_handler
     assert "/components/modals/image-viewer/image-viewer-store.js" in browser_tool_handler
@@ -1223,15 +1238,38 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "delete displayKvps[BROWSER_SNAPSHOT_META_KEY];" in browser_tool_handler
     assert "startBrowserScreenshotPreview(button, image, resolveBrowserPayload)" in browser_tool_handler
     assert "FRAME_FALLBACK_SCREENSHOT_SECONDS" not in ws_browser
-    assert '"frame_source": "state"' in ws_browser
-    assert '"frame_source"] = VIEWER_TRANSPORT_SCREENCAST' in ws_browser
-    assert '"viewer_transport"] = VIEWER_TRANSPORT_SCREENCAST' in ws_browser
+    assert '"browser_viewer_state"' in ws_browser
+    assert '"frame_source": VIEWER_TRANSPORT_SCREENCAST' in ws_browser
+    assert '"viewer_transport": VIEWER_TRANSPORT_SCREENCAST' in ws_browser
     assert "fallback_screenshot" not in ws_browser
     assert "canvas_wheel_screenshot" not in ws_browser
     assert "surface_mode: this._mode" not in browser_store
     assert "overflow: hidden;" in main_html
     assert "object-fit: fill;" in main_html
     assert "image-rendering: auto;" in main_html
+
+
+def test_browser_viewer_frame_payload_supports_binary_slim_frames():
+    payload = ws_browser_module.WsBrowser._frame_payload(
+        {
+            "image": SMALL_JPEG_10X10,
+            "mime": "image/jpeg",
+            "metadata": {"expectedWidth": 900, "expectedHeight": 600},
+        },
+        context_id="ctx",
+        viewer_id="viewer",
+        browser_id=1,
+        sequence=3,
+        binary_frames=True,
+    )
+
+    assert payload["encoding"] == "binary"
+    assert payload["image"] == __import__("base64").b64decode(SMALL_JPEG_10X10)
+    assert payload["width"] == 900
+    assert payload["height"] == 600
+    assert payload["seq"] == 3
+    assert "browsers" not in payload
+    assert "state" not in payload
 
 
 def test_browser_navigation_errors_stay_inside_native_browser_page():
@@ -1504,7 +1542,12 @@ async def test_browser_screencast_acknowledges_and_drops_stale_frames():
         mime="image/jpeg",
     )
 
-    await screencast.start(quality=92, every_nth_frame=1, viewport={"width": 1118, "height": 662})
+    await screencast.start(
+        quality=92,
+        every_nth_frame=1,
+        viewport={"width": 1118, "height": 662},
+        capture_scale=2,
+    )
     session.handlers["Page.screencastFrame"](
         {"data": first_image, "metadata": {"deviceWidth": 10}, "sessionId": 1}
     )
@@ -1563,6 +1606,10 @@ async def test_browser_screencast_acknowledges_and_drops_stale_frames():
         for index, (method, _params) in enumerate(session.sent)
         if method == "Page.startScreencast"
     )
+    start_params = session.sent[start_index][1]
+    assert start_params["quality"] == 92
+    assert start_params["maxWidth"] == 2236
+    assert start_params["maxHeight"] == 1324
     cdp_viewport_indices = [
         index
         for index, (method, _params) in enumerate(session.sent)
@@ -2287,7 +2334,7 @@ async def test_browser_viewer_subscribe_returns_initial_snapshot(monkeypatch):
 
     assert result["active_browser_id"] == 1
     assert result["snapshot"]["image"] == "jpeg-data"
-    assert ("screenshot", (1,), {"quality": ws_browser_module.SCREENCAST_QUALITY}) in calls
+    assert ("screenshot", (1,), {"quality": ws_browser_module.SCREENSHOT_QUALITY}) in calls
 
     await handler.on_disconnect("sid-snapshot")
 

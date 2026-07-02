@@ -34,6 +34,8 @@ const ANNOTATION_DOM_LIMIT = 1200;
 const ANNOTATION_TRAY_MARGIN = 10;
 const BROWSER_VISUAL_SHORTCUT_KEYS = new Set(["a", "c", "insert", "v", "x", "y", "z"]);
 const LOCAL_EDITABLE_SELECTOR = "input, textarea, select, [contenteditable]";
+const BROWSER_BINARY_FRAMES_SUPPORTED = typeof Blob === "function"
+  && typeof globalThis.URL?.createObjectURL === "function";
 
 function makeViewerToken() {
   return globalThis.crypto?.randomUUID?.()
@@ -114,6 +116,31 @@ function loadFrameDimensions(src) {
   });
 }
 
+function frameImageSource(data = {}) {
+  const image = data?.image;
+  if (!image) return null;
+  const mime = data.mime || "image/jpeg";
+  const isArrayBuffer = typeof ArrayBuffer !== "undefined" && image instanceof ArrayBuffer;
+  const isView = typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView?.(image);
+  const isBlob = typeof Blob !== "undefined" && image instanceof Blob;
+  if (data.encoding === "binary" || isArrayBuffer || isView || isBlob) {
+    if (!BROWSER_BINARY_FRAMES_SUPPORTED) return null;
+    const blob = isBlob ? image : new Blob([image], { type: mime });
+    const src = globalThis.URL.createObjectURL(blob);
+    return {
+      src,
+      objectUrl: src,
+      cleanup: () => globalThis.URL.revokeObjectURL(src),
+    };
+  }
+  if (typeof image !== "string") return null;
+  return {
+    src: `data:${mime};base64,${image}`,
+    objectUrl: "",
+    cleanup: null,
+  };
+}
+
 const model = {
   loading: true,
   error: "",
@@ -146,6 +173,7 @@ const model = {
   _lastFrameDimensions: null,
   _pendingFrameSrc: "",
   _pendingFrameOptions: null,
+  _frameObjectUrl: "",
   _frameRenderHandle: null,
   _frameRenderCancel: null,
   _frameRenderSequence: 0,
@@ -442,7 +470,7 @@ const model = {
       this.setActiveBrowserId(null);
       this.address = "";
       this.frameState = null;
-      this.frameSrc = "";
+      this.clearFrameSrc();
       if (this.contextId) {
         await this.connectViewer();
       }
@@ -833,7 +861,7 @@ const model = {
 
   resetRenderedFrame() {
     this.cancelFrameRender();
-    this.frameSrc = "";
+    this.clearFrameSrc();
     this._lastFrameDimensions = null;
     this._lastFrameAt = 0;
   },
@@ -915,6 +943,25 @@ const model = {
     return this.viewerTransport === BROWSER_VIEWER_TRANSPORT_SCREENCAST;
   },
 
+  supportsBinaryFrames() {
+    return BROWSER_BINARY_FRAMES_SUPPORTED;
+  },
+
+  captureDevicePixelRatio() {
+    const value = Number(globalThis.devicePixelRatio || 1);
+    if (!Number.isFinite(value) || value <= 1) return 1;
+    return Math.min(2, value);
+  },
+
+  frameDimensionsFromData(data = null) {
+    const width = Number(data?.width || 0);
+    const height = Number(data?.height || 0);
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+      return { width, height };
+    }
+    return this.frameDimensionsFromMetadata(data?.metadata);
+  },
+
   frameDimensionsFromMetadata(metadata = null) {
     if (!metadata || typeof metadata !== "object") return null;
     const width = Number(metadata.expectedWidth || metadata.deviceWidth || metadata.jpegWidth || 0);
@@ -986,6 +1033,9 @@ const model = {
           viewer_id: viewerToken,
           create_browser: Boolean(options.createBrowser || options.create_browser),
           viewer_transport: this.requestedViewerTransport(),
+          binary_frames: this.supportsBinaryFrames(),
+          slim_frames: true,
+          device_pixel_ratio: this.captureDevicePixelRatio(),
           viewport_width: initialViewport?.width,
           viewport_height: initialViewport?.height,
         },
@@ -1014,9 +1064,9 @@ const model = {
       data.active_browser_context_id || contextId,
     );
     this.applySnapshot(data.snapshot);
-	    this.connected = true;
-	    this.browserInstallExpected = false;
-	  },
+    this.connected = true;
+    this.browserInstallExpected = false;
+  },
 
   async _bindSocketEvents() {
     if (!this._frameOff) {
@@ -1028,7 +1078,9 @@ const model = {
         }
         const incomingContextId = this.normalizeContextId(data.context_id || this.contextId);
         const incomingBrowserId = this.normalizeBrowserId(data.browser_id || data.state?.id);
-        this.applyBrowserListing(data.browsers || [], incomingContextId, { replaceContext: true });
+        if (Array.isArray(data.browsers)) {
+          this.applyBrowserListing(data.browsers, incomingContextId, { replaceContext: true });
+        }
         if (incomingBrowserId && !this.activeBrowserId) {
           this.setActiveBrowserId(incomingBrowserId, incomingContextId);
         }
@@ -1046,11 +1098,15 @@ const model = {
           this.address = data.state.currentUrl;
         }
         if (data.image) {
+          const frameImage = frameImageSource(data);
+          if (!frameImage?.src) return;
           const frameBrowserId = incomingBrowserId || this.activeBrowserId;
-          this.queueFrameRender(`data:${data.mime || "image/jpeg"};base64,${data.image}`, {
+          this.queueFrameRender(frameImage.src, {
             browserId: frameBrowserId,
             contextId: incomingContextId,
-            dimensions: this.frameDimensionsFromMetadata(data.metadata),
+            dimensions: this.frameDimensionsFromData(data),
+            objectUrl: frameImage.objectUrl,
+            cleanup: frameImage.cleanup,
             onAccepted: () => {
               if (
                 this.sameBrowserId(this.switchingBrowserId, frameBrowserId)
@@ -1063,13 +1119,13 @@ const model = {
           });
         } else if (!data.state) {
           this.cancelFrameRender();
-          this.frameSrc = "";
+          this.clearFrameSrc();
         }
         if (!data.image && !data.state) {
           if (!this.activeBrowserId) {
             this.setActiveBrowserId(null, "");
             this.frameState = null;
-            this.frameSrc = "";
+            this.clearFrameSrc();
           }
         }
         this._lastFrameAt = Date.now();
@@ -1077,15 +1133,20 @@ const model = {
       await websocket.on("browser_viewer_frame", frameHandler);
       this._frameOff = () => websocket.off("browser_viewer_frame", frameHandler);
     }
-	    if (!this._stateOff) {
-	      const stateHandler = ({ data }) => {
-	        if (data?.context_id !== this.contextId) return;
-	        if (data?.viewer_id && data.viewer_id !== this._viewerToken) return;
-	        if (data?.viewer_transport) {
-	          this.viewerTransport = this.normalizeViewerTransport(data.viewer_transport);
-	        }
+    if (!this._stateOff) {
+      const stateHandler = ({ data }) => {
+        if (data?.context_id !== this.contextId) return;
+        if (data?.viewer_id && data.viewer_id !== this._viewerToken) return;
+        if (data?.viewer_transport) {
+          this.viewerTransport = this.normalizeViewerTransport(data.viewer_transport);
+        }
         const commandContextId = this.normalizeContextId(data.active_browser_context_id || data.context_id || this.contextId);
-        this.applyBrowserListing(data.browsers || [], commandContextId, { replaceAll: Boolean(data.all_browsers) });
+        if (Array.isArray(data.browsers)) {
+          this.applyBrowserListing(data.browsers, commandContextId, {
+            replaceAll: Boolean(data.all_browsers),
+            replaceContext: !data.all_browsers,
+          });
+        }
         const command = String(data.command || "").toLowerCase();
         const commandBrowserId = this.normalizeBrowserId(data.browser_id);
         const result = data.result || {};
@@ -1102,23 +1163,40 @@ const model = {
           || this.activeBrowserId
           || this.firstBrowserId(resultContextId)
         );
-	        if (
-	          !this.activeBrowserId
-	          || command === "open"
-	          || command === "close"
-	          || this.sameBrowserTab(commandBrowserId, commandContextId, this.activeBrowserId, this.activeBrowserContextId)
-	        ) {
-	          this.setActiveBrowserId(preferredBrowserId, resultContextId);
-	        }
-	        this.applyActiveFrameState(resultState || this.browserById(this.activeBrowserId, this.activeBrowserContextId));
-	        this.applySnapshot(data.snapshot);
-	      };
+        const stateBrowserId = this.normalizeBrowserId(data.active_browser_id || data.browser_id || data.state?.id);
+        if (
+          stateBrowserId
+          && (
+            !this.activeBrowserId
+            || this.sameBrowserTab(stateBrowserId, commandContextId, this.activeBrowserId, this.activeBrowserContextId)
+          )
+        ) {
+          this.setActiveBrowserId(stateBrowserId, commandContextId);
+        }
+        if (
+          !this.activeBrowserId
+          || command === "open"
+          || command === "close"
+          || this.sameBrowserTab(commandBrowserId, commandContextId, this.activeBrowserId, this.activeBrowserContextId)
+        ) {
+          this.setActiveBrowserId(preferredBrowserId, resultContextId);
+        }
+        this.applyActiveFrameState(
+          resultState
+          || data.state
+          || this.browserById(this.activeBrowserId, this.activeBrowserContextId)
+        );
+        this.applySnapshot(data.snapshot);
+      };
       await websocket.on("browser_viewer_state", stateHandler);
       this._stateOff = () => websocket.off("browser_viewer_state", stateHandler);
     }
   },
 
   queueFrameRender(frameSrc, options = {}) {
+    if (this._pendingFrameSrc) {
+      this.releasePendingFrame();
+    }
     this._pendingFrameSrc = frameSrc;
     this._pendingFrameOptions = options || null;
     if (this._frameRenderHandle) return;
@@ -1148,22 +1226,26 @@ const model = {
   async renderDecodedFrame(frameSrc, options = {}, sequence = 0, surfaceSequence = this._surfaceOpenSequence) {
     if (!frameSrc) {
       if (sequence === this._frameRenderSequence) {
-        this.frameSrc = "";
+        this.clearFrameSrc();
       }
       return;
     }
     const dimensions = options?.dimensions || await loadFrameDimensions(frameSrc);
     if (sequence !== this._frameRenderSequence || surfaceSequence !== this._surfaceOpenSequence) {
+      options?.cleanup?.();
       return;
     }
     const viewport = this.currentViewportSize() || this._lastViewport;
     if (!this.frameMatchesViewport(dimensions, viewport)) {
       this.requestViewportSyncAfterRejectedFrame();
       if (!this.shouldAcceptMismatchedFrame(dimensions)) {
+        options?.cleanup?.();
         return;
       }
     }
+    this.releaseRenderedFrameUrl(frameSrc);
     this.frameSrc = frameSrc;
+    this._frameObjectUrl = options?.objectUrl || "";
     this._lastFrameDimensions = dimensions;
     this._lastFrameAt = Date.now();
     options?.onAccepted?.();
@@ -1262,9 +1344,26 @@ const model = {
     }
     this._frameRenderHandle = null;
     this._frameRenderCancel = null;
+    this.releasePendingFrame();
+    this._frameRenderSequence += 1;
+  },
+
+  releasePendingFrame() {
+    this._pendingFrameOptions?.cleanup?.();
     this._pendingFrameSrc = "";
     this._pendingFrameOptions = null;
-    this._frameRenderSequence += 1;
+  },
+
+  releaseRenderedFrameUrl(nextSrc = "") {
+    if (this._frameObjectUrl && this._frameObjectUrl !== nextSrc) {
+      globalThis.URL?.revokeObjectURL?.(this._frameObjectUrl);
+      this._frameObjectUrl = "";
+    }
+  },
+
+  clearFrameSrc() {
+    this.releaseRenderedFrameUrl("");
+    this.frameSrc = "";
   },
 
   beginCommand() {
@@ -1329,7 +1428,7 @@ const model = {
       );
       if (!this.activeBrowserId) {
         this.frameState = null;
-        this.frameSrc = "";
+        this.clearFrameSrc();
       }
       if (result.state?.currentUrl || result.currentUrl) {
         this.address = result.state?.currentUrl || result.currentUrl;
@@ -1438,7 +1537,7 @@ const model = {
     this.error = "";
     this.switchingBrowserId = targetId;
     this.cancelFrameRender();
-    this.frameSrc = "";
+    this.clearFrameSrc();
     this.frameState = browser || null;
     if (!this.addressFocused && browser?.currentUrl) {
       this.address = browser.currentUrl;
@@ -1643,35 +1742,35 @@ const model = {
     }
   },
 
-	  applySnapshot(snapshot = null) {
-	    if (!snapshot?.image) return;
-	    const snapshotId = this.normalizeBrowserId(snapshot.browser_id || snapshot.state?.id);
+  applySnapshot(snapshot = null) {
+    if (!snapshot?.image) return;
+    const snapshotId = this.normalizeBrowserId(snapshot.browser_id || snapshot.state?.id);
     const snapshotContextId = this.normalizeContextId(snapshot.context_id || snapshot.state?.context_id || this.activeBrowserContextId);
-	    if (
+    if (
       snapshotId
       && this.activeBrowserId
       && !this.sameBrowserTab(snapshotId, snapshotContextId, this.activeBrowserId, this.activeBrowserContextId)
     ) {
-	      return;
-	    }
-	    if (snapshot.state) {
-	      this.applyActiveFrameState(snapshot.state);
-	    }
-	    const frameBrowserId = snapshotId || this.activeBrowserId;
-	    this.queueFrameRender(`data:${snapshot.mime || "image/jpeg"};base64,${snapshot.image}`, {
-	      browserId: frameBrowserId,
+      return;
+    }
+    if (snapshot.state) {
+      this.applyActiveFrameState(snapshot.state);
+    }
+    const frameBrowserId = snapshotId || this.activeBrowserId;
+    this.queueFrameRender(`data:${snapshot.mime || "image/jpeg"};base64,${snapshot.image}`, {
+      browserId: frameBrowserId,
       contextId: snapshotContextId,
-	      onAccepted: () => {
-	        if (
+      onAccepted: () => {
+        if (
           this.sameBrowserId(this.switchingBrowserId, frameBrowserId)
           && this.normalizeContextId(this.activeBrowserContextId) === snapshotContextId
         ) {
-	          this.switchingBrowserId = null;
-	        }
-	        this._surfaceSwitching = false;
-	      },
-	    });
-	  },
+          this.switchingBrowserId = null;
+        }
+        this._surfaceSwitching = false;
+      },
+    });
+  },
 
   isSwitchingBrowser() {
     return Boolean(

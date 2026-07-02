@@ -329,10 +329,14 @@ class _BrowserScreencast:
         quality: int,
         every_nth_frame: int,
         viewport: dict[str, int],
+        capture_scale: float = 1.0,
     ) -> None:
         self.session.on("Page.screencastFrame", self._on_frame)
         width = max(320, min(4096, int(viewport.get("width") or DEFAULT_VIEWPORT["width"])))
         height = max(200, min(4096, int(viewport.get("height") or DEFAULT_VIEWPORT["height"])))
+        scale = max(1.0, min(2.0, float(capture_scale or 1.0)))
+        max_width = max(320, min(SCREENCAST_MAX_WIDTH, int(round(width * scale))))
+        max_height = max(200, min(SCREENCAST_MAX_HEIGHT, int(round(height * scale))))
         self._expected_width = width
         self._expected_height = height
         with contextlib.suppress(Exception):
@@ -343,8 +347,8 @@ class _BrowserScreencast:
             {
                 "format": "jpeg",
                 "quality": max(20, min(95, int(quality))),
-                "maxWidth": SCREENCAST_MAX_WIDTH,
-                "maxHeight": SCREENCAST_MAX_HEIGHT,
+                "maxWidth": max_width,
+                "maxHeight": max_height,
                 "everyNthFrame": max(1, int(every_nth_frame)),
             },
         )
@@ -1616,6 +1620,7 @@ class _BrowserRuntimeCore:
         *,
         quality: int = 78,
         every_nth_frame: int = 1,
+        capture_scale: float = 1.0,
     ) -> dict[str, Any]:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
@@ -1634,6 +1639,7 @@ class _BrowserRuntimeCore:
                 quality=quality,
                 every_nth_frame=every_nth_frame,
                 viewport=page.viewport_size or DEFAULT_VIEWPORT,
+                capture_scale=capture_scale,
             )
         except Exception:
             self.screencasts.pop(stream_id, None)
