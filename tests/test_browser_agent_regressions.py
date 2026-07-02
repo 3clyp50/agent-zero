@@ -1162,7 +1162,10 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "initial_viewport = self._viewport_from_data(data)" in ws_browser
     assert '"set_viewport"' in ws_browser
     assert "start_screencast" in ws_browser
-    assert "pop_screencast_frame" in ws_browser
+    assert "read_screencast_frame" in ws_browser
+    assert "FRAME_READ_TIMEOUT_SECONDS" in ws_browser
+    assert "FRAME_IDLE_POLL_SECONDS" not in ws_browser
+    assert "except TimeoutError:" in ws_browser
     assert "stop_screencast" in ws_browser
     assert "viewer_transport == VIEWER_TRANSPORT_SCREENCAST" in ws_browser
     assert '"viewer_transport": viewer_transport' in ws_browser

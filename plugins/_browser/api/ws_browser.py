@@ -11,7 +11,7 @@ from helpers.ws_manager import WsResult
 from plugins._browser.helpers.runtime import get_runtime, list_runtime_sessions
 
 
-FRAME_IDLE_POLL_SECONDS = 0.05
+FRAME_READ_TIMEOUT_SECONDS = 0.5
 FRAME_RETRY_DELAY_SECONDS = 0.5
 FRAME_STATE_REFRESH_SECONDS = 0.75
 SNAPSHOT_STATE_POLL_SECONDS = 0.75
@@ -445,11 +445,14 @@ class WsBrowser(WsHandler):
                         last_state_refresh = now
 
                     try:
-                        frame = await runtime.call("pop_screencast_frame", stream_id)
+                        frame = await runtime.call(
+                            "read_screencast_frame",
+                            stream_id,
+                            timeout=FRAME_READ_TIMEOUT_SECONDS,
+                        )
                     except KeyError:
                         break
-                    if frame is None:
-                        await asyncio.sleep(FRAME_IDLE_POLL_SECONDS)
+                    except TimeoutError:
                         continue
 
                     frame["context_id"] = context_id
