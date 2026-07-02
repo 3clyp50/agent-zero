@@ -2846,8 +2846,21 @@ const model = {
 
 export const store = createStore("browserPage", model);
 
+const WEB_INTENT_SCHEMES = new Set(["http", "https", "file", "about"]);
+
+function isWebUrlIntent(url = "") {
+  const value = String(url || "").trim();
+  if (!value) return true;
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(value);
+  if (!scheme) return true;
+  return WEB_INTENT_SCHEMES.has(scheme[1].toLowerCase());
+}
+
 registerUrlHandler(async (intent = {}) => {
   const url = String(intent.url || "").trim();
+  // Custom schemes such as a0-editor: belong to other surfaces; claiming them
+  // here would navigate the browser to an unloadable URL.
+  if (!isWebUrlIntent(url)) return false;
   const payload = { url, source: intent.source || "surface-url-intent" };
   await openLatestSurface("browser", payload);
   return await store.openUrlIntent(url, { source: payload.source });

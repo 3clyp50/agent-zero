@@ -592,6 +592,7 @@ def test_desktop_text_open_with_routes_to_editor_surface():
     desktop_session = read("plugins", "_desktop", "helpers", "desktop_session.py")
     desktop_store = read("plugins", "_desktop", "webui", "desktop-store.js")
     editor_store = read("plugins", "_editor", "webui", "editor-store.js")
+    browser_store = read("plugins", "_browser", "webui", "browser-store.js")
 
     assert 'EDITOR_HANDLER_DESKTOP_ID = "agent-zero-editor.desktop"' in desktop_session
     assert "def _write_editor_bridge_script" in desktop_session
@@ -606,6 +607,11 @@ def test_desktop_text_open_with_routes_to_editor_surface():
     assert "registerUrlHandler" in editor_store
     assert "handleEditorUrlIntent" in editor_store
     assert 'openLatestSurface("editor"' in editor_store
+
+    # The browser surface must not claim a0-editor: intents, otherwise the
+    # editor "Open With" handler lands on an unloadable about:blank page.
+    assert "function isWebUrlIntent" in browser_store
+    assert "if (!isWebUrlIntent(url)) return false;" in browser_store
 
 
 def test_office_and_desktop_skills_are_rehomed_and_renamed():

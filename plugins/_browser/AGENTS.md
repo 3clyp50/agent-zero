@@ -20,6 +20,7 @@
 - Keep the WebUI Browser inside its own modal/canvas affordance; do not replace it with page-level navigation.
 - Default the visible WebUI Browser to live CDP screencast for responsiveness. Keep lightweight CDP/DOM state snapshots as the fallback transport.
 - Keep narrow WebUI Browser controls usable by grouping navigation with Annotate/settings above a full-width address bar.
+- Browser URL-intent handling must only claim web URL schemes and leave custom Agent Zero schemes to their owning surfaces.
 - Prefer DOM/CDP browser actions with refs, selectors, frame-chain refs, and screenshots over viewport coordinate input. Coordinates remain a visual fallback.
 - Do not hardcode user-specific browser paths or secrets.
 
