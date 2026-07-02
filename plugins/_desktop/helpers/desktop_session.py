@@ -79,6 +79,7 @@ URL_INTENT_MAX_ITEMS = 50
 URL_INTENT_MAX_LENGTH = 8192
 URL_HANDLER_DESKTOP_ID = "agent-zero-browser.desktop"
 EDITOR_HANDLER_DESKTOP_ID = "agent-zero-editor.desktop"
+WRITER_HANDLER_DESKTOP_ID = "libreoffice-writer.desktop"
 SHUTDOWN_HANDLER_DESKTOP_ID = "agent-zero-shutdown.desktop"
 SHUTDOWN_PANEL_LAUNCHER_ID = SHUTDOWN_HANDLER_DESKTOP_ID
 SHUTDOWN_CONFIRM_SECONDS = 8
@@ -2197,15 +2198,19 @@ def _editor_text_handler_mime_types() -> tuple[str, ...]:
 
 def _write_mimeapps_defaults(path: Path, url_desktop_id: str, editor_desktop_id: str) -> None:
     url_associations = ";".join([url_desktop_id, ""])
-    editor_associations = ";".join([editor_desktop_id, ""])
+    # LibreOffice Writer stays the default so double-clicks keep the user (and
+    # agents) inside the Desktop; the Agent Zero Editor remains an "Open With"
+    # option. When Writer's desktop entry is missing, xdg falls back through
+    # the added associations to the editor.
+    text_associations = ";".join([WRITER_HANDLER_DESKTOP_ID, editor_desktop_id, ""])
     lines = [
         "[Default Applications]",
         *(f"{mime_type}={url_desktop_id}" for mime_type in _url_handler_mime_types()),
-        *(f"{mime_type}={editor_desktop_id}" for mime_type in _editor_text_handler_mime_types()),
+        *(f"{mime_type}={WRITER_HANDLER_DESKTOP_ID}" for mime_type in _editor_text_handler_mime_types()),
         "",
         "[Added Associations]",
         *(f"{mime_type}={url_associations}" for mime_type in _url_handler_mime_types()),
-        *(f"{mime_type}={editor_associations}" for mime_type in _editor_text_handler_mime_types()),
+        *(f"{mime_type}={text_associations}" for mime_type in _editor_text_handler_mime_types()),
         "",
     ]
     path.parent.mkdir(parents=True, exist_ok=True)

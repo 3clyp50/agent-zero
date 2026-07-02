@@ -608,6 +608,12 @@ def test_desktop_text_open_with_routes_to_editor_surface():
     assert "handleEditorUrlIntent" in editor_store
     assert 'openLatestSurface("editor"' in editor_store
 
+    # Text files default to LibreOffice Writer inside the Desktop; the Agent
+    # Zero Editor stays available as a secondary "Open With" association.
+    assert 'WRITER_HANDLER_DESKTOP_ID = "libreoffice-writer.desktop"' in desktop_session
+    assert "{mime_type}={WRITER_HANDLER_DESKTOP_ID}" in desktop_session
+    assert "[WRITER_HANDLER_DESKTOP_ID, editor_desktop_id, " in desktop_session
+
     # The browser surface must not claim a0-editor: intents, otherwise the
     # editor "Open With" handler lands on an unloadable about:blank page.
     assert "function isWebUrlIntent" in browser_store
