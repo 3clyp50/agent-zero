@@ -1182,6 +1182,9 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "queueFrameRender" in browser_store
     assert "requestAnimationFrame" in browser_store
     assert "function frameImageSource(data = {})" in browser_store
+    assert "const BROWSER_BINARY_FRAME_REQUESTS_ENABLED = false;" in browser_store
+    assert "const BROWSER_BINARY_PAYLOADS_SUPPORTED = typeof Blob" in browser_store
+    assert "if (data.encoding === \"binary\") return null;" in browser_store
     assert 'const BROWSER_VIEWER_TRANSPORT_SNAPSHOT = "snapshot";' in browser_store
     assert 'const BROWSER_VIEWER_TRANSPORT_SCREENCAST = "screencast";' in browser_store
     assert "viewerTransport: BROWSER_VIEWER_TRANSPORT_SCREENCAST" in browser_store

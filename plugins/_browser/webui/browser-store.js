@@ -34,7 +34,8 @@ const ANNOTATION_DOM_LIMIT = 1200;
 const ANNOTATION_TRAY_MARGIN = 10;
 const BROWSER_VISUAL_SHORTCUT_KEYS = new Set(["a", "c", "insert", "v", "x", "y", "z"]);
 const LOCAL_EDITABLE_SELECTOR = "input, textarea, select, [contenteditable]";
-const BROWSER_BINARY_FRAMES_SUPPORTED = typeof Blob === "function"
+const BROWSER_BINARY_FRAME_REQUESTS_ENABLED = false;
+const BROWSER_BINARY_PAYLOADS_SUPPORTED = typeof Blob === "function"
   && typeof globalThis.URL?.createObjectURL === "function";
 
 function makeViewerToken() {
@@ -123,8 +124,8 @@ function frameImageSource(data = {}) {
   const isArrayBuffer = typeof ArrayBuffer !== "undefined" && image instanceof ArrayBuffer;
   const isView = typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView?.(image);
   const isBlob = typeof Blob !== "undefined" && image instanceof Blob;
-  if (data.encoding === "binary" || isArrayBuffer || isView || isBlob) {
-    if (!BROWSER_BINARY_FRAMES_SUPPORTED) return null;
+  if (isArrayBuffer || isView || isBlob) {
+    if (!BROWSER_BINARY_PAYLOADS_SUPPORTED) return null;
     const blob = isBlob ? image : new Blob([image], { type: mime });
     const src = globalThis.URL.createObjectURL(blob);
     return {
@@ -133,6 +134,7 @@ function frameImageSource(data = {}) {
       cleanup: () => globalThis.URL.revokeObjectURL(src),
     };
   }
+  if (data.encoding === "binary") return null;
   if (typeof image !== "string") return null;
   return {
     src: `data:${mime};base64,${image}`,
@@ -944,7 +946,7 @@ const model = {
   },
 
   supportsBinaryFrames() {
-    return BROWSER_BINARY_FRAMES_SUPPORTED;
+    return BROWSER_BINARY_FRAME_REQUESTS_ENABLED && BROWSER_BINARY_PAYLOADS_SUPPORTED;
   },
 
   captureDevicePixelRatio() {
