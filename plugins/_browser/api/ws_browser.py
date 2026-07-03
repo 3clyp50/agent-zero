@@ -451,7 +451,37 @@ class WsBrowser(WsHandler):
                 last_state_refresh = 0.0
                 last_state_signature = self._state_signature(active_id, browsers)
                 frame_sequence = 0
+                server_loop = asyncio.get_running_loop()
+                stop_event = asyncio.Event()
+
+                async def emit_frame(frame: dict[str, Any]) -> None:
+                    nonlocal frame_sequence
+                    try:
+                        frame_sequence += 1
+                        payload = self._frame_payload(
+                            frame,
+                            context_id=context_id,
+                            viewer_id=viewer_id,
+                            browser_id=active_id,
+                            sequence=frame_sequence,
+                            binary_frames=binary_frames,
+                        )
+                        if not slim_frames:
+                            payload["browsers"] = browsers
+                            payload["state"] = state
+                        await self._emit_to_connected_viewer(sid, "browser_viewer_frame", payload)
+                    except BaseException:
+                        stop_event.set()
+                        raise
+
+                def frame_consumer(frame: dict[str, Any]):
+                    return asyncio.run_coroutine_threadsafe(emit_frame(frame), server_loop)
+
+                await runtime.call("attach_screencast_consumer", stream_id, frame_consumer)
+
                 while True:
+                    if stop_event.is_set():
+                        break
                     now = time.monotonic()
                     if now - last_state_refresh >= FRAME_STATE_REFRESH_SECONDS:
                         listing = await runtime.call("list")
@@ -475,29 +505,10 @@ class WsBrowser(WsHandler):
                         last_state_refresh = now
 
                     try:
-                        frame = await runtime.call(
-                            "read_screencast_frame",
-                            stream_id,
-                            timeout=FRAME_READ_TIMEOUT_SECONDS,
-                        )
-                    except KeyError:
+                        await asyncio.wait_for(stop_event.wait(), timeout=FRAME_READ_TIMEOUT_SECONDS)
                         break
                     except TimeoutError:
                         continue
-
-                    frame_sequence += 1
-                    payload = self._frame_payload(
-                        frame,
-                        context_id=context_id,
-                        viewer_id=viewer_id,
-                        browser_id=active_id,
-                        sequence=frame_sequence,
-                        binary_frames=binary_frames,
-                    )
-                    if not slim_frames:
-                        payload["browsers"] = browsers
-                        payload["state"] = state
-                    await self._emit_to_connected_viewer(sid, "browser_viewer_frame", payload)
             except asyncio.CancelledError:
                 raise
             except Exception:

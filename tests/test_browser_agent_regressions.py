@@ -1,4 +1,5 @@
 import asyncio
+import concurrent.futures
 import json
 import re
 import sys
@@ -609,7 +610,7 @@ def test_browser_canvas_startup_waits_for_raw_viewport_settle():
     assert "isCanvasSurfaceVisible(element)" in js
     assert "scheduleViewportSyncForSurface" in js
     assert "const targetChanged = Boolean(" in js
-    assert "if (this.frameSrc && !targetChanged)" in js
+    assert "if (this.hasFrame() && !targetChanged)" in js
     assert "this.cancelFrameRender();" in js
     assert "this.resetRenderedFrame();" in js
 
@@ -626,7 +627,7 @@ def test_browser_surface_handoffs_keep_existing_frame_until_replacement_arrives(
     clear_block = js[clear_start: js.index("beginCommand()", clear_start)]
 
     assert "modeChanged" not in prepare_block
-    assert "if (this.frameSrc && !targetChanged)" in prepare_block
+    assert "if (this.hasFrame() && !targetChanged)" in prepare_block
     assert "this.resetRenderedFrame();" in prepare_block
     assert "this.cancelFrameRender();" in viewport_block
     assert "this.resetRenderedFrame();" not in viewport_block
@@ -674,12 +675,12 @@ def test_browser_canvas_nudges_width_after_first_accepted_frame():
     assert 'canvas.activeSurfaceId !== "browser"' in js
     assert "canvas.setWidth?.(nudgedWidth, { persist: false })" in js
     assert "this.queueViewportSync(true)" in js
-    frame_assignment_index = js.index("this.frameSrc = frameSrc;")
+    frame_accept_index = js.index("this._lastFrameDimensions = dimensions;")
     frame_nudge_schedule_index = js.index(
         "this.scheduleCanvasWidthNudgeAfterFirstFrame();",
-        frame_assignment_index,
+        frame_accept_index,
     )
-    assert frame_assignment_index < frame_nudge_schedule_index
+    assert frame_accept_index < frame_nudge_schedule_index
 
 
 def test_browser_canvas_restarts_stream_after_page_navigation():
@@ -1163,7 +1164,10 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "initial_viewport = self._viewport_from_data(data)" in ws_browser
     assert '"set_viewport"' in ws_browser
     assert "start_screencast" in ws_browser
-    assert "read_screencast_frame" in ws_browser
+    assert '"attach_screencast_consumer"' in ws_browser
+    assert "asyncio.run_coroutine_threadsafe" in ws_browser
+    assert 'runtime.call(\n                            "read_screencast_frame"' not in ws_browser
+    assert "read_screencast_frame" in runtime
     assert "FRAME_READ_TIMEOUT_SECONDS" in ws_browser
     assert "FRAME_IDLE_POLL_SECONDS" not in ws_browser
     assert "except TimeoutError:" in ws_browser
@@ -1174,6 +1178,10 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert '"Page.startScreencast"' in runtime
     assert '"Page.screencastFrame"' in runtime
     assert '"Page.screencastFrameAck"' in runtime
+    assert "async def attach_screencast_consumer" in runtime
+    assert "async def attach_consumer" in runtime
+    assert "await self._deliver_frame(" in runtime
+    assert "await asyncio.wrap_future(future)" in runtime
     assert '"Page.stopScreencast"' in runtime
     assert '"Emulation.setDeviceMetricsOverride"' in runtime
     assert '"Emulation.setVisibleSize"' in runtime
@@ -1184,7 +1192,10 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "function frameImageSource(data = {})" in browser_store
     assert "const BROWSER_BINARY_FRAME_REQUESTS_ENABLED = false;" in browser_store
     assert "const BROWSER_BINARY_PAYLOADS_SUPPORTED = typeof Blob" in browser_store
+    assert "const BROWSER_CANVAS_FRAMES_SUPPORTED = typeof globalThis.createImageBitmap" in browser_store
     assert "if (data.encoding === \"binary\") return null;" in browser_store
+    assert "async function loadFrameBitmap(src, options = {})" in browser_store
+    assert "return await globalThis.createImageBitmap(blob);" in browser_store
     assert 'const BROWSER_VIEWER_TRANSPORT_SNAPSHOT = "snapshot";' in browser_store
     assert 'const BROWSER_VIEWER_TRANSPORT_SCREENCAST = "screencast";' in browser_store
     assert "viewerTransport: BROWSER_VIEWER_TRANSPORT_SCREENCAST" in browser_store
@@ -1198,7 +1209,16 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "frameDimensionsFromMetadata(metadata = null)" in browser_store
     assert "metadata.expectedWidth || metadata.deviceWidth || metadata.jpegWidth" in browser_store
     assert "dimensions: this.frameDimensionsFromData(data)" in browser_store
-    assert "const dimensions = options?.dimensions || await loadFrameDimensions(frameSrc)" in browser_store
+    assert "useCanvas: true" in browser_store
+    assert "let dimensions = options?.dimensions || null" in browser_store
+    assert "dimensions ||= await loadFrameDimensions(frameSrc)" in browser_store
+    assert "paintFrameBitmap(bitmap)" in browser_store
+    assert "freezeCanvasFrameToImage()" in browser_store
+    assert 'this._frameCanvas.toDataURL("image/jpeg", 0.86)' in browser_store
+    assert "this.frameSrc = frameSrc;" in browser_store
+    assert "hasFrame()" in browser_store
+    assert "frameCanvasReady: false" in browser_store
+    assert "attachFrameCanvas(canvas = null)" in browser_store
     assert "viewer_transport: this.requestedViewerTransport()" in browser_store
     assert "binary_frames: this.supportsBinaryFrames()" in browser_store
     assert "slim_frames: true" in browser_store
@@ -1247,6 +1267,10 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "fallback_screenshot" not in ws_browser
     assert "canvas_wheel_screenshot" not in ws_browser
     assert "surface_mode: this._mode" not in browser_store
+    assert '<canvas class="browser-frame browser-frame-canvas"' in main_html
+    assert 'x-init="$store.browserPage.attachFrameCanvas($el)"' in main_html
+    assert '<img class="browser-frame browser-frame-image"' in main_html
+    assert "$store.browserPage.hasFrame()" in main_html
     assert "overflow: hidden;" in main_html
     assert "object-fit: contain;" in main_html
     assert "image-rendering: auto;" in main_html
@@ -1626,6 +1650,93 @@ async def test_browser_screencast_acknowledges_and_drops_stale_frames():
 
     assert ("Page.stopScreencast", {}) in session.sent
     assert session.detached is True
+
+
+@pytest.mark.anyio
+async def test_browser_screencast_acks_after_consumer_settles():
+    class FakeSession:
+        def __init__(self):
+            self.handlers = {}
+            self.sent = []
+
+        def on(self, event, handler):
+            self.handlers[event] = handler
+
+        async def send(self, method, params=None):
+            self.sent.append((method, params or {}))
+
+        async def detach(self):
+            pass
+
+    session = FakeSession()
+    delivered = []
+    delivery = concurrent.futures.Future()
+    screencast = _BrowserScreencast(
+        stream_id="stream",
+        browser_id=7,
+        session=session,
+        mime="image/jpeg",
+    )
+    screencast.frame_consumer = lambda frame: delivered.append(frame) or delivery
+
+    await screencast.start(quality=92, every_nth_frame=1, viewport={"width": 640, "height": 480})
+    session.handlers["Page.screencastFrame"](
+        {"data": SMALL_JPEG_10X10, "metadata": {}, "sessionId": 21}
+    )
+    await asyncio.sleep(0)
+
+    assert delivered
+    assert ("Page.screencastFrameAck", {"sessionId": 21}) not in session.sent
+
+    delivery.set_result(None)
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    assert ("Page.screencastFrameAck", {"sessionId": 21}) in session.sent
+
+    await screencast.stop()
+
+
+@pytest.mark.anyio
+async def test_browser_screencast_attach_consumer_flushes_queued_frame():
+    class FakeSession:
+        def __init__(self):
+            self.handlers = {}
+            self.sent = []
+
+        def on(self, event, handler):
+            self.handlers[event] = handler
+
+        async def send(self, method, params=None):
+            self.sent.append((method, params or {}))
+
+        async def detach(self):
+            pass
+
+    session = FakeSession()
+    delivered = []
+    delivery = concurrent.futures.Future()
+    delivery.set_result(None)
+    screencast = _BrowserScreencast(
+        stream_id="stream",
+        browser_id=7,
+        session=session,
+        mime="image/jpeg",
+    )
+
+    await screencast.start(quality=92, every_nth_frame=1, viewport={"width": 640, "height": 480})
+    session.handlers["Page.screencastFrame"](
+        {"data": SMALL_JPEG_10X10, "metadata": {}, "sessionId": 31}
+    )
+    await asyncio.sleep(0)
+
+    await screencast.attach_consumer(lambda frame: delivered.append(frame) or delivery)
+
+    assert delivered
+    assert delivered[0]["image"] == SMALL_JPEG_10X10
+    assert await screencast.pop_frame() is None
+
+    await screencast.stop()
 
 
 @pytest.mark.anyio

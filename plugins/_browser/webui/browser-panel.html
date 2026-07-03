@@ -187,12 +187,17 @@
 	        <div class="browser-stage" tabindex="0" @click="$el.focus()"
 	          :class="{ 'is-annotating': $store.browserPage.annotating }"
 	          @wheel.prevent="$store.browserPage.handleStageWheel($event)">
+	          <canvas class="browser-frame browser-frame-canvas"
+	            x-show="$store.browserPage.frameCanvasReady"
+	            x-init="$store.browserPage.attachFrameCanvas($el)"
+	            @click="$store.browserPage.sendMouse('click', $event)"
+	            @mousemove.throttle.250ms="$store.browserPage.sendMouse('move', $event)"></canvas>
 	          <template x-if="$store.browserPage.frameSrc">
-            <img class="browser-frame" :src="$store.browserPage.frameSrc"
+            <img class="browser-frame browser-frame-image" :src="$store.browserPage.frameSrc"
               @click="$store.browserPage.sendMouse('click', $event)"
               @mousemove.throttle.250ms="$store.browserPage.sendMouse('move', $event)" draggable="false" />
           </template>
-	          <template x-if="$store.browserPage.annotating && $store.browserPage.frameSrc">
+	          <template x-if="$store.browserPage.annotating && $store.browserPage.hasFrame()">
 	            <div class="browser-annotation-layer"
 	              :class="{ 'is-busy': $store.browserPage.annotationBusy }"
 	              @pointerdown.stop.prevent="$store.browserPage.startAnnotationSelection($event)"
@@ -267,7 +272,7 @@
 	                @click="$store.browserPage.sendAnnotationsToChat()">Send now</button>
 	            </div>
 	          </div>
-	          <template x-if="!$store.browserPage.frameSrc && !$store.browserPage.isBusy()">
+	          <template x-if="!$store.browserPage.hasFrame() && !$store.browserPage.isBusy()">
             <div class="browser-empty">
               <span class="material-symbols-outlined">captive_portal</span>
               <button class="btn btn-field" @click="$store.browserPage.command('open')">Open

@@ -317,6 +317,7 @@ class _BrowserScreencast:
         self.browser_id = browser_id
         self.session = session
         self.mime = mime
+        self.frame_consumer: Any | None = None
         self.queue = asyncio.Queue(maxsize=1)
         self.stopped = False
         self._ack_tasks: set[asyncio.Task] = set()
@@ -398,6 +399,12 @@ class _BrowserScreencast:
             raise RuntimeError("Browser screencast stopped.")
         return frame
 
+    async def attach_consumer(self, frame_consumer: Any) -> None:
+        self.frame_consumer = frame_consumer
+        frame = await self.pop_frame()
+        if frame:
+            await self._deliver_frame(frame)
+
     async def stop(self) -> None:
         if self.stopped:
             return
@@ -423,6 +430,7 @@ class _BrowserScreencast:
         task.add_done_callback(self._ack_tasks.discard)
 
     async def _handle_frame(self, params: dict[str, Any]) -> None:
+        stop_after_ack = False
         try:
             data = params.get("data") or ""
             if data:
@@ -432,7 +440,7 @@ class _BrowserScreencast:
                     metadata["jpegWidth"], metadata["jpegHeight"] = size
                 metadata["expectedWidth"] = self._expected_width
                 metadata["expectedHeight"] = self._expected_height
-                self._queue_latest(
+                await self._deliver_frame(
                     {
                         "browser_id": self.browser_id,
                         "mime": self.mime,
@@ -440,6 +448,13 @@ class _BrowserScreencast:
                         "metadata": metadata,
                     }
                 )
+        except asyncio.CancelledError:
+            stop_after_ack = True
+        except Exception:
+            if self.frame_consumer:
+                stop_after_ack = True
+            else:
+                raise
         finally:
             session_id = params.get("sessionId")
             if session_id is not None and not self.stopped:
@@ -448,6 +463,16 @@ class _BrowserScreencast:
                         "Page.screencastFrameAck",
                         {"sessionId": int(session_id)},
                     )
+            if stop_after_ack:
+                self.stopped = True
+
+    async def _deliver_frame(self, frame: dict[str, Any]) -> None:
+        if not self.frame_consumer:
+            self._queue_latest(frame)
+            return
+        future = self.frame_consumer(frame)
+        if future is not None:
+            await asyncio.wrap_future(future)
 
     def _queue_latest(self, frame: dict[str, Any]) -> None:
         self._drop_queued_frames()
@@ -1668,6 +1693,12 @@ class _BrowserRuntimeCore:
         if not screencast:
             raise KeyError("Browser screencast is not active.")
         return await screencast.pop_frame()
+
+    async def attach_screencast_consumer(self, stream_id: str, frame_consumer: Any) -> None:
+        screencast = self.screencasts.get(str(stream_id or ""))
+        if not screencast:
+            raise KeyError("Browser screencast is not active.")
+        await screencast.attach_consumer(frame_consumer)
 
     async def stop_screencast(self, stream_id: str) -> None:
         screencast = self.screencasts.pop(str(stream_id or ""), None)

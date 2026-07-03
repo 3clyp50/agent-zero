@@ -37,6 +37,7 @@ const LOCAL_EDITABLE_SELECTOR = "input, textarea, select, [contenteditable]";
 const BROWSER_BINARY_FRAME_REQUESTS_ENABLED = false;
 const BROWSER_BINARY_PAYLOADS_SUPPORTED = typeof Blob === "function"
   && typeof globalThis.URL?.createObjectURL === "function";
+const BROWSER_CANVAS_FRAMES_SUPPORTED = typeof globalThis.createImageBitmap === "function";
 
 function makeViewerToken() {
   return globalThis.crypto?.randomUUID?.()
@@ -130,6 +131,7 @@ function frameImageSource(data = {}) {
     const src = globalThis.URL.createObjectURL(blob);
     return {
       src,
+      blob,
       objectUrl: src,
       cleanup: () => globalThis.URL.revokeObjectURL(src),
     };
@@ -143,6 +145,16 @@ function frameImageSource(data = {}) {
   };
 }
 
+async function loadFrameBitmap(src, options = {}) {
+  if (!BROWSER_CANVAS_FRAMES_SUPPORTED || !src) return null;
+  try {
+    const blob = options.blob || await fetch(src).then((response) => response.blob());
+    return await globalThis.createImageBitmap(blob);
+  } catch {
+    return null;
+  }
+}
+
 const model = {
   loading: true,
   error: "",
@@ -153,6 +165,7 @@ const model = {
   activeBrowserContextId: "",
   address: "",
   frameSrc: "",
+  frameCanvasReady: false,
   frameState: null,
   viewerTransport: BROWSER_VIEWER_TRANSPORT_SCREENCAST,
   liveScreencastEnabled: true,
@@ -179,6 +192,7 @@ const model = {
   _frameRenderHandle: null,
   _frameRenderCancel: null,
   _frameRenderSequence: 0,
+  _frameCanvas: null,
   _floatingCleanup: null,
   _stageElement: null,
   _stageResizeObserver: null,
@@ -473,6 +487,7 @@ const model = {
       this.address = "";
       this.frameState = null;
       this.clearFrameSrc();
+      this.clearFrameCanvas();
       if (this.contextId) {
         await this.connectViewer();
       }
@@ -784,11 +799,13 @@ const model = {
   },
 
   releaseSurfaceBindings() {
+    this.freezeCanvasFrameToImage();
     this._floatingCleanup?.();
     this._floatingCleanup = null;
     this._stageResizeObserver?.disconnect?.();
     this._stageResizeObserver = null;
     this._stageElement = null;
+    this._frameCanvas = null;
   },
 
   isCanvasSurfaceVisible(element = null) {
@@ -843,7 +860,7 @@ const model = {
     this._surfaceMounted = true;
     this._surfaceOpenedAt = Date.now();
     this._lastViewportKey = "";
-    if (this.frameSrc && !targetChanged) {
+    if (this.hasFrame() && !targetChanged) {
       this._surfaceSwitching = false;
       this.switchingBrowserId = null;
       return;
@@ -864,12 +881,13 @@ const model = {
   resetRenderedFrame() {
     this.cancelFrameRender();
     this.clearFrameSrc();
+    this.clearFrameCanvas();
     this._lastFrameDimensions = null;
     this._lastFrameAt = 0;
   },
 
   resetRenderedFrameIfViewportChanged(viewport = null, requestedBrowserId = null, requestedContextId = "") {
-    if (!viewport || !this.frameSrc || !this._lastViewport) return;
+    if (!viewport || !this.hasFrame() || !this._lastViewport) return;
     const targetBrowserId = requestedBrowserId || this.activeBrowserId || this.firstBrowserId();
     const targetContextId = this.normalizeContextId(requestedContextId || this.contextIdForBrowserId(targetBrowserId) || this.activeBrowserContextId);
     if (!this.sameBrowserTab(this._lastViewport.browserId, this._lastViewport.contextId, targetBrowserId, targetContextId)) return;
@@ -1107,7 +1125,9 @@ const model = {
             browserId: frameBrowserId,
             contextId: incomingContextId,
             dimensions: this.frameDimensionsFromData(data),
+            blob: frameImage.blob,
             objectUrl: frameImage.objectUrl,
+            useCanvas: true,
             cleanup: frameImage.cleanup,
             onAccepted: () => {
               if (
@@ -1122,12 +1142,14 @@ const model = {
         } else if (!data.state) {
           this.cancelFrameRender();
           this.clearFrameSrc();
+          this.clearFrameCanvas();
         }
         if (!data.image && !data.state) {
           if (!this.activeBrowserId) {
             this.setActiveBrowserId(null, "");
             this.frameState = null;
             this.clearFrameSrc();
+            this.clearFrameCanvas();
           }
         }
         this._lastFrameAt = Date.now();
@@ -1229,11 +1251,21 @@ const model = {
     if (!frameSrc) {
       if (sequence === this._frameRenderSequence) {
         this.clearFrameSrc();
+        this.clearFrameCanvas();
       }
       return;
     }
-    const dimensions = options?.dimensions || await loadFrameDimensions(frameSrc);
+    let bitmap = null;
+    let dimensions = options?.dimensions || null;
+    if (options?.useCanvas && this.canUseCanvasFrames()) {
+      bitmap = await loadFrameBitmap(frameSrc, options);
+      if (bitmap) {
+        dimensions ||= { width: bitmap.width || 0, height: bitmap.height || 0 };
+      }
+    }
+    dimensions ||= await loadFrameDimensions(frameSrc);
     if (sequence !== this._frameRenderSequence || surfaceSequence !== this._surfaceOpenSequence) {
+      bitmap?.close?.();
       options?.cleanup?.();
       return;
     }
@@ -1241,13 +1273,21 @@ const model = {
     if (!this.frameMatchesViewport(dimensions, viewport)) {
       this.requestViewportSyncAfterRejectedFrame();
       if (!this.shouldAcceptMismatchedFrame(dimensions)) {
+        bitmap?.close?.();
         options?.cleanup?.();
         return;
       }
     }
-    this.releaseRenderedFrameUrl(frameSrc);
-    this.frameSrc = frameSrc;
-    this._frameObjectUrl = options?.objectUrl || "";
+    if (bitmap && this.paintFrameBitmap(bitmap)) {
+      this.clearFrameSrc();
+      options?.cleanup?.();
+    } else {
+      this.clearFrameCanvas();
+      this.releaseRenderedFrameUrl(frameSrc);
+      this.frameSrc = frameSrc;
+      this._frameObjectUrl = options?.objectUrl || "";
+    }
+    bitmap?.close?.();
     this._lastFrameDimensions = dimensions;
     this._lastFrameAt = Date.now();
     options?.onAccepted?.();
@@ -1259,7 +1299,7 @@ const model = {
     return Boolean(
       dimensions?.width
       && dimensions?.height
-      && (!this.frameSrc || this._surfaceSwitching || this.isSwitchingBrowser())
+      && (!this.hasFrame() || this._surfaceSwitching || this.isSwitchingBrowser())
     );
   },
 
@@ -1330,7 +1370,7 @@ const model = {
 
   clearRenderedFrameIfViewportChanged() {
     const viewport = this.currentViewportSize();
-    if (!this.frameSrc || !this._lastFrameDimensions || !viewport) return;
+    if (!this.hasFrame() || !this._lastFrameDimensions || !viewport) return;
     if (this.frameMatchesViewport(this._lastFrameDimensions, viewport)) return;
     this.cancelFrameRender();
     this.resetViewportTracking();
@@ -1366,6 +1406,55 @@ const model = {
   clearFrameSrc() {
     this.releaseRenderedFrameUrl("");
     this.frameSrc = "";
+  },
+
+  attachFrameCanvas(canvas = null) {
+    this._frameCanvas = canvas || null;
+  },
+
+  canUseCanvasFrames() {
+    return Boolean(BROWSER_CANVAS_FRAMES_SUPPORTED && this._frameCanvas?.getContext);
+  },
+
+  hasFrame() {
+    return Boolean(this.frameSrc || this.frameCanvasReady);
+  },
+
+  paintFrameBitmap(bitmap) {
+    const canvas = this._frameCanvas;
+    if (!canvas || !bitmap?.width || !bitmap?.height) return false;
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    if (!context) return false;
+    context.drawImage(bitmap, 0, 0);
+    this.frameCanvasReady = true;
+    return true;
+  },
+
+  clearFrameCanvas() {
+    const canvas = this._frameCanvas;
+    if (canvas?.width && canvas?.height) {
+      canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    this.frameCanvasReady = false;
+  },
+
+  freezeCanvasFrameToImage() {
+    if (!this.frameCanvasReady || !this._frameCanvas) return;
+    try {
+      this.frameSrc = this._frameCanvas.toDataURL("image/jpeg", 0.86);
+    } catch {
+      this.frameSrc = "";
+    }
+    this.clearFrameCanvas();
+  },
+
+  frameElement() {
+    if (this.frameCanvasReady && this._frameCanvas) {
+      return this._frameCanvas;
+    }
+    return this._stageElement?.querySelector?.(".browser-frame-image") || null;
   },
 
   beginCommand() {
@@ -1431,6 +1520,7 @@ const model = {
       if (!this.activeBrowserId) {
         this.frameState = null;
         this.clearFrameSrc();
+        this.clearFrameCanvas();
       }
       if (result.state?.currentUrl || result.currentUrl) {
         this.address = result.state?.currentUrl || result.currentUrl;
@@ -1540,6 +1630,7 @@ const model = {
     this.switchingBrowserId = targetId;
     this.cancelFrameRender();
     this.clearFrameSrc();
+    this.clearFrameCanvas();
     this.frameState = browser || null;
     if (!this.addressFocused && browser?.currentUrl) {
       this.address = browser.currentUrl;
@@ -1811,8 +1902,8 @@ const model = {
     const target = element || event?.currentTarget;
     if (!target) return null;
     const rect = target.getBoundingClientRect();
-    const naturalWidth = target.naturalWidth || rect.width;
-    const naturalHeight = target.naturalHeight || rect.height;
+    const naturalWidth = target.naturalWidth || target.width || rect.width;
+    const naturalHeight = target.naturalHeight || target.height || rect.height;
     let contentLeft = rect.left;
     let contentTop = rect.top;
     let contentWidth = rect.width;
@@ -1963,7 +2054,7 @@ const model = {
   },
 
   canAnnotate() {
-    return Boolean(this.activeBrowserId && this.frameSrc && !this.isBusy());
+    return Boolean(this.activeBrowserId && this.hasFrame() && !this.isBusy());
   },
 
   activeAnnotationUrl() {
@@ -2124,8 +2215,7 @@ const model = {
   },
 
   stagePointForEvent(event) {
-    const image = this._stageElement?.querySelector?.(".browser-frame") || null;
-    return this.pointerCoordinatesFor(event, image);
+    return this.pointerCoordinatesFor(event, this.frameElement());
   },
 
   normalizeAnnotationRect(start = {}, end = {}) {
@@ -2538,8 +2628,7 @@ const model = {
   async sendWheel(event) {
     const contextId = this.normalizeContextId(this.activeBrowserContextId || this.contextId);
     if (!contextId || !this.activeBrowserId || !event) return;
-    const image = event.currentTarget?.querySelector?.(".browser-frame") || event.target?.closest?.(".browser-frame");
-    const pointer = this.pointerCoordinatesFor(event, image);
+    const pointer = this.pointerCoordinatesFor(event, this.frameElement());
     if (!pointer) return;
     const payload = {
       context_id: contextId,
