@@ -1248,7 +1248,7 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "canvas_wheel_screenshot" not in ws_browser
     assert "surface_mode: this._mode" not in browser_store
     assert "overflow: hidden;" in main_html
-    assert "object-fit: fill;" in main_html
+    assert "object-fit: contain;" in main_html
     assert "image-rendering: auto;" in main_html
 
 
