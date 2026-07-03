@@ -1180,6 +1180,9 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert '"Page.screencastFrameAck"' in runtime
     assert "async def attach_screencast_consumer" in runtime
     assert "async def attach_consumer" in runtime
+    assert "stop_callback: Any | None = None" in runtime
+    assert "def _notify_stopped(self) -> None:" in runtime
+    assert "server_loop.call_soon_threadsafe(stop_event.set)" in ws_browser
     assert "await self._deliver_frame(" in runtime
     assert "await asyncio.wrap_future(future)" in runtime
     assert '"Page.stopScreencast"' in runtime
@@ -1213,6 +1216,7 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "let dimensions = options?.dimensions || null" in browser_store
     assert "dimensions ||= await loadFrameDimensions(frameSrc)" in browser_store
     assert "paintFrameBitmap(bitmap)" in browser_store
+    assert "if (canvas.width !== bitmap.width) canvas.width = bitmap.width;" in browser_store
     assert "freezeCanvasFrameToImage()" in browser_store
     assert 'this._frameCanvas.toDataURL("image/jpeg", 0.86)' in browser_store
     assert "this.frameSrc = frameSrc;" in browser_store
@@ -1695,6 +1699,60 @@ async def test_browser_screencast_acks_after_consumer_settles():
     assert ("Page.screencastFrameAck", {"sessionId": 21}) in session.sent
 
     await screencast.stop()
+
+
+@pytest.mark.anyio
+async def test_browser_screencast_notifies_consumer_when_frame_task_stops_before_delivery():
+    class FakeSession:
+        def __init__(self):
+            self.handlers = {}
+            self.sent = []
+            self.detached = False
+
+        def on(self, event, handler):
+            self.handlers[event] = handler
+
+        async def send(self, method, params=None):
+            self.sent.append((method, params or {}))
+
+        async def detach(self):
+            self.detached = True
+
+    session = FakeSession()
+    delivered = []
+    stopped = []
+    screencast = _BrowserScreencast(
+        stream_id="stream",
+        browser_id=7,
+        session=session,
+        mime="image/jpeg",
+    )
+
+    await screencast.start(quality=92, every_nth_frame=1, viewport={"width": 640, "height": 480})
+    await screencast.attach_consumer(
+        lambda frame: delivered.append(frame),
+        lambda: stopped.append(True),
+    )
+
+    def fail_jpeg_probe(_data):
+        raise RuntimeError("jpeg probe failed")
+
+    screencast._jpeg_size = fail_jpeg_probe
+    session.handlers["Page.screencastFrame"](
+        {"data": SMALL_JPEG_10X10, "metadata": {}, "sessionId": 29}
+    )
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    assert delivered == []
+    assert stopped == [True]
+    assert screencast.stopped is True
+    assert ("Page.screencastFrameAck", {"sessionId": 29}) in session.sent
+
+    await screencast.stop()
+
+    assert ("Page.stopScreencast", {}) in session.sent
+    assert session.detached is True
 
 
 @pytest.mark.anyio

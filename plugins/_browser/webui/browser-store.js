@@ -1423,8 +1423,8 @@ const model = {
   paintFrameBitmap(bitmap) {
     const canvas = this._frameCanvas;
     if (!canvas || !bitmap?.width || !bitmap?.height) return false;
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
+    if (canvas.width !== bitmap.width) canvas.width = bitmap.width;
+    if (canvas.height !== bitmap.height) canvas.height = bitmap.height;
     const context = canvas.getContext("2d");
     if (!context) return false;
     context.drawImage(bitmap, 0, 0);

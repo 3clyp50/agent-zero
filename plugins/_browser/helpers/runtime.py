@@ -318,8 +318,10 @@ class _BrowserScreencast:
         self.session = session
         self.mime = mime
         self.frame_consumer: Any | None = None
+        self.stop_callback: Any | None = None
         self.queue = asyncio.Queue(maxsize=1)
         self.stopped = False
+        self._closed = False
         self._ack_tasks: set[asyncio.Task] = set()
         self._expected_width = 0
         self._expected_height = 0
@@ -399,15 +401,17 @@ class _BrowserScreencast:
             raise RuntimeError("Browser screencast stopped.")
         return frame
 
-    async def attach_consumer(self, frame_consumer: Any) -> None:
+    async def attach_consumer(self, frame_consumer: Any, stop_callback: Any | None = None) -> None:
         self.frame_consumer = frame_consumer
+        self.stop_callback = stop_callback
         frame = await self.pop_frame()
         if frame:
             await self._deliver_frame(frame)
 
     async def stop(self) -> None:
-        if self.stopped:
+        if self._closed:
             return
+        self._closed = True
         self.stopped = True
         self._drop_queued_frames()
         with contextlib.suppress(asyncio.QueueFull):
@@ -431,6 +435,7 @@ class _BrowserScreencast:
 
     async def _handle_frame(self, params: dict[str, Any]) -> None:
         stop_after_ack = False
+        notify_stop = False
         try:
             data = params.get("data") or ""
             if data:
@@ -453,6 +458,7 @@ class _BrowserScreencast:
         except Exception:
             if self.frame_consumer:
                 stop_after_ack = True
+                notify_stop = True
             else:
                 raise
         finally:
@@ -465,6 +471,14 @@ class _BrowserScreencast:
                     )
             if stop_after_ack:
                 self.stopped = True
+                if notify_stop:
+                    self._notify_stopped()
+
+    def _notify_stopped(self) -> None:
+        if not self.stop_callback:
+            return
+        with contextlib.suppress(Exception):
+            self.stop_callback()
 
     async def _deliver_frame(self, frame: dict[str, Any]) -> None:
         if not self.frame_consumer:
@@ -1694,11 +1708,16 @@ class _BrowserRuntimeCore:
             raise KeyError("Browser screencast is not active.")
         return await screencast.pop_frame()
 
-    async def attach_screencast_consumer(self, stream_id: str, frame_consumer: Any) -> None:
+    async def attach_screencast_consumer(
+        self,
+        stream_id: str,
+        frame_consumer: Any,
+        stop_callback: Any | None = None,
+    ) -> None:
         screencast = self.screencasts.get(str(stream_id or ""))
         if not screencast:
             raise KeyError("Browser screencast is not active.")
-        await screencast.attach_consumer(frame_consumer)
+        await screencast.attach_consumer(frame_consumer, stop_callback)
 
     async def stop_screencast(self, stream_id: str) -> None:
         screencast = self.screencasts.pop(str(stream_id or ""), None)

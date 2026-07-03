@@ -477,7 +477,10 @@ class WsBrowser(WsHandler):
                 def frame_consumer(frame: dict[str, Any]):
                     return asyncio.run_coroutine_threadsafe(emit_frame(frame), server_loop)
 
-                await runtime.call("attach_screencast_consumer", stream_id, frame_consumer)
+                def stop_consumer() -> None:
+                    server_loop.call_soon_threadsafe(stop_event.set)
+
+                await runtime.call("attach_screencast_consumer", stream_id, frame_consumer, stop_consumer)
 
                 while True:
                     if stop_event.is_set():
