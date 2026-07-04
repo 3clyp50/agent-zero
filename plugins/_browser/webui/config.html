@@ -66,6 +66,22 @@
             </span>
           </label>
 
+          <label
+            class="browser-config-field"
+            x-show="$store.browserConfig.config.runtime_backend === 'host_required' && $store.browserConfig.config.host_browser_profile_mode !== 'agent'"
+          >
+            <span class="browser-config-field-label">Host browser</span>
+            <select
+              :value="$store.browserConfig.config.host_browser_selection || ''"
+              @change="$store.browserConfig.setHostBrowserSelection($event.target.value)"
+            >
+              <template x-for="option in $store.browserConfig.hostBrowserOptions()" :key="option.value">
+                <option :value="option.value" x-text="option.label"></option>
+              </template>
+            </select>
+            <span class="browser-config-field-help">Choose which installed browser/debug endpoint A0 CLI should use when multiple are available.</span>
+          </label>
+
           <div
             class="browser-config-warning"
             x-show="$store.browserConfig.config.runtime_backend === 'host_required' && $store.browserConfig.config.host_browser_profile_mode !== 'agent'"

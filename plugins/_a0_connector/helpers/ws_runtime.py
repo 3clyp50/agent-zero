@@ -80,6 +80,9 @@ class HostBrowserMetadata:
     profile_label: str
     profile_path: str
     cdp_endpoint: str
+    browser_id: str
+    browser_label: str
+    available_browsers: tuple[dict[str, Any], ...]
     content_helper_sha256: str
     features: tuple[str, ...]
     support_reason: str
@@ -416,6 +419,9 @@ def store_sid_host_browser_metadata(sid: str, payload: dict[str, Any]) -> HostBr
         profile_label=str(payload.get("profile_label", "") or "").strip(),
         profile_path=str(payload.get("profile_path", "") or "").strip(),
         cdp_endpoint=str(payload.get("cdp_endpoint", "") or "").strip(),
+        browser_id=str(payload.get("browser_id", payload.get("browser_selection", "")) or "").strip(),
+        browser_label=str(payload.get("browser_label", "") or "").strip(),
+        available_browsers=_normalize_available_host_browsers(payload.get("available_browsers")),
         content_helper_sha256=str(payload.get("content_helper_sha256", "") or "").strip().lower(),
         features=features,
         support_reason=support_reason,
@@ -445,6 +451,32 @@ def _host_browser_can_prepare(
     )
 
 
+def _normalize_available_host_browsers(value: Any) -> tuple[dict[str, Any], ...]:
+    if not isinstance(value, (list, tuple)):
+        return ()
+    browsers: list[dict[str, Any]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        browser_id = str(item.get("id", item.get("browser_id", item.get("selection", ""))) or "").strip()
+        family = str(item.get("family", item.get("browser_family", "")) or "").strip()
+        label = str(item.get("label", item.get("name", "")) or "").strip()
+        cdp_endpoint = str(item.get("cdp_endpoint", "") or "").strip()
+        status = str(item.get("status", "") or "").strip()
+        enabled = bool(item.get("enabled", True))
+        if not any((browser_id, family, label, cdp_endpoint)):
+            continue
+        browsers.append({
+            "id": browser_id or family or cdp_endpoint,
+            "family": family,
+            "label": label or family or browser_id or cdp_endpoint,
+            "cdp_endpoint": cdp_endpoint,
+            "status": status,
+            "enabled": enabled,
+        })
+    return tuple(browsers)
+
+
 def clear_sid_host_browser_metadata(sid: str) -> None:
     with _state_lock:
         _sid_host_browser_metadata.pop(sid, None)
@@ -464,6 +496,9 @@ def host_browser_metadata_for_sid(sid: str) -> dict[str, Any] | None:
         "profile_label": metadata.profile_label,
         "profile_path": metadata.profile_path,
         "cdp_endpoint": metadata.cdp_endpoint,
+        "browser_id": metadata.browser_id,
+        "browser_label": metadata.browser_label,
+        "available_browsers": copy.deepcopy(list(metadata.available_browsers)),
         "content_helper_sha256": metadata.content_helper_sha256,
         "features": list(metadata.features),
         "support_reason": metadata.support_reason,
@@ -529,6 +564,10 @@ def all_host_browser_metadata() -> list[dict[str, Any]]:
                 "browser_family": metadata.browser_family,
                 "profile_label": metadata.profile_label,
                 "profile_path": metadata.profile_path,
+                "cdp_endpoint": metadata.cdp_endpoint,
+                "browser_id": metadata.browser_id,
+                "browser_label": metadata.browser_label,
+                "available_browsers": copy.deepcopy(list(metadata.available_browsers)),
                 "content_helper_sha256": metadata.content_helper_sha256,
                 "features": list(metadata.features),
                 "support_reason": metadata.support_reason,

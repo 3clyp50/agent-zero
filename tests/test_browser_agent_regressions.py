@@ -162,6 +162,7 @@ def test_browser_config_normalizes_extension_paths(tmp_path):
         "runtime_backend": "container",
         "host_browser_privacy_policy": "allow",
         "host_browser_profile_mode": "existing",
+        "host_browser_selection": "",
         "model_preset": "",
     }
 
@@ -183,6 +184,27 @@ def test_browser_config_normalizes_host_backend_and_privacy_policy():
     assert config["runtime_backend"] == "host_required"
     assert config["host_browser_privacy_policy"] == "warn"
     assert config["host_browser_profile_mode"] == "agent"
+
+
+def test_browser_config_normalizes_host_browser_selection():
+    assert normalize_browser_config({})["host_browser_selection"] == ""
+    assert (
+        normalize_browser_config({"host_browser_selection": "  Edge Dev  "})["host_browser_selection"]
+        == "edge_dev"
+    )
+    assert (
+        normalize_browser_config({"host_browser_choice": "chrome"})["host_browser_selection"]
+        == "chrome"
+    )
+    assert (
+        normalize_browser_config({"host_browser_selection": "ws://127.0.0.1:9222/devtools"})[
+            "host_browser_selection"
+        ]
+        == "ws://127.0.0.1:9222/devtools"
+    )
+    assert normalize_browser_config({"host_browser_selection": "bad\x00value"})[
+        "host_browser_selection"
+    ] == "badvalue"
     assert (
         normalize_browser_config({"runtime_backend": "host_when_available"})["runtime_backend"]
         == "host_required"

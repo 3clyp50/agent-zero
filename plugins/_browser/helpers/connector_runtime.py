@@ -57,6 +57,11 @@ HOST_BROWSER_PROFILE_MODE_KEY = getattr(
     "HOST_BROWSER_PROFILE_MODE_KEY",
     "host_browser_profile_mode",
 )
+HOST_BROWSER_SELECTION_KEY = getattr(
+    browser_config,
+    "HOST_BROWSER_SELECTION_KEY",
+    "host_browser_selection",
+)
 get_browser_config = browser_config.get_browser_config
 _LOCAL_PROVIDERS = {"ollama", "lm_studio", "llama_cpp", "omlx", "vllm"}
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
@@ -123,6 +128,7 @@ class ConnectorBrowserRuntime:
             "context_id": self.context_id,
             "action": action,
             "profile_mode": self._host_browser_profile_mode(),
+            "browser_selection": self._host_browser_selection(),
         }
 
         if action == "open":
@@ -283,6 +289,7 @@ class ConnectorBrowserRuntime:
                         "context_id": self.context_id,
                         "action": "ensure",
                         "profile_mode": self._host_browser_profile_mode(),
+                        "browser_selection": self._host_browser_selection(),
                     },
                 ),
             )
@@ -294,6 +301,10 @@ class ConnectorBrowserRuntime:
         config = get_browser_config(self.agent)
         mode = str(config.get(HOST_BROWSER_PROFILE_MODE_KEY) or "existing").strip().lower()
         return "agent" if mode == "agent" else "existing"
+
+    def _host_browser_selection(self) -> str:
+        config = get_browser_config(self.agent)
+        return str(config.get(HOST_BROWSER_SELECTION_KEY) or "").strip()
 
     def _with_content_helper(self, sid: str, payload: dict[str, Any]) -> dict[str, Any]:
         return self._with_browser_helpers(sid, payload)

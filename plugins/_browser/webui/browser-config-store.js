@@ -44,6 +44,7 @@ function ensureConfig(config) {
     HOST_PROFILE_MODES,
     "existing",
   );
+  config.host_browser_selection = normalizeHostBrowserSelection(config.host_browser_selection);
   config.model_preset = String(config.model_preset || "").trim();
   delete config.model;
   return config;
@@ -64,6 +65,10 @@ function normalizeRuntimeBackend(value) {
   const normalized = String(value || "").trim().toLowerCase().replace(/-/g, "_");
   if (normalized === "host_when_available") return "host_required";
   return RUNTIME_BACKENDS.has(normalized) ? normalized : "container";
+}
+
+function normalizeHostBrowserSelection(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, "_").slice(0, 200);
 }
 
 function normalizeBoolean(value, fallback = true) {
@@ -176,6 +181,40 @@ export const store = createStore("browserConfig", {
     if (value === "warn") return "Warn When Using Cloud";
     if (value === "allow") return "Allow";
     return "Local Models Only";
+  },
+
+  hostBrowserOptions() {
+    const connectors = Array.isArray(this.hostBrowserStatus?.connectors)
+      ? this.hostBrowserStatus.connectors
+      : [];
+    const options = [{ value: "", label: "Automatic (A0 CLI chooses)" }];
+    const seen = new Set([""]);
+    for (const connector of connectors) {
+      const advertised = Array.isArray(connector?.available_browsers)
+        ? connector.available_browsers
+        : [];
+      for (const browser of advertised) {
+        const value = normalizeHostBrowserSelection(browser?.id || browser?.family || browser?.cdp_endpoint);
+        if (!value || seen.has(value)) continue;
+        seen.add(value);
+        const label = browser?.label || hostBrowserFamilyLabel(browser?.family || value);
+        const status = browser?.status ? ` - ${hostBrowserStatusLabel(browser.status)}` : "";
+        options.push({ value, label: `${label}${status}` });
+      }
+      const fallbackValue = normalizeHostBrowserSelection(connector?.browser_id || connector?.browser_family);
+      if (fallbackValue && !seen.has(fallbackValue)) {
+        seen.add(fallbackValue);
+        const label = connector?.browser_label || hostBrowserFamilyLabel(connector?.browser_family || fallbackValue);
+        options.push({ value: fallbackValue, label });
+      }
+    }
+    return options;
+  },
+
+  setHostBrowserSelection(value) {
+    const safeConfig = ensureConfig(this.config);
+    if (!safeConfig) return;
+    safeConfig.host_browser_selection = normalizeHostBrowserSelection(value);
   },
 
   hostBrowserProfileModeLabel() {

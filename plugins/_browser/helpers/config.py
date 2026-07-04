@@ -16,6 +16,7 @@ MAX_OPEN_TABS_KEY = "max_open_tabs"
 RUNTIME_BACKEND_KEY = "runtime_backend"
 HOST_BROWSER_PRIVACY_POLICY_KEY = "host_browser_privacy_policy"
 HOST_BROWSER_PROFILE_MODE_KEY = "host_browser_profile_mode"
+HOST_BROWSER_SELECTION_KEY = "host_browser_selection"
 RUNTIME_BACKENDS = {"container", "host_required"}
 BROWSER_TAB_SCOPES = {"per_context", "shared"}
 HOST_BROWSER_PRIVACY_POLICIES = {"enforce_local", "warn", "allow"}
@@ -56,6 +57,15 @@ def _normalize_extension_paths(value: Any) -> list[str]:
 
 def _normalize_model_preset(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _normalize_host_browser_selection(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    normalized = raw.lower().replace(" ", "_")
+    # Keep explicit CLI ids/ports/endpoints usable while avoiding control characters.
+    return "".join(ch for ch in normalized if ch.isalnum() or ch in {"_", "-", ":", ".", "/"})[:200]
 
 
 def _normalize_default_homepage(value: Any) -> str:
@@ -143,6 +153,9 @@ def normalize_browser_config(settings: dict[str, Any] | None) -> dict[str, Any]:
             raw.get(HOST_BROWSER_PROFILE_MODE_KEY, "existing"),
             allowed=HOST_BROWSER_PROFILE_MODES,
             default="existing",
+        ),
+        HOST_BROWSER_SELECTION_KEY: _normalize_host_browser_selection(
+            raw.get(HOST_BROWSER_SELECTION_KEY, raw.get("host_browser_choice", ""))
         ),
         MODEL_PRESET_KEY: _normalize_model_preset(raw.get(MODEL_PRESET_KEY, "")),
     }

@@ -33,6 +33,11 @@ host_browser_privacy_policy: "allow"
 # - agent: use a clean A0-controlled browser profile on the host.
 host_browser_profile_mode: "existing"
 
+# Optional host browser target when using an existing browser.
+# Empty means A0 CLI chooses the first supported/active browser.
+# Values may be browser family ids (chrome, edge, chromium) or CLI-advertised ids/endpoints.
+host_browser_selection: ""
+
 # Optional _model_config preset used by Browser-owned model helpers.
 # Empty uses the effective Main Model.
 model_preset: ""
