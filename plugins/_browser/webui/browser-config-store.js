@@ -4,8 +4,12 @@ import { callJsonApi } from "/js/api.js";
 const BROWSER_EXTENSIONS_API = "/plugins/_browser/extensions";
 const BROWSER_STATUS_API = "/plugins/_browser/status";
 const RUNTIME_BACKENDS = new Set(["container", "host_required"]);
+const BROWSER_TAB_SCOPES = new Set(["per_context", "shared"]);
 const HOST_PRIVACY_POLICIES = new Set(["enforce_local", "warn", "allow"]);
 const HOST_PROFILE_MODES = new Set(["existing", "agent"]);
+const DEFAULT_MAX_OPEN_TABS = 32;
+const MIN_MAX_OPEN_TABS = 1;
+const HARD_MAX_OPEN_TABS = 50;
 
 function normalizePathList(value) {
   const source = Array.isArray(value)
@@ -27,6 +31,8 @@ function ensureConfig(config) {
   config.extension_paths = normalizePathList(config.extension_paths);
   config.default_homepage = String(config.default_homepage || "about:blank").trim() || "about:blank";
   config.autofocus_active_page = normalizeBoolean(config.autofocus_active_page, true);
+  config.browser_tab_scope = normalizeChoice(config.browser_tab_scope, BROWSER_TAB_SCOPES, "per_context");
+  config.max_open_tabs = normalizeInt(config.max_open_tabs, DEFAULT_MAX_OPEN_TABS, MIN_MAX_OPEN_TABS, HARD_MAX_OPEN_TABS);
   config.runtime_backend = normalizeRuntimeBackend(config.runtime_backend);
   config.host_browser_privacy_policy = normalizeChoice(
     config.host_browser_privacy_policy,
@@ -46,6 +52,12 @@ function ensureConfig(config) {
 function normalizeChoice(value, allowed, fallback) {
   const normalized = String(value || "").trim().toLowerCase().replace(/-/g, "_");
   return allowed.has(normalized) ? normalized : fallback;
+}
+
+function normalizeInt(value, fallback, minimum, maximum) {
+  const number = Number.parseInt(value, 10);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(minimum, Math.min(maximum, number));
 }
 
 function normalizeRuntimeBackend(value) {
@@ -130,6 +142,27 @@ export const store = createStore("browserConfig", {
 
   autofocusLabel() {
     return this.config?.autofocus_active_page === false ? "Off" : "On";
+  },
+
+  setBrowserTabScope(value) {
+    const safeConfig = ensureConfig(this.config);
+    if (!safeConfig) return;
+    safeConfig.browser_tab_scope = normalizeChoice(value, BROWSER_TAB_SCOPES, "per_context");
+  },
+
+  browserTabScopeLabel() {
+    return this.config?.browser_tab_scope === "shared" ? "Shared" : "Per chat";
+  },
+
+  normalizeMaxOpenTabs() {
+    const safeConfig = ensureConfig(this.config);
+    if (!safeConfig) return;
+    safeConfig.max_open_tabs = normalizeInt(
+      safeConfig.max_open_tabs,
+      DEFAULT_MAX_OPEN_TABS,
+      MIN_MAX_OPEN_TABS,
+      HARD_MAX_OPEN_TABS,
+    );
   },
 
   runtimeBackendLabel() {

@@ -157,6 +157,7 @@ def test_browser_config_normalizes_extension_paths(tmp_path):
         "extension_paths": [str(extension_dir)],
         "default_homepage": "about:blank",
         "autofocus_active_page": True,
+        "browser_tab_scope": "per_context",
         "max_open_tabs": 32,
         "runtime_backend": "container",
         "host_browser_privacy_policy": "allow",
@@ -193,6 +194,13 @@ def test_browser_config_normalizes_max_open_tabs():
     assert normalize_browser_config({"max_open_tabs": "0"})["max_open_tabs"] == 1
     assert normalize_browser_config({"max_open_tabs": "200"})["max_open_tabs"] == 50
     assert normalize_browser_config({"max_open_tabs": "oops"})["max_open_tabs"] == 32
+
+
+def test_browser_config_normalizes_tab_scope():
+    assert normalize_browser_config({})["browser_tab_scope"] == "per_context"
+    assert normalize_browser_config({"browser_tab_scope": "shared"})["browser_tab_scope"] == "shared"
+    assert normalize_browser_config({"browser_tab_scope": "per-context"})["browser_tab_scope"] == "per_context"
+    assert normalize_browser_config({"browser_tab_scope": "everything"})["browser_tab_scope"] == "per_context"
 
 
 def test_browser_model_selection_uses_presets(monkeypatch):
@@ -1065,6 +1073,15 @@ def test_browser_extension_settings_stay_user_facing():
 
     assert "Choose which installed Chrome extensions Browser loads." in config_html
     assert "Installed extensions" in config_html
+    assert "Browser tabs" in config_html
+    assert "Separate per chat" in config_html
+    assert "Shared across chats" in config_html
+    assert "Maximum tabs per chat" in config_html
+    assert 'x-model="$store.browserConfig.config.browser_tab_scope"' in config_html
+    assert 'x-model.number="$store.browserConfig.config.max_open_tabs"' in config_html
+    assert "normalizeMaxOpenTabs()" in config_html
+    assert "BROWSER_TAB_SCOPES" in config_store
+    assert "HARD_MAX_OPEN_TABS = 50" in config_store
     assert "extensionDeleteTitle(extension)" in config_html
     assert "deleteExtension(extension)" in config_html
     assert "Delete extension" in config_store
@@ -1085,6 +1102,7 @@ def test_browser_viewer_uses_tabs_for_session_switching():
     assert 'class="browser-session-tabs" role="tablist"' in main_html
     assert 'class="browser-tab"' in main_html
     assert 'class="browser-new-tab"' in main_html
+    assert 'browser in $store.browserPage.visibleBrowsers()' in main_html
     assert ':key="$store.browserPage.browserTabKey(browser)"' in main_html
     assert "browser.context_id" in main_html
     assert ':title="$store.browserPage.browserTabTooltip(browser)"' in main_html
@@ -1097,6 +1115,10 @@ def test_browser_viewer_uses_tabs_for_session_switching():
     assert "async syncViewerToSelectedContext" in browser_store
     assert "isVisibleBrowserSurface()" in browser_store
     assert "firstBrowserInContext(selectedContextId)" in browser_store
+    assert "visibleBrowsers()" in browser_store
+    assert 'tabScope: "per_context"' in browser_store
+    assert "applyTabScope(data)" in browser_store
+    assert 'if (this.tabScope === "shared") return browsers;' in browser_store
     assert "requestedContextId && requestedContextId !== inFlightContextId" in browser_store
     assert "create_browser: Boolean(options.createBrowser || options.create_browser)" in browser_store
     assert "browserTabTooltip(browser)" in browser_store
@@ -2036,6 +2058,39 @@ def test_browser_save_plugin_config_does_not_restart_runtimes_for_preset_only(mo
     assert restarted == []
 
 
+def test_browser_save_plugin_config_does_not_restart_runtimes_for_viewer_settings(monkeypatch):
+    restarted = []
+
+    monkeypatch.setattr(
+        browser_hooks_module,
+        "_load_saved_browser_config",
+        lambda project_name="", agent_profile="": {
+            "extension_paths": [],
+            "browser_tab_scope": "per_context",
+            "max_open_tabs": 32,
+        },
+    )
+    monkeypatch.setattr(
+        browser_hooks_module,
+        "close_all_runtimes_sync",
+        lambda: restarted.append(True),
+    )
+
+    result = browser_hooks_module.save_plugin_config(
+        {
+            "extension_paths": [],
+            "browser_tab_scope": "shared",
+            "max_open_tabs": 12,
+        },
+        project_name="",
+        agent_profile="",
+    )
+
+    assert result["browser_tab_scope"] == "shared"
+    assert result["max_open_tabs"] == 12
+    assert restarted == []
+
+
 @pytest.mark.anyio
 async def test_browser_tool_dispatches_direct_actions(monkeypatch):
     calls = []
@@ -2411,6 +2466,7 @@ async def test_browser_viewer_subscribe_unregisters_stream(monkeypatch):
         return fake_runtime
 
     monkeypatch.setattr(ws_browser_module, "get_runtime", fake_get_runtime)
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "per_context"})
     monkeypatch.setattr(
         ws_browser_module.AgentContext,
         "get",
@@ -2466,6 +2522,7 @@ async def test_browser_viewer_subscribe_can_create_blank_tab_when_requested(monk
         return fake_runtime
 
     monkeypatch.setattr(ws_browser_module, "get_runtime", fake_get_runtime)
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "per_context"})
     monkeypatch.setattr(
         ws_browser_module.AgentContext,
         "get",
@@ -2518,11 +2575,8 @@ async def test_browser_viewer_subscribe_returns_initial_snapshot(monkeypatch):
         assert create is False
         return FakeRuntime()
 
-    async def fake_all_browser_tabs():
-        return [{"id": 1, "context_id": "ctx", "currentUrl": "https://example.com/"}]
-
     monkeypatch.setattr(ws_browser_module, "get_runtime", fake_get_runtime)
-    monkeypatch.setattr(ws_browser_module, "list_runtime_sessions", fake_all_browser_tabs)
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "per_context"})
     monkeypatch.setattr(
         ws_browser_module.AgentContext,
         "get",
@@ -2543,6 +2597,9 @@ async def test_browser_viewer_subscribe_returns_initial_snapshot(monkeypatch):
 
     assert result["active_browser_id"] == 1
     assert result["snapshot"]["image"] == "jpeg-data"
+    assert result["browsers"] == [{"id": 1, "context_id": "ctx", "currentUrl": "https://example.com/"}]
+    assert result["all_browsers"] is False
+    assert result["tab_scope"] == "per_context"
     assert ("screenshot", (1,), {"quality": ws_browser_module.SCREENSHOT_QUALITY}) in calls
 
     await handler.on_disconnect("sid-snapshot")
@@ -2556,6 +2613,7 @@ async def test_browser_viewer_subscribe_without_runtime_does_not_create_runtime(
         return None
 
     monkeypatch.setattr(ws_browser_module, "get_runtime", fake_get_runtime)
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "per_context"})
     monkeypatch.setattr(
         ws_browser_module.AgentContext,
         "get",
@@ -2632,7 +2690,43 @@ async def test_browser_runtime_refuses_new_tabs_when_context_limit_is_reached(mo
 
 
 @pytest.mark.anyio
-async def test_browser_viewer_command_returns_tabs_from_all_contexts(monkeypatch):
+async def test_browser_viewer_command_returns_only_requested_context_tabs(monkeypatch):
+    class FakeRuntime:
+        async def call(self, method, *args, **kwargs):
+            if method == "list":
+                return {
+                    "browsers": [{"id": 1, "context_id": "ctx-a", "currentUrl": "about:blank"}],
+                    "last_interacted_browser_id": 1,
+                }
+            raise AssertionError(method)
+
+    async def fake_get_runtime(context_id, create=True):
+        assert context_id == "ctx-a"
+        return FakeRuntime()
+
+    monkeypatch.setattr(ws_browser_module, "get_runtime", fake_get_runtime)
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "per_context"})
+
+    handler = ws_browser_module.WsBrowser(
+        SimpleNamespace(),
+        threading.RLock(),
+        manager=None,
+    )
+
+    result = await handler.process(
+        "browser_viewer_command",
+        {"context_id": "ctx-a", "command": "list"},
+        "sid-1",
+    )
+
+    assert result["all_browsers"] is False
+    assert result["tab_scope"] == "per_context"
+    assert result["active_browser_context_id"] == "ctx-a"
+    assert result["browsers"] == [{"id": 1, "context_id": "ctx-a", "currentUrl": "about:blank"}]
+
+
+@pytest.mark.anyio
+async def test_browser_viewer_command_can_return_shared_context_tabs(monkeypatch):
     class FakeRuntime:
         async def call(self, method, *args, **kwargs):
             if method == "list":
@@ -2660,6 +2754,7 @@ async def test_browser_viewer_command_returns_tabs_from_all_contexts(monkeypatch
             },
         ]
 
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "shared"})
     monkeypatch.setattr(ws_browser_module, "get_runtime", fake_get_runtime)
     monkeypatch.setattr(ws_browser_module, "list_runtime_sessions", fake_list_runtime_sessions)
 
@@ -2676,24 +2771,69 @@ async def test_browser_viewer_command_returns_tabs_from_all_contexts(monkeypatch
     )
 
     assert result["all_browsers"] is True
+    assert result["tab_scope"] == "shared"
     assert result["active_browser_context_id"] == "ctx-a"
     assert [browser["context_id"] for browser in result["browsers"]] == ["ctx-a", "ctx-b"]
 
 
 @pytest.mark.anyio
-async def test_browser_viewer_sessions_lists_without_creating_runtime(monkeypatch):
+async def test_browser_viewer_sessions_lists_only_requested_context_without_creating(monkeypatch):
+    class FakeRuntime:
+        async def call(self, method, *args, **kwargs):
+            assert method == "list"
+            return {
+                "browsers": [{"id": 1, "context_id": "ctx-b", "currentUrl": "about:blank"}],
+                "last_interacted_browser_id": 1,
+            }
+
+    async def fake_get_runtime(context_id, create=True):
+        assert context_id == "ctx-b"
+        assert create is False
+        return FakeRuntime()
+
+    monkeypatch.setattr(ws_browser_module, "get_runtime", fake_get_runtime)
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "per_context"})
+
+    handler = ws_browser_module.WsBrowser(
+        SimpleNamespace(),
+        threading.RLock(),
+        manager=None,
+    )
+
+    result = await handler.process(
+        "browser_viewer_sessions",
+        {"context_id": "ctx-b"},
+        "sid-1",
+    )
+
+    assert result == {
+        "context_id": "ctx-b",
+        "browsers": [{"id": 1, "context_id": "ctx-b", "currentUrl": "about:blank"}],
+        "all_browsers": False,
+        "tab_scope": "per_context",
+    }
+
+
+@pytest.mark.anyio
+async def test_browser_viewer_sessions_can_list_shared_context_tabs(monkeypatch):
     async def fake_list_runtime_sessions():
         return [
             {
                 "context_id": "ctx-a",
                 "browsers": [{"id": 1, "context_id": "ctx-a", "currentUrl": "about:blank"}],
                 "last_interacted_browser_id": 1,
-            }
+            },
+            {
+                "context_id": "ctx-b",
+                "browsers": [{"id": 1, "context_id": "ctx-b", "currentUrl": "https://example.org/"}],
+                "last_interacted_browser_id": 1,
+            },
         ]
 
     async def fail_get_runtime(*args, **kwargs):
-        raise AssertionError("sessions refresh must not create or fetch one runtime")
+        raise AssertionError("shared sessions refresh must not fetch one runtime")
 
+    monkeypatch.setattr(ws_browser_module, "get_browser_config", lambda: {"browser_tab_scope": "shared"})
     monkeypatch.setattr(ws_browser_module, "list_runtime_sessions", fake_list_runtime_sessions)
     monkeypatch.setattr(ws_browser_module, "get_runtime", fail_get_runtime)
 
@@ -2711,8 +2851,12 @@ async def test_browser_viewer_sessions_lists_without_creating_runtime(monkeypatc
 
     assert result == {
         "context_id": "ctx-b",
-        "browsers": [{"id": 1, "context_id": "ctx-a", "currentUrl": "about:blank"}],
+        "browsers": [
+            {"id": 1, "context_id": "ctx-a", "currentUrl": "about:blank"},
+            {"id": 1, "context_id": "ctx-b", "currentUrl": "https://example.org/"},
+        ],
         "all_browsers": True,
+        "tab_scope": "shared",
     }
 
 

@@ -168,6 +168,7 @@ const model = {
   frameCanvasReady: false,
   frameState: null,
   viewerTransport: BROWSER_VIEWER_TRANSPORT_SCREENCAST,
+  tabScope: "per_context",
   liveScreencastEnabled: true,
   annotating: false,
   annotationComments: [],
@@ -339,8 +340,10 @@ const model = {
         { timeoutMs: 10000 },
       );
       const data = firstOk(response);
+      this.applyTabScope(data);
       this.applyBrowserListing(data.browsers || [], data.context_id || "", {
         replaceAll: Boolean(data.all_browsers),
+        replaceContext: !data.all_browsers,
       });
     })();
     try {
@@ -959,6 +962,18 @@ const model = {
     return BROWSER_VIEWER_TRANSPORT_SNAPSHOT;
   },
 
+  normalizeTabScope(value = "") {
+    return String(value || "").trim().toLowerCase().replace("-", "_") === "shared"
+      ? "shared"
+      : "per_context";
+  },
+
+  applyTabScope(data = {}) {
+    if (!data || typeof data !== "object") return;
+    if (!Object.prototype.hasOwnProperty.call(data, "tab_scope")) return;
+    this.tabScope = this.normalizeTabScope(data.tab_scope);
+  },
+
   usesScreencastTransport() {
     return this.viewerTransport === BROWSER_VIEWER_TRANSPORT_SCREENCAST;
   },
@@ -1077,7 +1092,11 @@ const model = {
       return;
     }
     const data = firstOk(response);
-    this.applyBrowserListing(data.browsers || [], contextId, { replaceAll: Boolean(data.all_browsers) });
+    this.applyTabScope(data);
+    this.applyBrowserListing(data.browsers || [], contextId, {
+      replaceAll: Boolean(data.all_browsers),
+      replaceContext: !data.all_browsers,
+    });
     this.viewerTransport = this.normalizeViewerTransport(data.viewer_transport);
     this.setActiveBrowserId(
       data.active_browser_id || requestedBrowserId || this.activeBrowserId || null,
@@ -1096,10 +1115,14 @@ const model = {
         if (data?.viewer_transport) {
           this.viewerTransport = this.normalizeViewerTransport(data.viewer_transport);
         }
+        this.applyTabScope(data);
         const incomingContextId = this.normalizeContextId(data.context_id || this.contextId);
         const incomingBrowserId = this.normalizeBrowserId(data.browser_id || data.state?.id);
         if (Array.isArray(data.browsers)) {
-          this.applyBrowserListing(data.browsers, incomingContextId, { replaceContext: true });
+          this.applyBrowserListing(data.browsers, incomingContextId, {
+            replaceAll: Boolean(data.all_browsers),
+            replaceContext: !data.all_browsers,
+          });
         }
         if (incomingBrowserId && !this.activeBrowserId) {
           this.setActiveBrowserId(incomingBrowserId, incomingContextId);
@@ -1164,6 +1187,7 @@ const model = {
         if (data?.viewer_transport) {
           this.viewerTransport = this.normalizeViewerTransport(data.viewer_transport);
         }
+        this.applyTabScope(data);
         const commandContextId = this.normalizeContextId(data.active_browser_context_id || data.context_id || this.contextId);
         if (Array.isArray(data.browsers)) {
           this.applyBrowserListing(data.browsers, commandContextId, {
@@ -1502,7 +1526,11 @@ const model = {
         { timeoutMs: 20000 },
       );
       const data = firstOk(response);
-      this.applyBrowserListing(data.browsers || [], targetContextId, { replaceAll: Boolean(data.all_browsers) });
+      this.applyTabScope(data);
+      this.applyBrowserListing(data.browsers || [], targetContextId, {
+        replaceAll: Boolean(data.all_browsers),
+        replaceContext: !data.all_browsers,
+      });
       this.viewerTransport = this.normalizeViewerTransport(data.viewer_transport);
       const result = data.result || {};
       const resultContextId = this.normalizeContextId(
@@ -1745,6 +1773,15 @@ const model = {
       if (scoped) return scoped;
     }
     return browsers[0] || null;
+  },
+
+  visibleBrowsers() {
+    const browsers = Array.isArray(this.browsers) ? this.browsers : [];
+    if (this.tabScope === "shared") return browsers;
+    const contextId = this.normalizeContextId(this.activeBrowserContextId || this.contextId || this.resolveContextId());
+    return contextId
+      ? browsers.filter((browser) => this.normalizeContextId(browser?.context_id) === contextId)
+      : browsers;
   },
 
   firstBrowserInContext(contextId = "") {
@@ -2766,6 +2803,7 @@ const model = {
     this._viewerToken = "";
     this.switchingBrowserId = null;
     this.viewerTransport = this.requestedViewerTransport();
+    this.tabScope = "per_context";
     this._surfaceMounted = false;
     this._surfaceSwitching = false;
     this.commandInFlight = false;

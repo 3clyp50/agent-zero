@@ -16,7 +16,7 @@
         <div class="browser-meta">
           <div class="browser-meta-top">
             <div class="browser-session-tabs" role="tablist" aria-label="Browser sessions">
-              <template x-for="browser in $store.browserPage.browsers" :key="$store.browserPage.browserTabKey(browser)">
+              <template x-for="browser in $store.browserPage.visibleBrowsers()" :key="$store.browserPage.browserTabKey(browser)">
                 <div class="browser-tab-shell" :class="{ 'is-active': $store.browserPage.isActiveBrowser(browser) }">
 	                  <button type="button" class="browser-tab" role="tab"
 	                    :aria-selected="$store.browserPage.isActiveBrowser(browser).toString()"

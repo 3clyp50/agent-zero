@@ -112,6 +112,44 @@
             />
           </label>
 
+          <label class="browser-config-field">
+            <span class="browser-config-field-label">Browser tabs</span>
+            <select
+              x-model="$store.browserConfig.config.browser_tab_scope"
+              @change="$store.browserConfig.setBrowserTabScope($event.target.value)"
+            >
+              <option value="per_context">Separate per chat</option>
+              <option value="shared">Shared across chats</option>
+            </select>
+            <span
+              class="browser-config-field-help"
+              x-show="$store.browserConfig.config.browser_tab_scope !== 'shared'"
+            >
+              Each chat shows only its own Browser tabs.
+            </span>
+            <span
+              class="browser-config-field-help"
+              x-show="$store.browserConfig.config.browser_tab_scope === 'shared'"
+            >
+              The Browser tab strip shows tabs from every active chat.
+            </span>
+          </label>
+
+          <label class="browser-config-field">
+            <span class="browser-config-field-label">Maximum tabs per chat</span>
+            <input
+              type="number"
+              min="1"
+              max="50"
+              step="1"
+              x-model.number="$store.browserConfig.config.max_open_tabs"
+              @change="$store.browserConfig.normalizeMaxOpenTabs()"
+            />
+            <span class="browser-config-field-help">
+              New Browser tabs stop opening in a chat after this limit.
+            </span>
+          </label>
+
           <label class="browser-config-switch-row">
             <span class="browser-config-switch-copy">
               <span class="browser-config-field-label">Autofocus active page</span>
@@ -242,6 +280,7 @@
     }
 
     .browser-config-field input[type="text"],
+    .browser-config-field input[type="number"],
     .browser-config-field select {
       width: 100%;
       min-height: 36px;
