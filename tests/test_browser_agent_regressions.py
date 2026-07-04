@@ -1218,7 +1218,9 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "paintFrameBitmap(bitmap)" in browser_store
     assert "if (canvas.width !== bitmap.width) canvas.width = bitmap.width;" in browser_store
     assert "freezeCanvasFrameToImage()" in browser_store
-    assert 'this._frameCanvas.toDataURL("image/jpeg", 0.86)' in browser_store
+    assert "currentFrameCanvas()" in browser_store
+    assert 'this._stageElement?.querySelector?.(".browser-frame-canvas")' in browser_store
+    assert 'canvas.toDataURL("image/jpeg", 0.86)' in browser_store
     assert "this.frameSrc = frameSrc;" in browser_store
     assert "hasFrame()" in browser_store
     assert "frameCanvasReady: false" in browser_store
@@ -1246,6 +1248,7 @@ def test_browser_viewer_defaults_to_live_screencast_with_snapshot_fallback():
     assert "shouldAcceptMismatchedFrame(dimensions = null)" in browser_store
     assert "requestViewportSyncAfterRejectedFrame()" in browser_store
     assert "this.applySnapshot(data.snapshot);" in browser_store
+    assert "if (!this.frameCanvasReady || !this.usesScreencastTransport())" in browser_store
     assert "else if (!data.state)" in browser_store
     assert '"snapshot": snapshot' in ws_browser
     assert '"binary_frames": binary_frames' in ws_browser
@@ -1753,6 +1756,40 @@ async def test_browser_screencast_notifies_consumer_when_frame_task_stops_before
 
     assert ("Page.stopScreencast", {}) in session.sent
     assert session.detached is True
+
+
+@pytest.mark.anyio
+async def test_browser_screencast_stop_notifies_consumer_once():
+    class FakeSession:
+        def __init__(self):
+            self.handlers = {}
+            self.sent = []
+
+        def on(self, event, handler):
+            self.handlers[event] = handler
+
+        async def send(self, method, params=None):
+            self.sent.append((method, params or {}))
+
+        async def detach(self):
+            pass
+
+    session = FakeSession()
+    stopped = []
+    screencast = _BrowserScreencast(
+        stream_id="stream",
+        browser_id=7,
+        session=session,
+        mime="image/jpeg",
+    )
+
+    await screencast.start(quality=92, every_nth_frame=1, viewport={"width": 640, "height": 480})
+    await screencast.attach_consumer(lambda frame: None, lambda: stopped.append(True))
+    await screencast.stop()
+    await screencast.stop()
+
+    assert stopped == [True]
+    assert ("Page.stopScreencast", {}) in session.sent
 
 
 @pytest.mark.anyio

@@ -1412,8 +1412,15 @@ const model = {
     this._frameCanvas = canvas || null;
   },
 
+  currentFrameCanvas() {
+    const stageCanvas = this._stageElement?.querySelector?.(".browser-frame-canvas");
+    if (stageCanvas?.isConnected) return stageCanvas;
+    if (this._frameCanvas?.isConnected) return this._frameCanvas;
+    return null;
+  },
+
   canUseCanvasFrames() {
-    return Boolean(BROWSER_CANVAS_FRAMES_SUPPORTED && this._frameCanvas?.getContext);
+    return Boolean(BROWSER_CANVAS_FRAMES_SUPPORTED && this.currentFrameCanvas()?.getContext);
   },
 
   hasFrame() {
@@ -1421,7 +1428,7 @@ const model = {
   },
 
   paintFrameBitmap(bitmap) {
-    const canvas = this._frameCanvas;
+    const canvas = this.currentFrameCanvas();
     if (!canvas || !bitmap?.width || !bitmap?.height) return false;
     if (canvas.width !== bitmap.width) canvas.width = bitmap.width;
     if (canvas.height !== bitmap.height) canvas.height = bitmap.height;
@@ -1433,7 +1440,7 @@ const model = {
   },
 
   clearFrameCanvas() {
-    const canvas = this._frameCanvas;
+    const canvas = this.currentFrameCanvas();
     if (canvas?.width && canvas?.height) {
       canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
     }
@@ -1441,9 +1448,10 @@ const model = {
   },
 
   freezeCanvasFrameToImage() {
-    if (!this.frameCanvasReady || !this._frameCanvas) return;
+    const canvas = this.currentFrameCanvas();
+    if (!this.frameCanvasReady || !canvas) return;
     try {
-      this.frameSrc = this._frameCanvas.toDataURL("image/jpeg", 0.86);
+      this.frameSrc = canvas.toDataURL("image/jpeg", 0.86);
     } catch {
       this.frameSrc = "";
     }
@@ -1451,8 +1459,9 @@ const model = {
   },
 
   frameElement() {
-    if (this.frameCanvasReady && this._frameCanvas) {
-      return this._frameCanvas;
+    if (this.frameCanvasReady) {
+      const canvas = this.currentFrameCanvas();
+      if (canvas) return canvas;
     }
     return this._stageElement?.querySelector?.(".browser-frame-image") || null;
   },
@@ -2616,7 +2625,9 @@ const model = {
 	        const response = await websocket.request("browser_viewer_input", payload, { timeoutMs: 10000 });
 	        const data = firstOk(response);
 	        this.applyActiveFrameState(data.state);
-	        this.applySnapshot(data.snapshot);
+	        if (!this.frameCanvasReady || !this.usesScreencastTransport()) {
+	          this.applySnapshot(data.snapshot);
+	        }
 	      } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
       }

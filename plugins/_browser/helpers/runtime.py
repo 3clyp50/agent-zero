@@ -411,8 +411,11 @@ class _BrowserScreencast:
     async def stop(self) -> None:
         if self._closed:
             return
+        was_stopped = self.stopped
         self._closed = True
         self.stopped = True
+        if not was_stopped:
+            self._notify_stopped()
         self._drop_queued_frames()
         with contextlib.suppress(asyncio.QueueFull):
             self.queue.put_nowait(None)
