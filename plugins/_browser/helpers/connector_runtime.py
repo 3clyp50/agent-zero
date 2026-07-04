@@ -83,7 +83,8 @@ _REQUIRED_API_NAMES_RE = re.compile(
     re.S,
 )
 _HOST_BROWSER_REMOTE_DEBUGGING_HELP = (
-    'For an already-open Chrome-family browser, open `chrome://inspect/#remote-debugging`, '
+    "For an already-open Chromium-family browser, open its inspect page, such as "
+    "`chrome://inspect/#remote-debugging` or `opera://inspect/#remote-debugging`, "
     'enable "Allow remote debugging for this browser instance", run `/browser host on`, '
     "and retry."
 )
@@ -519,7 +520,10 @@ class ConnectorBrowserRuntime:
         if not message:
             message = "Host browser operation failed"
         normalized = message.lower()
-        if "chrome://inspect/#remote-debugging" in normalized:
+        if (
+            "chrome://inspect/#remote-debugging" in normalized
+            or "opera://inspect/#remote-debugging" in normalized
+        ):
             return _append_docker_browser_recovery(message)
         if any(token in normalized for token in _REMOTE_DEBUGGING_ERROR_TOKENS):
             return _append_docker_browser_recovery(

@@ -308,6 +308,7 @@ def test_connector_runtime_adds_remote_debugging_help_to_cdp_errors():
     )
 
     assert "chrome://inspect/#remote-debugging" in message
+    assert "opera://inspect/#remote-debugging" in message
     assert "Allow remote debugging for this browser instance" in message
     assert "/browser host on" in message
     assert "Internal Docker browser" in message

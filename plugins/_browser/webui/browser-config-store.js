@@ -10,6 +10,7 @@ const HOST_PROFILE_MODES = new Set(["existing", "agent"]);
 const DEFAULT_MAX_OPEN_TABS = 32;
 const MIN_MAX_OPEN_TABS = 1;
 const HARD_MAX_OPEN_TABS = 50;
+const HOST_BROWSER_STATUS_REFRESH_MS = 3000;
 
 function normalizePathList(value) {
   const source = Array.isArray(value)
@@ -91,6 +92,9 @@ function hostBrowserFamilyLabel(value) {
     chromium: "Chromium",
     edge: "Edge",
     "edge-dev": "Edge Dev",
+    brave: "Brave",
+    opera: "Opera",
+    vivaldi: "Vivaldi",
   };
   const label = labels[base] || "Host browser";
   if (remoteDebugging) return `${label} (allowed)`;
@@ -116,13 +120,16 @@ export const store = createStore("browserConfig", {
   extensionDeleteLoadingPath: "",
   hostBrowserStatus: null,
   hostBrowserStatusLoading: false,
+  hostBrowserStatusRefreshTimer: null,
 
   async init(config) {
     this.bindConfig(config);
     await Promise.all([this.loadExtensionsList(), this.loadHostBrowserStatus()]);
+    this.startHostBrowserStatusRefresh();
   },
 
   cleanup() {
+    this.stopHostBrowserStatusRefresh();
     this.config = null;
     this.extensionsList = [];
     this.extensionsError = "";
@@ -130,6 +137,20 @@ export const store = createStore("browserConfig", {
     this.extensionDeleteLoadingPath = "";
     this.hostBrowserStatus = null;
     this.hostBrowserStatusLoading = false;
+  },
+
+  startHostBrowserStatusRefresh() {
+    this.stopHostBrowserStatusRefresh();
+    this.hostBrowserStatusRefreshTimer = window.setInterval(
+      () => this.loadHostBrowserStatus(),
+      HOST_BROWSER_STATUS_REFRESH_MS,
+    );
+  },
+
+  stopHostBrowserStatusRefresh() {
+    if (!this.hostBrowserStatusRefreshTimer) return;
+    window.clearInterval(this.hostBrowserStatusRefreshTimer);
+    this.hostBrowserStatusRefreshTimer = null;
   },
 
   bindConfig(config) {

@@ -995,10 +995,12 @@ def test_browser_tool_does_not_auto_open_canvas_policy_is_documented():
     assert "`browser-automation` links to `browser-form-workflows`" in prompt
     assert "does not automatically load screenshots" in prompt
     assert "chrome://inspect/#remote-debugging" in prompt
+    assert "opera://inspect/#remote-debugging" in prompt
     assert tokens.approximate_tokens(prompt) <= 650
     assert "already open" in config
     assert "already-open Browser surface" in config_html
     assert "chrome://inspect/#remote-debugging" in config_html
+    assert "opera://inspect/#remote-debugging" in config_html
 
 
 def test_browser_skills_are_plugin_owned_and_progressively_linked():
