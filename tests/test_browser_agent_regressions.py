@@ -1001,6 +1001,7 @@ def test_browser_tool_does_not_auto_open_canvas_policy_is_documented():
     assert "already-open Browser surface" in config_html
     assert "chrome://inspect/#remote-debugging" in config_html
     assert "opera://inspect/#remote-debugging" in config_html
+    assert "A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS" in config_html
 
 
 def test_browser_skills_are_plugin_owned_and_progressively_linked():

@@ -121,7 +121,7 @@ Annotate mode turns any webpage into an interactive directive surface. Click an 
 - **Lift it** - see a card, hero, or component on someone else's site that you like? Capture it and have the agent re-implement it in your own project's stack.
 - **Comment it** - leave actionable notes pinned to elements during a UI review; the agent reads the comments and ships the fixes.
 
-The Docker browser is the default live Browser surface. Browser history keeps screenshots of important steps, so older chats can still show what the agent saw. The Browser also supports Chrome extensions inside the Docker browser, and **Bring Your Own Browser** through the A0 CLI Connector lets the agent drive Chrome/Edge/Chromium on your own machine.
+The Docker browser is the default live Browser surface. Browser history keeps screenshots of important steps, so older chats can still show what the agent saw. The Browser also supports Chrome extensions inside the Docker browser, and **Bring Your Own Browser** through the A0 CLI Connector lets the agent drive Chrome, Edge, Brave, Opera, Vivaldi, or Chromium on your own machine.
 
 See the [Browser guide](./docs/guides/browser.md) for screenshots, settings, host-browser setup, and troubleshooting.
 

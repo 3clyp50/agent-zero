@@ -137,8 +137,8 @@ development, Agent Zero can install it the first time it is needed.
 
 ## Bring Your Own Browser
 
-Bring Your Own Browser lets Agent Zero use Chrome, Edge, or Chromium on your own
-computer through A0 CLI.
+Bring Your Own Browser lets Agent Zero use Chrome, Edge, Brave, Opera, Vivaldi,
+or Chromium on your own computer through A0 CLI.
 
 Use it when the page, login, or browser profile should stay on your machine.
 
@@ -146,8 +146,33 @@ Requirements:
 
 - [ ] Keep A0 CLI connected to the Agent Zero chat.
 - [ ] Choose **Bring Your Own Browser** in Browser settings.
-- [ ] Use Chrome, Edge, or Chromium on the host.
-- [ ] For personal Chrome remote debugging, open the host browser first, go to `chrome://inspect/#remote-debugging`, and enable **Allow remote debugging for this browser instance**.
+- [ ] Use a Chromium-family browser on the host: Chrome, Edge, Brave, Opera, Vivaldi, or Chromium.
+- [ ] For an already-open browser, open its remote debugging page and enable **Allow remote debugging for this browser instance**.
+
+Remote debugging pages:
+
+| Browser | Page |
+| --- | --- |
+| Chrome, Edge, Brave, Vivaldi, Chromium | `chrome://inspect/#remote-debugging` |
+| Opera | `opera://inspect/#remote-debugging` |
+
+If a browser does not appear in the **Host browser** list after enabling remote
+debugging, restart or reconnect the local A0 CLI. Restarting only the Agent Zero
+Web UI server does not refresh the browser inventory; the list comes from the
+connected CLI.
+
+As a fallback, launch the browser with an explicit debugging port and profile
+directory:
+
+```bash
+opera --remote-debugging-port=9222 --user-data-dir="$HOME/.config/a0-opera-debug"
+```
+
+Then pass the full DevTools websocket endpoint to the CLI:
+
+```bash
+export A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS="ws://127.0.0.1:9222/devtools/browser/..."
+```
 
 ![Host browser remote debugging setting](../res/usage/browser/host-browser-remote-debugging-setting.png)
 
