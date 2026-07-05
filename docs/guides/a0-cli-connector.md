@@ -162,8 +162,9 @@ control starts when Agent Zero actually needs to use the browser.
 > control.
 
 The **Host browser** list in Browser settings comes from the connected local A0
-CLI, not from the Agent Zero Web UI server. If a newly authorized browser does
-not appear, restart or reconnect A0 CLI.
+CLI, not from the Agent Zero Web UI server. It shows Automatic, currently
+advertised debug endpoints, and **Custom endpoint**. If a newly authorized
+browser does not appear, restart or reconnect A0 CLI.
 
 If the inspect checkbox is not enough for your browser build, launch it with an
 explicit remote debugging port and a separate profile:
@@ -172,7 +173,8 @@ explicit remote debugging port and a separate profile:
 opera --remote-debugging-port=9222 --user-data-dir="$HOME/.config/a0-opera-debug"
 ```
 
-Then pass the full DevTools websocket endpoint to A0 CLI:
+Then choose **Custom endpoint** in Browser settings, run `/browser ws://...` in
+A0 CLI, or pass the full DevTools websocket endpoint to A0 CLI:
 
 ```bash
 export A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS="ws://127.0.0.1:9222/devtools/browser/..."

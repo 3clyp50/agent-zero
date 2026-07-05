@@ -72,14 +72,32 @@
           >
             <span class="browser-config-field-label">Host browser</span>
             <select
-              :value="$store.browserConfig.config.host_browser_selection || ''"
+              :value="$store.browserConfig.hostBrowserSelectValue()"
+              @focus="$store.browserConfig.loadHostBrowserStatus()"
+              @click="$store.browserConfig.loadHostBrowserStatus()"
               @change="$store.browserConfig.setHostBrowserSelection($event.target.value)"
             >
               <template x-for="option in $store.browserConfig.hostBrowserOptions()" :key="option.value">
                 <option :value="option.value" x-text="option.label"></option>
               </template>
             </select>
-            <span class="browser-config-field-help">Choose which installed browser/debug endpoint A0 CLI should use when multiple are available.</span>
+            <span class="browser-config-field-help">Choose an allowed debug endpoint, or leave Automatic so A0 CLI picks.</span>
+          </label>
+
+          <label
+            class="browser-config-field"
+            x-show="$store.browserConfig.config.runtime_backend === 'host_required' && $store.browserConfig.config.host_browser_profile_mode !== 'agent' && $store.browserConfig.showCustomHostBrowserEndpoint()"
+          >
+            <span class="browser-config-field-label">Custom endpoint</span>
+            <input
+              type="text"
+              :value="$store.browserConfig.hostBrowserCustomEndpoint"
+              @focus="$store.browserConfig.loadHostBrowserStatus()"
+              @input="$store.browserConfig.setCustomHostBrowserEndpoint($event.target.value)"
+              placeholder="ws://127.0.0.1:9222/devtools/browser/..."
+              autocomplete="off"
+            />
+            <span class="browser-config-field-help" x-text="$store.browserConfig.customHostBrowserEndpointDiagnostic()"></span>
           </label>
 
           <div

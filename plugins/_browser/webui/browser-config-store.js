@@ -10,7 +10,8 @@ const HOST_PROFILE_MODES = new Set(["existing", "agent"]);
 const DEFAULT_MAX_OPEN_TABS = 32;
 const MIN_MAX_OPEN_TABS = 1;
 const HARD_MAX_OPEN_TABS = 50;
-const HOST_BROWSER_STATUS_REFRESH_MS = 3000;
+const HOST_BROWSER_STATUS_REFRESH_MS = 1000;
+const CUSTOM_HOST_BROWSER_SELECTION = "__custom_endpoint__";
 
 function normalizePathList(value) {
   const source = Array.isArray(value)
@@ -72,6 +73,39 @@ function normalizeHostBrowserSelection(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, "_").slice(0, 200);
 }
 
+function normalizeCustomHostBrowserEndpoint(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const candidate = raw.includes("://") ? raw : `ws://${raw}`;
+  try {
+    const url = new URL(candidate);
+    if (!["ws:", "wss:"].includes(url.protocol) || !url.host || !url.pathname.startsWith("/devtools/browser/")) {
+      return "";
+    }
+    return normalizeHostBrowserSelection(`${url.protocol}//${url.host}${url.pathname}${url.search || ""}`);
+  } catch (_error) {
+    return "";
+  }
+}
+
+function isCustomHostBrowserEndpoint(value) {
+  return Boolean(normalizeCustomHostBrowserEndpoint(value));
+}
+
+function debugPortVersionUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const candidate = raw.includes("://") ? raw : `ws://${raw}`;
+  try {
+    const url = new URL(candidate);
+    if (!["ws:", "wss:"].includes(url.protocol) || !url.host) return "";
+    if (url.pathname && url.pathname !== "/") return "";
+    return `http://${url.host}/json/version`;
+  } catch (_error) {
+    return "";
+  }
+}
+
 function normalizeBoolean(value, fallback = true) {
   if (value === undefined || value === null || value === "") return fallback;
   if (typeof value === "boolean") return value;
@@ -121,6 +155,8 @@ export const store = createStore("browserConfig", {
   hostBrowserStatus: null,
   hostBrowserStatusLoading: false,
   hostBrowserStatusRefreshTimer: null,
+  hostBrowserCustomEndpoint: "",
+  hostBrowserCustomMode: false,
 
   async init(config) {
     this.bindConfig(config);
@@ -137,6 +173,8 @@ export const store = createStore("browserConfig", {
     this.extensionDeleteLoadingPath = "";
     this.hostBrowserStatus = null;
     this.hostBrowserStatusLoading = false;
+    this.hostBrowserCustomEndpoint = "";
+    this.hostBrowserCustomMode = false;
   },
 
   startHostBrowserStatusRefresh() {
@@ -158,6 +196,9 @@ export const store = createStore("browserConfig", {
     if (!safeConfig) return;
     if (this.config === safeConfig) return;
     this.config = safeConfig;
+    if (isCustomHostBrowserEndpoint(safeConfig.host_browser_selection)) {
+      this.hostBrowserCustomEndpoint = safeConfig.host_browser_selection;
+    }
   },
 
   setAutofocusActivePage(enabled) {
@@ -215,27 +256,80 @@ export const store = createStore("browserConfig", {
         ? connector.available_browsers
         : [];
       for (const browser of advertised) {
-        const value = normalizeHostBrowserSelection(browser?.id || browser?.family || browser?.cdp_endpoint);
+        const value = normalizeCustomHostBrowserEndpoint(browser?.cdp_endpoint || browser?.id);
         if (!value || seen.has(value)) continue;
         seen.add(value);
         const label = browser?.label || hostBrowserFamilyLabel(browser?.family || value);
         const status = browser?.status ? ` - ${hostBrowserStatusLabel(browser.status)}` : "";
         options.push({ value, label: `${label}${status}` });
       }
-      const fallbackValue = normalizeHostBrowserSelection(connector?.browser_id || connector?.browser_family);
+      const fallbackValue = normalizeCustomHostBrowserEndpoint(connector?.cdp_endpoint || connector?.browser_id);
       if (fallbackValue && !seen.has(fallbackValue)) {
         seen.add(fallbackValue);
         const label = connector?.browser_label || hostBrowserFamilyLabel(connector?.browser_family || fallbackValue);
         options.push({ value: fallbackValue, label });
       }
     }
+    const selected = normalizeHostBrowserSelection(this.config?.host_browser_selection);
+    if (selected && !seen.has(selected) && !isCustomHostBrowserEndpoint(selected)) {
+      seen.add(selected);
+      options.push({ value: selected, label: `Saved: ${selected}` });
+    }
+    options.push({ value: CUSTOM_HOST_BROWSER_SELECTION, label: "Custom endpoint" });
     return options;
+  },
+
+  hostBrowserSelectValue() {
+    if (this.hostBrowserCustomMode) return CUSTOM_HOST_BROWSER_SELECTION;
+    const selected = normalizeHostBrowserSelection(this.config?.host_browser_selection);
+    if (!selected) return "";
+    if (this.hostBrowserOptions().some((option) => option.value === selected)) return selected;
+    if (isCustomHostBrowserEndpoint(selected)) return CUSTOM_HOST_BROWSER_SELECTION;
+    return selected;
   },
 
   setHostBrowserSelection(value) {
     const safeConfig = ensureConfig(this.config);
     if (!safeConfig) return;
+    if (value === CUSTOM_HOST_BROWSER_SELECTION) {
+      this.hostBrowserCustomMode = true;
+      if (isCustomHostBrowserEndpoint(safeConfig.host_browser_selection)) {
+        this.hostBrowserCustomEndpoint = safeConfig.host_browser_selection;
+      } else {
+        safeConfig.host_browser_selection = "";
+      }
+      return;
+    }
+    this.hostBrowserCustomMode = false;
     safeConfig.host_browser_selection = normalizeHostBrowserSelection(value);
+  },
+
+  showCustomHostBrowserEndpoint() {
+    return this.hostBrowserSelectValue() === CUSTOM_HOST_BROWSER_SELECTION;
+  },
+
+  setCustomHostBrowserEndpoint(value) {
+    this.hostBrowserCustomMode = true;
+    this.hostBrowserCustomEndpoint = String(value || "").trim();
+    const safeConfig = ensureConfig(this.config);
+    if (!safeConfig) return;
+    const endpoint = normalizeCustomHostBrowserEndpoint(this.hostBrowserCustomEndpoint);
+    if (endpoint || !this.hostBrowserCustomEndpoint) {
+      safeConfig.host_browser_selection = endpoint;
+    }
+  },
+
+  customHostBrowserEndpointDiagnostic() {
+    if (!this.hostBrowserCustomEndpoint) {
+      return "Paste a ws://.../devtools/browser/... endpoint from the browser inspect page.";
+    }
+    const endpoint = normalizeCustomHostBrowserEndpoint(this.hostBrowserCustomEndpoint);
+    if (endpoint) return `Using ${endpoint}`;
+    const versionUrl = debugPortVersionUrl(this.hostBrowserCustomEndpoint);
+    if (versionUrl) {
+      return `This looks like a debug port. Open ${versionUrl} and copy webSocketDebuggerUrl.`;
+    }
+    return "Endpoint must be a ws:// or wss:// URL ending in /devtools/browser/...";
   },
 
   hostBrowserProfileModeLabel() {

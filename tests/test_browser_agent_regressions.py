@@ -981,6 +981,9 @@ def test_browser_tool_does_not_auto_open_canvas_policy_is_documented():
     config_html = (PROJECT_ROOT / "plugins" / "_browser" / "webui" / "config.html").read_text(
         encoding="utf-8"
     )
+    config_store_js = (
+        PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-config-store.js"
+    ).read_text(encoding="utf-8")
 
     assert "must not open a Browser surface automatically" in prompt
     assert "Use the tool headlessly unless the user opens the Browser surface" in prompt
@@ -1002,6 +1005,9 @@ def test_browser_tool_does_not_auto_open_canvas_policy_is_documented():
     assert "chrome://inspect/#remote-debugging" in config_html
     assert "opera://inspect/#remote-debugging" in config_html
     assert "A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS" in config_html
+    assert "Custom endpoint" in config_html
+    assert "customHostBrowserEndpointDiagnostic" in config_store_js
+    assert "HOST_BROWSER_STATUS_REFRESH_MS = 1000" in config_store_js
 
 
 def test_browser_skills_are_plugin_owned_and_progressively_linked():

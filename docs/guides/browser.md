@@ -156,7 +156,8 @@ Remote debugging pages:
 | Chrome, Edge, Brave, Vivaldi, Chromium | `chrome://inspect/#remote-debugging` |
 | Opera | `opera://inspect/#remote-debugging` |
 
-If a browser does not appear in the **Host browser** list after enabling remote
+The **Host browser** list shows Automatic, currently advertised debug endpoints,
+and **Custom endpoint**. If a browser does not appear after enabling remote
 debugging, restart or reconnect the local A0 CLI. Restarting only the Agent Zero
 Web UI server does not refresh the browser inventory; the list comes from the
 connected CLI.
@@ -168,7 +169,8 @@ directory:
 opera --remote-debugging-port=9222 --user-data-dir="$HOME/.config/a0-opera-debug"
 ```
 
-Then pass the full DevTools websocket endpoint to the CLI:
+Then choose **Custom endpoint** in Browser settings, or pass the full DevTools
+websocket endpoint to the CLI:
 
 ```bash
 export A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS="ws://127.0.0.1:9222/devtools/browser/..."

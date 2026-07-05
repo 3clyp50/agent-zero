@@ -26,6 +26,7 @@
 - Keep narrow WebUI Browser controls usable by grouping navigation with Annotate/settings above a full-width address bar.
 - For Bring Your Own Browser with an existing host profile, `host_browser_selection` may target automatic CLI selection, a browser family/id, or an explicit CDP endpoint and must be forwarded to the connector runtime as `browser_selection`.
 - Browser Settings must refresh connected A0 CLI host-browser inventory while the settings view is open so newly authorized endpoints appear without saving or reopening.
+- Browser Settings keeps the Host browser dropdown focused on automatic selection, advertised debug endpoints, and a validated Custom endpoint field instead of listing every installed local profile.
 - Browser URL-intent handling must only claim web URL schemes and leave custom Agent Zero schemes to their owning surfaces.
 - Prefer DOM/CDP browser actions with refs, selectors, frame-chain refs, and screenshots over viewport coordinate input. Coordinates remain a visual fallback.
 - Do not hardcode user-specific browser paths or secrets.
