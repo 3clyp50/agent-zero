@@ -66,6 +66,9 @@
 - `_is_streaming_http_type(server_type: str) -> bool`: Check if the server type is a streaming HTTP variant.
 - `_split_qualified_tool_name(tool_name: str) -> tuple[str, str]`: Split `server.tool` names while preserving dots inside MCP tool names.
 - `_normalize_disabled_tools(value: Any) -> list[str]`: Normalize the optional per-server disabled tool list.
+- `_split_stdio_command(command: Any) -> tuple[str, list[str]]`: Split shell-style local MCP command lines into an executable plus leading arguments.
+- `_split_stdio_arg_fragment(arg: str) -> list[str]`: Split collapsed option/value argument fragments while preserving obvious single values with spaces.
+- `_normalize_stdio_args(value: Any) -> list[str]`: Normalize local MCP argument lists after manager/raw JSON parsing.
 - `initialize_mcp(mcp_servers_config: str)`
 - Notable constants/configuration names: `DEFAULT_MCP_SERVERS_CONFIG`, `MCP_MEDIA_TOKENS_ESTIMATE`, `MAX_MCP_RESOURCE_TEXT_CHARS`, `MCP_SESSION_CLEANUP_TIMEOUT_SECONDS`, `MCP_OPERATION_TIMEOUT_GRACE_SECONDS`, `T`.
 
@@ -81,12 +84,13 @@
 - MCP tool names are qualified as `server_name.tool_name`; server names are normalized without dots, and the tool portion may contain dots.
 - Servers may define `disabled_tools` as a list of MCP tool names. Disabled tools are omitted from agent-facing prompts, status counts, `has_tool`, and calls, while detail views can still retrieve them through `get_all_tools()` with a `disabled` flag so users can re-enable them.
 - Server-specific `init_timeout` and `tool_timeout` override global MCP client timeout settings for list-tools and call-tool operations.
+- Local stdio server configs accept either strict MCP JSON (`command: "uvx", args: [...]`) or manager-style command lines (`command: "uvx package"`) and normalize them before spawning the process.
 - MCP image and image-resource content is materialized to scoped artifact files and returned both as model-visible image attachments and as path metadata (`attachments`/`media_paths`) for downstream delivery.
 - MCP config locks must not be held across awaited server initialization or tool-call operations. Slow or wedged MCP servers must not block status reads, prompt construction, unrelated MCP servers, or later tool calls through the shared config lock.
 - MCP client session work runs inside disposable isolated `DeferredTask` workers with an outer timeout. Normal `AsyncExitStack` cleanup is also bounded; if cleanup or transport shutdown does not finish, the operation reports failure or warning while Agent Zero keeps control of the agent loop.
 - Server status marks initialized server objects with cached initialization errors as disconnected, even if the config object exists.
 - Observed side-effect areas: filesystem writes, network calls, WebSocket state, settings/state persistence, secret handling.
-- Imported dependency areas include: `abc`, `anyio.streams.memory`, `asyncio`, `contextlib`, `datetime`, `helpers`, `helpers.defer`, `helpers.log`, `helpers.print_style`, `helpers.tool`, `httpx`, `json`, `mcp`, `mcp.client.sse`, `mcp.client.stdio`, `mcp.client.streamable_http`, `mcp.shared.message`.
+- Imported dependency areas include: `abc`, `anyio.streams.memory`, `asyncio`, `contextlib`, `datetime`, `helpers`, `helpers.defer`, `helpers.log`, `helpers.print_style`, `helpers.tool`, `httpx`, `json`, `mcp`, `mcp.client.sse`, `mcp.client.stdio`, `mcp.client.streamable_http`, `mcp.shared.message`, `shlex`.
 
 ## Key Concepts
 

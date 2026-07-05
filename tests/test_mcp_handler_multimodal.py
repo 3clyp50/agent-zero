@@ -345,6 +345,31 @@ def test_mcp_disabled_tools_are_hidden_from_agent_paths_but_visible_in_detail(mc
     assert malformed_config.servers[0].disabled_tools == []
 
 
+def test_mcp_local_server_accepts_manager_style_command_lines(mcp_handler_module):
+    module, _tmp_path = mcp_handler_module
+
+    server = module.MCPServerLocal(
+        {
+            "name": "google_workspace",
+            "command": "uvx workspace-mcp",
+            "args": [
+                "--tool-tier core",
+                "/tmp/path with spaces",
+                "--label=Two Words",
+            ],
+        }
+    )
+
+    assert server.command == "uvx"
+    assert server.args == [
+        "workspace-mcp",
+        "--tool-tier",
+        "core",
+        "/tmp/path with spaces",
+        "--label=Two Words",
+    ]
+
+
 def test_mcp_client_call_tool_uses_server_tool_timeout(mcp_handler_module, monkeypatch):
     module, _tmp_path = mcp_handler_module
     session_timeouts = []

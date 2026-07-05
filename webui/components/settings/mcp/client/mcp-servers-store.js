@@ -117,7 +117,7 @@ function parseArgsText(text) {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
   }
-  return raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return raw.split(/\r?\n/).flatMap((line) => splitCommandLine(line.trim())).filter(Boolean);
 }
 
 function formatArgsText(value) {

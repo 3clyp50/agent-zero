@@ -21,6 +21,7 @@ from contextlib import AsyncExitStack
 from shutil import which
 from datetime import timedelta
 import json
+import shlex
 import uuid
 from helpers import errors
 from helpers import settings
@@ -110,6 +111,44 @@ def _normalize_disabled_tools(value: Any) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item).strip() for item in value if str(item).strip()]
+
+
+def _split_stdio_command(command: Any) -> tuple[str, list[str]]:
+    text = str(command or "").strip()
+    if not text:
+        return "", []
+    try:
+        parts = shlex.split(text)
+    except ValueError:
+        return text, []
+    if not parts:
+        return "", []
+    return parts[0], parts[1:]
+
+
+def _split_stdio_arg_fragment(arg: str) -> list[str]:
+    try:
+        parts = shlex.split(arg)
+    except ValueError:
+        return [arg]
+    if len(parts) <= 1:
+        return parts or []
+    if parts[0].startswith("-") and "=" not in parts[0]:
+        return parts
+    if any(part.startswith("-") for part in parts[1:]):
+        return parts
+    return [arg]
+
+
+def _normalize_stdio_args(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    args: list[str] = []
+    for item in value:
+        text = str(item).strip()
+        if text:
+            args.extend(_split_stdio_arg_fragment(text))
+    return args
 
 
 def initialize_mcp(mcp_servers_config: str):
@@ -649,6 +688,15 @@ class MCPServerLocal(BaseModel):
 
     def update(self, config: dict[str, Any]) -> "MCPServerLocal":
         with self.__lock:
+            command = self.command
+            command_args: list[str] = []
+            args = list(self.args)
+            if "command" in config:
+                command, command_args = _split_stdio_command(config.get("command"))
+                args = [*command_args, *args]
+            if "args" in config:
+                args = [*command_args, *_normalize_stdio_args(config.get("args"))]
+
             for key, value in config.items():
                 if key in [
                     "name",
@@ -665,11 +713,15 @@ class MCPServerLocal(BaseModel):
                     "disabled_tools",
                     "scope",
                 ]:
+                    if key in ["command", "args"]:
+                        continue
                     if key == "name":
                         value = normalize_name(value)
                     if key == "disabled_tools":
                         value = _normalize_disabled_tools(value)
                     setattr(self, key, value)
+            self.command = command
+            self.args = args
             return self
 
     async def initialize(self) -> "MCPServerLocal":
