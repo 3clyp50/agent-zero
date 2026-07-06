@@ -49,10 +49,10 @@ The desktop **A0 Launcher** is the recommended way to install Agent Zero on a pe
 
 | Architecture | macOS | Linux | Windows |
 | --- | --- | --- | --- |
-| x86 | [Mac Intel](https://github.com/agent0ai/a0-launcher/releases/download/v1.1/a0-launcher-1.1-macos-x64.dmg) | [Linux x86](https://github.com/agent0ai/a0-launcher/releases/download/v1.1/a0-launcher-1.1-linux-x64.AppImage) | [Windows x86](https://github.com/agent0ai/a0-launcher/releases/download/v1.1/a0-launcher-1.1-windows-x64.exe) |
-| ARM64 | [Mac Apple Silicon](https://github.com/agent0ai/a0-launcher/releases/download/v1.1/a0-launcher-1.1-macos-arm64.dmg) | [Linux ARM64](https://github.com/agent0ai/a0-launcher/releases/download/v1.1/a0-launcher-1.1-linux-arm64.AppImage) | [Windows ARM64](https://github.com/agent0ai/a0-launcher/releases/download/v1.1/a0-launcher-1.1-windows-arm64.exe) |
+| x86 | [Mac Intel](https://github.com/agent0ai/a0-launcher/releases/download/v1.2/a0-launcher-1.2-macos-x64.dmg) | [Linux x86](https://github.com/agent0ai/a0-launcher/releases/download/v1.2/a0-launcher-1.2-linux-x64.AppImage) | [Windows x86](https://github.com/agent0ai/a0-launcher/releases/download/v1.2/a0-launcher-1.2-windows-x64.exe) |
+| ARM64 | [Mac Apple Silicon](https://github.com/agent0ai/a0-launcher/releases/download/v1.2/a0-launcher-1.2-macos-arm64.dmg) | [Linux ARM64](https://github.com/agent0ai/a0-launcher/releases/download/v1.2/a0-launcher-1.2-linux-arm64.AppImage) | [Windows ARM64](https://github.com/agent0ai/a0-launcher/releases/download/v1.2/a0-launcher-1.2-windows-arm64.exe) |
 
-See the [A0 Launcher v1.1 release](https://github.com/agent0ai/a0-launcher/releases/tag/v1.1) for release notes and updater metadata. See the [Launcher guide](./docs/guides/launcher.md) for the first-run walkthrough.
+See the [A0 Launcher v1.2 release](https://github.com/agent0ai/a0-launcher/releases/tag/v1.2) for release notes and updater metadata. See the [Launcher guide](./docs/guides/launcher.md) for the first-run walkthrough.
 
 ## A0 Install
 
