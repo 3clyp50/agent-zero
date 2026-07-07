@@ -84,6 +84,7 @@ chat:
       endpoint_url: "/v1/models"
       default_base: "http://host.docker.internal:1234"
     kwargs:
+      a0_api_mode: chat
       api_base: "http://host.docker.internal:1234/v1"
       api_key: "lm-studio"
   llama_cpp:
@@ -93,6 +94,7 @@ chat:
       endpoint_url: "/v1/models"
       default_base: "http://host.docker.internal:8080"
     kwargs:
+      a0_api_mode: chat
       api_base: "http://host.docker.internal:8080/v1"
       api_key: "llama-cpp"
   mistral:
@@ -120,6 +122,7 @@ chat:
       format: "ollama"
       default_base: "http://host.docker.internal:11434"
     kwargs:
+      a0_api_mode: chat
       api_base: "http://host.docker.internal:11434"
   omlx:
     name: oMLX
@@ -128,6 +131,7 @@ chat:
       endpoint_url: "/v1/models"
       default_base: "http://host.docker.internal:8000"
     kwargs:
+      a0_api_mode: chat
       api_base: "http://host.docker.internal:8000/v1"
       api_key: "omlx"
   ollama_cloud:
@@ -136,6 +140,7 @@ chat:
     models_list:
       endpoint_url: "/models"
     kwargs:
+      a0_api_mode: chat
       api_base: https://ollama.com/v1
   openai:
     name: OpenAI
@@ -184,6 +189,7 @@ chat:
       endpoint_url: "/v1/models"
       default_base: "http://host.docker.internal:8000"
     kwargs:
+      a0_api_mode: chat
       api_base: "http://host.docker.internal:8000/v1"
       api_key: "vllm"
   xai:
@@ -208,6 +214,8 @@ chat:
   other:
     name: Other OpenAI compatible
     litellm_provider: openai
+    kwargs:
+      a0_api_mode: chat
 
 embedding:
   huggingface:

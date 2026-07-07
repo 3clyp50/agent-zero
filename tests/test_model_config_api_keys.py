@@ -265,6 +265,7 @@ def test_ollama_cloud_provider_config_requires_key_and_base_url():
     ollama_cloud = provider_config["chat"]["ollama_cloud"]
 
     assert ollama_cloud["name"] == "Ollama Cloud"
+    assert ollama_cloud["kwargs"]["a0_api_mode"] == "chat"
     assert ollama_cloud["kwargs"]["api_base"] == "https://ollama.com/v1"
     assert ollama_cloud["models_list"]["endpoint_url"] == "/models"
     assert "api_key_mode" not in ollama_cloud
@@ -296,6 +297,36 @@ def test_direct_venice_chat_provider_defaults_to_chat_completions(monkeypatch):
         a0_api_mode="responses",
     )
     assert custom.kwargs["a0_api_mode"] == "responses"
+
+
+def test_local_chat_providers_default_to_chat_completions():
+    import yaml
+
+    provider_path = PROJECT_ROOT / "conf/model_providers.yaml"
+    provider_config = yaml.safe_load(provider_path.read_text(encoding="utf-8"))
+
+    chat_completions_default_providers = (
+        "lm_studio",
+        "llama_cpp",
+        "ollama",
+        "ollama_cloud",
+        "omlx",
+        "other",
+        "vllm",
+    )
+    local_embedding_providers = (
+        "lm_studio",
+        "llama_cpp",
+        "ollama",
+        "omlx",
+        "vllm",
+    )
+
+    for provider in chat_completions_default_providers:
+        assert provider_config["chat"][provider]["kwargs"]["a0_api_mode"] == "chat"
+
+    for provider in local_embedding_providers:
+        assert "a0_api_mode" not in provider_config["embedding"][provider]["kwargs"]
 
 
 def test_missing_api_key_banner_does_not_include_auto_modal_metadata(monkeypatch):
