@@ -1132,7 +1132,6 @@ def hide_chat_skill(agent: Agent, entry: Any) -> list[ActiveSkillEntry]:
         CONTEXT_DATA_NAME_CHAT_VISIBLE_SKILLS,
         visible_entries,
     )
-    unload_agent_skill(agent, normalized)
     return get_hidden_skills(agent)
 
 
@@ -1183,8 +1182,7 @@ def clear_chat_skill_overrides(agent: Agent) -> list[ActiveSkillEntry]:
 
 
 def build_active_skills_prompt(agent: Agent | None) -> str:
-    items = _resolve_active_skill_entries(agent, get_active_skills(agent))
-    return "\n\n".join(item["content"] for item in items if item.get("content")).strip()
+    return ""
 
 
 def _format_skill_prompt(skill: Skill) -> str:

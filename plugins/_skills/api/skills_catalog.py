@@ -37,17 +37,36 @@ class SkillsCatalog(ApiHandler):
     def _activate(self, input: dict, *, context_id: str) -> dict[str, Any]:
         context = self._require_context(context_id)
         skill_entry = self._require_skill_entry(input)
-        skills.activate_chat_skill(context.get_agent(), skill_entry)
+        agent = context.get_agent()
+        skill = self._resolve_catalog_skill(skill_entry, context=context)
+        skill_name = str(skill.get("name") or skill_entry.get("name") or "").strip()
+        if not skill_name:
+            raise ValueError("Skill name is required")
+
+        skill_path = str(skill.get("path") or skill_entry.get("path") or "").strip()
+        skills.add_loaded_skill_name(agent, skill_name)
+        if not self._visible_skill_loaded(agent, skill_name):
+            content = skills.load_skill_for_agent(skill_name=skill_name, agent=agent)
+            if content.startswith("Error:"):
+                raise ValueError(content)
+            agent.hist_add_tool_result(
+                "skills_tool",
+                content,
+                skill_instructions={
+                    "name": skill_name,
+                    "path": skill_path,
+                    "source": "skills_page:load",
+                    "content_included": True,
+                },
+            )
         save_tmp_chat(context)
         return self._build_state(context_id=context.id)
 
     def _deactivate(self, input: dict, *, context_id: str) -> dict[str, Any]:
-        context = self._require_context(context_id)
-        skill_entry = self._require_skill_entry(input)
-        skills.deactivate_chat_skill(context.get_agent(), skill_entry)
-        skills.unload_agent_skill(context.get_agent(), skill_entry)
-        save_tmp_chat(context)
-        return self._build_state(context_id=context.id)
+        return {
+            "ok": False,
+            "error": "Loaded skills are kept in chat history and cannot be removed.",
+        }
 
     def _hide(self, input: dict, *, context_id: str) -> dict[str, Any]:
         context = self._require_context(context_id)
@@ -64,10 +83,10 @@ class SkillsCatalog(ApiHandler):
         return self._build_state(context_id=context.id)
 
     def _clear(self, *, context_id: str) -> dict[str, Any]:
-        context = self._require_context(context_id)
-        skills.clear_chat_skill_overrides(context.get_agent())
-        save_tmp_chat(context)
-        return self._build_state(context_id=context.id)
+        return {
+            "ok": False,
+            "error": "Loaded skills are kept in chat history and cannot be removed.",
+        }
 
     def _build_state(
         self,
@@ -87,26 +106,13 @@ class SkillsCatalog(ApiHandler):
             str(skill.get("name") or "").strip().lower(): skill for skill in catalog
         }
 
+        loaded_entries = skills.get_loaded_skill_entries(agent)
         scope_entries = skills.get_scope_active_skills(agent)
         scope_hidden_entries = skills.get_scope_hidden_skills(agent)
         chat_entries = skills.get_chat_active_skills(context)
         disabled_entries = skills.get_chat_disabled_skills(context)
         visible_entries = skills.get_chat_visible_skills(context)
         hidden_entries = skills.get_hidden_skills(agent)
-        active_entries = self._merge_entries(
-            skills.get_active_skills(agent),
-            self._filter_hidden_entries(
-                self._get_loaded_skill_entries(agent),
-                hidden_entries,
-            ),
-        )
-
-        scope_keys = {
-            self._entry_key(entry) for entry in scope_entries if self._entry_key(entry)
-        }
-        chat_keys = {
-            self._entry_key(entry) for entry in chat_entries if self._entry_key(entry)
-        }
 
         return {
             "ok": True,
@@ -123,15 +129,9 @@ class SkillsCatalog(ApiHandler):
                     entry,
                     catalog_by_key,
                     catalog_by_name,
-                    state_source=(
-                        "Pinned + chat"
-                        if key in scope_keys and key in chat_keys
-                        else "Pinned default"
-                        if key in scope_keys
-                        else "Chat"
-                    ),
+                    state_source="Loaded in chat history",
                 )
-                for entry in active_entries
+                for entry in loaded_entries
                 if (key := self._entry_key(entry))
             ],
             "scope_skills": [
@@ -139,7 +139,7 @@ class SkillsCatalog(ApiHandler):
                     entry,
                     catalog_by_key,
                     catalog_by_name,
-                    state_source="Pinned default",
+                    state_source="Scope default",
                 )
                 for entry in scope_entries
             ],
@@ -253,11 +253,28 @@ class SkillsCatalog(ApiHandler):
     def _entry_key(self, entry: dict[str, Any]) -> str:
         return str(entry.get("path") or entry.get("name") or "").strip().lower()
 
-    def _get_loaded_skill_entries(self, agent: Any | None) -> list[dict[str, str]]:
-        if not agent:
-            return []
+    def _visible_skill_loaded(self, agent: Any, skill_name: str) -> bool:
+        output = getattr(getattr(agent, "history", None), "output", None)
+        if not callable(output):
+            return False
+        return any(
+            skills.skill_instruction_name(message) == skill_name
+            for message in output()
+        )
 
-        return skills.get_loaded_skill_entries(agent)
+    def _resolve_catalog_skill(
+        self,
+        entry: dict[str, Any],
+        *,
+        context: AgentContext,
+    ) -> dict[str, Any]:
+        agent = context.get_agent()
+        project_name = projects.get_context_project_name(context) or ""
+        catalog = skills.list_skill_catalog(project_name=project_name, agent=agent)
+        return next(
+            (item for item in catalog if self._entry_matches_any(entry, [item])),
+            entry,
+        )
 
     def _merge_entries(
         self,

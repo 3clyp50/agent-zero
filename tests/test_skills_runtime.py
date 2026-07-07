@@ -150,6 +150,35 @@ def test_hidden_skills_are_not_capped_like_active_skills():
     assert len(runtime.get_hidden_skills(agent)) == 25
 
 
+def test_active_skill_prompt_protocol_is_disabled(monkeypatch):
+    monkeypatch.setattr(
+        runtime.plugin_helpers,
+        "get_plugin_config",
+        lambda *args, **kwargs: _scope_config([{"name": "Pinned"}]),
+    )
+    agent = DummyAgent()
+
+    assert runtime.get_active_skills(agent) == [{"name": "Pinned"}]
+    assert runtime.build_active_skills_prompt(agent) == ""
+
+
+def test_hiding_skill_does_not_unload_history_loaded_skill():
+    agent = DummyAgent()
+    agent.context.set_data(
+        runtime.CONTEXT_DATA_NAME_LOADED_SKILLS,
+        ["history-skill"],
+    )
+
+    runtime.hide_chat_skill(agent, {"name": "history-skill"})
+
+    assert agent.context.get_data(runtime.CONTEXT_DATA_NAME_LOADED_SKILLS) == [
+        "history-skill"
+    ]
+    assert runtime.get_chat_disabled_skills(agent.context) == [
+        {"name": "history-skill"}
+    ]
+
+
 def test_chat_activation_can_override_scope_defaults(monkeypatch):
     monkeypatch.setattr(
         runtime.plugin_helpers,

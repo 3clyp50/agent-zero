@@ -1,27 +1,9 @@
 import * as API from "/js/api.js";
 import { store as markdownModalStore } from "/components/modals/markdown/markdown-store.js";
 import { store as chatsStore } from "/components/sidebar/chats/chats-store.js";
-import {
-  toastFrontendError,
-  toastFrontendInfo,
-} from "/components/notifications/notification-store.js";
+import { toastFrontendError } from "/components/notifications/notification-store.js";
 
 const CATALOG_API = "/plugins/_skills/skills_catalog";
-const MAX_ACTIVE_SKILLS_FALLBACK = 20;
-
-function normalizeMaxActiveSkills(value) {
-  if (typeof value === "boolean") return MAX_ACTIVE_SKILLS_FALLBACK;
-
-  const numeric = typeof value === "number"
-    ? value
-    : Number.parseInt(String(value ?? "").trim(), 10);
-
-  if (!Number.isFinite(numeric) || numeric < 1) {
-    return MAX_ACTIVE_SKILLS_FALLBACK;
-  }
-
-  return Math.floor(numeric);
-}
 
 function normalizeEntry(entry) {
   if (!entry) return null;
@@ -62,11 +44,8 @@ function entriesMatch(left, right) {
 
 function ensureConfig(config) {
   if (!config || typeof config !== "object") return;
-  config.max_active_skills = normalizeMaxActiveSkills(config.max_active_skills);
-  const activeSkills = Array.isArray(config.active_skills) ? config.active_skills : [];
   const hiddenSkills = Array.isArray(config.hidden_skills) ? config.hidden_skills : [];
 
-  config.active_skills = compactEntries(activeSkills, config.max_active_skills);
   config.hidden_skills = compactEntries(hiddenSkills);
 }
 
@@ -94,15 +73,13 @@ window.createSkillsConfigModel = (context, config) => ({
   mutatingChat: false,
   catalog: [],
   search: "",
-  maxActiveSkills: MAX_ACTIVE_SKILLS_FALLBACK,
   selectedSkills: [],
   hiddenSkills: [],
   chatContextAvailable: false,
 
   initDefaults() {
     ensureConfig(config);
-    this.maxActiveSkills = config.max_active_skills;
-    this.selectedSkills = [...this.activeEntries];
+    this.selectedSkills = [];
     this.hiddenSkills = [...this.hiddenEntries];
   },
 
@@ -110,48 +87,9 @@ window.createSkillsConfigModel = (context, config) => ({
     return context?.openOptions?.focus === "chat";
   },
 
-  get activeEntries() {
-    ensureConfig(config);
-    return config.active_skills;
-  },
-
   get hiddenEntries() {
     ensureConfig(config);
     return config.hidden_skills;
-  },
-
-  get selectedCount() {
-    return this.selectedSkills.length;
-  },
-
-  async applyMaxActiveSkills(value, { notify = false } = {}) {
-    ensureConfig(config);
-
-    const nextLimit = normalizeMaxActiveSkills(value);
-    const previousLimit = this.maxActiveSkills;
-    const previousCount = this.selectedSkills.length;
-
-    config.max_active_skills = nextLimit;
-    this.maxActiveSkills = nextLimit;
-
-    if (previousCount > nextLimit) {
-      this._setSelectedSkills(this.selectedSkills.slice(0, nextLimit));
-
-      if (notify) {
-        await toastFrontendInfo(
-          `Trimmed ${previousCount - nextLimit} pinned skill${previousCount - nextLimit === 1 ? "" : "s"} to match the new cap of ${nextLimit}.`,
-          "Skills"
-        );
-      }
-      return;
-    }
-
-    if (notify && previousLimit !== nextLimit) {
-      await toastFrontendInfo(
-        `Pinned skill cap set to ${nextLimit}.`,
-        "Skills"
-      );
-    }
   },
 
   get catalogMap() {
@@ -188,15 +126,13 @@ window.createSkillsConfigModel = (context, config) => ({
   },
 
   pinnedSubtitle() {
-    return this.isChatMode
-      ? "These skills are currently pinned into the prompt for this chat."
-      : "These skills are pinned by default in this scope.";
+    return "These skills are loaded into the current chat history.";
   },
 
   allSkillsSubtitle() {
     return this.isChatMode
-      ? "Check a skill to pin it for this chat. Use the eye control to hide or show it in this chat."
-      : "Check a skill to pin it by default. Use the eye control to hide or show it in this scope.";
+      ? "Check a skill to load it into this chat. Use the eye control to hide or show it in this chat."
+      : "Check a skill to load it into the current chat. Use the eye control to hide or show it in this scope.";
   },
 
   hiddenStateLabel() {
@@ -223,7 +159,7 @@ window.createSkillsConfigModel = (context, config) => ({
   },
 
   isPinDisabled(skill) {
-    return this.mutatingChat || (!this.isSelected(skill) && this.selectedCount >= this.maxActiveSkills);
+    return this.mutatingChat || !this.chatContextAvailable || this.isSelected(skill);
   },
 
   isVisibilityDisabled() {
@@ -260,7 +196,7 @@ window.createSkillsConfigModel = (context, config) => ({
     return name ? this.catalogMap.get(name) || null : null;
   },
 
-  _setSelectedSkills(entries, { writeConfig = true } = {}) {
+  _setSelectedSkills(entries) {
     const normalized = [];
     const seen = new Set();
 
@@ -270,13 +206,9 @@ window.createSkillsConfigModel = (context, config) => ({
       if (!item || !key || seen.has(key)) continue;
       seen.add(key);
       normalized.push(item);
-      if (normalized.length >= this.maxActiveSkills) break;
     }
 
     this.selectedSkills = normalized;
-    if (writeConfig) {
-      config.active_skills = compactEntries(normalized, this.maxActiveSkills);
-    }
   },
 
   _setHiddenSkills(entries, { writeConfig = true } = {}) {
@@ -313,54 +245,28 @@ window.createSkillsConfigModel = (context, config) => ({
   },
 
   async togglePinnedSkill(skill, selected) {
-    const nextEntries = this.selectedSkills.filter((entry) => !entriesMatch(entry, skill));
-
-    if (selected) {
-      if (this.selectedCount >= this.maxActiveSkills && !this.isSelected(skill)) {
-        await toastFrontendInfo(
-          `You can activate at most ${this.maxActiveSkills} skills.`,
-          "Skills"
-        );
-        return;
-      }
-
-      nextEntries.push({
-        name: String(skill.name || "").trim(),
-        path: String(skill.path || "").trim(),
-      });
+    if (!selected || this.isSelected(skill)) {
+      await this.loadCatalog();
+      return;
     }
 
-    this._setSelectedSkills(nextEntries, { writeConfig: !this.isChatMode });
-
-    if (this.isChatMode && this.chatContextAvailable) {
-      await this.submitChatAction(selected ? "activate" : "deactivate", skill);
+    if (!this.chatContextAvailable) {
+      await toastFrontendError("Open a chat before loading a skill.", "Skills");
+      await this.loadCatalog();
+      return;
     }
-  },
 
-  async removeEntry(entry) {
-    await this.togglePinnedSkill(entry, false);
-  },
-
-  async clearSelections() {
-    const previous = [...this.selectedSkills];
-    this._setSelectedSkills([], { writeConfig: !this.isChatMode });
-    if (this.isChatMode && this.chatContextAvailable) {
-      for (const entry of previous) {
-        await this.submitChatAction("deactivate", entry);
-      }
-    }
+    await this.submitChatAction("activate", skill);
   },
 
   applyCatalogState(response) {
     this.chatContextAvailable = !!response?.context_available;
     const activeFromChat = Array.isArray(response?.active_skills) ? response.active_skills : null;
-    const activeFromConfig = this.activeEntries;
     const hiddenFromChat = Array.isArray(response?.hidden_skills) ? response.hidden_skills : null;
     const hiddenFromConfig = this.hiddenEntries;
 
     this._setSelectedSkills(
-      this.isChatMode ? activeFromChat || [] : activeFromConfig,
-      { writeConfig: !this.isChatMode },
+      activeFromChat || [],
     );
     this._setHiddenSkills(
       this.isChatMode ? hiddenFromChat || [] : hiddenFromConfig,
@@ -374,7 +280,7 @@ window.createSkillsConfigModel = (context, config) => ({
       const response = await API.callJsonApi(CATALOG_API, {
         action: "list",
         project_name: context.projectName || "",
-        context_id: this.isChatMode ? chatsStore.selectedContext?.id || "" : "",
+        context_id: chatsStore.selectedContext?.id || "",
       });
 
       if (!response?.ok) {
@@ -382,17 +288,12 @@ window.createSkillsConfigModel = (context, config) => ({
       }
 
       this.catalog = Array.isArray(response.skills) ? response.skills : [];
-      this.maxActiveSkills = normalizeMaxActiveSkills(response.max_active_skills);
-      if (!this.isChatMode) {
-        config.max_active_skills = this.maxActiveSkills;
-      }
       this.applyCatalogState(response);
     } catch (error) {
       this.catalog = [];
       ensureConfig(config);
-      this.maxActiveSkills = config.max_active_skills;
       this.chatContextAvailable = false;
-      this._setSelectedSkills(this.activeEntries);
+      this._setSelectedSkills([]);
       this._setHiddenSkills(this.hiddenEntries);
       await toastFrontendError(error?.message || "Failed to load skills", "Skills");
     } finally {
@@ -422,10 +323,6 @@ window.createSkillsConfigModel = (context, config) => ({
       }
 
       this.catalog = Array.isArray(response.skills) ? response.skills : this.catalog;
-      this.maxActiveSkills = normalizeMaxActiveSkills(response.max_active_skills);
-      if (!this.isChatMode) {
-        config.max_active_skills = this.maxActiveSkills;
-      }
       this.chatContextAvailable = !!response.context_available;
       this.applyCatalogState(response);
       return true;

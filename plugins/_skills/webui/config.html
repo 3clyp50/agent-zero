@@ -15,26 +15,6 @@
     <div class="skills-layout">
       <div class="section-title">Skills</div>
 
-      <template x-if="!isChatMode">
-        <div class="field">
-          <div class="field-label">
-            <div class="field-title">Pinned skill cap</div>
-            <div class="field-description">
-              Maximum number of pinned skills stored in this scope. Higher values inject more instructions into every prompt.
-            </div>
-          </div>
-          <div class="field-control">
-            <input
-              type="number"
-              min="1"
-              step="1"
-              x-model.number="config.max_active_skills"
-              @change="applyMaxActiveSkills(config.max_active_skills, { notify: true })"
-            >
-          </div>
-        </div>
-      </template>
-
       <div class="skills-toolbar">
         <label class="skills-search">
           <span class="material-symbols-outlined">search</span>
@@ -54,11 +34,11 @@
       </div>
 
       <div class="skills-section">
-        <div class="skills-panel-title">Pinned skills</div>
+        <div class="skills-panel-title">Loaded skills</div>
         <div class="skills-panel-subtitle" x-text="pinnedSubtitle()"></div>
 
         <template x-if="!loadingCatalog && selectedSkills.length === 0">
-          <div class="skills-empty">No pinned skills yet. Pin from the list below.</div>
+          <div class="skills-empty">No loaded skills yet.</div>
         </template>
 
         <div class="skills-selected-list">
@@ -77,16 +57,6 @@
                   @click="openSkill(entry)"
                 >
                   <span class="icon material-symbols-outlined">article</span>
-                </button>
-                <button
-                  type="button"
-                  class="button cancel icon-button"
-                  title="Remove"
-                  aria-label="Remove skill"
-                  @click="$confirmClick($event, () => removeEntry(entry))"
-                  :disabled="mutatingChat"
-                >
-                  <span class="icon material-symbols-outlined">close</span>
                 </button>
               </div>
             </div>
@@ -118,7 +88,7 @@
                 'is-hidden': isHidden(skill),
               }"
             >
-              <label class="skills-checkbox" :title="isSelected(skill) ? 'Pinned' : 'Pin skill'">
+              <label class="skills-checkbox" :title="isSelected(skill) ? 'Loaded in this chat' : 'Load skill into this chat'">
                 <input
                   type="checkbox"
                   :checked="isSelected(skill)"

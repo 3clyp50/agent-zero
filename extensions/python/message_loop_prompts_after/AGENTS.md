@@ -7,9 +7,9 @@
 ## Ownership
 
 - Ordered Python files own current datetime, skill recall/load context, agent info, parallel job status, and workdir extras injection.
-- Active skill instructions belong in prompt protocol.
 - Explicitly loaded skill bodies belong in tool-result history with metadata so they can survive persistence and be reattached after compaction.
 - Explicitly loaded skill IDs are chat-wide context data, not agent-local state.
+- Legacy active-skill prompt protocol injection must stay empty; selected skills are loaded through history.
 
 ## Local Contracts
 

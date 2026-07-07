@@ -2,25 +2,26 @@
 
 ## Purpose
 
-- Own active and hidden skill configuration injected into prompt protocol on each turn.
+- Own current-chat skill loading and hidden skill configuration.
 
 ## Ownership
 
-- `hooks.py` owns skill prompt injection and plugin lifecycle behavior.
-- `api/skills_catalog.py` owns skill catalog access.
-- `prompts/agent.system.active_skills.md` owns injected active-skill prompt content.
+- `hooks.py` owns skill config normalization.
+- `api/skills_catalog.py` owns skill catalog access and loading selected skills into chat history.
+- `prompts/agent.system.active_skills.md` is retained only for legacy prompt-protocol compatibility.
 - `webui/` owns skill settings UI and store.
 - `default_config.yaml`, `plugin.yaml`, `README.md`, and `LICENSE` own defaults, metadata, docs, and license.
 
 ## Local Contracts
 
-- Keep active skill lists bounded by configured caps.
+- Skills selected in `webui/` load into the current chat history only; do not store them as scope defaults.
+- Loaded skills are append-only from the user UI because their instructions live in chat history.
 - Store configured skills in normalized portable paths.
-- Hidden skills affect catalog/search/load visibility but must not be injected as active prompt content.
+- Hidden skills affect catalog/search/load visibility but must not remove loaded skill history.
 
 ## Work Guidance
 
-- Coordinate active-skill resolution changes with core skill loading and settings UI.
+- Coordinate skill loading changes with `skills_tool`, loaded-skill history reattachment, and settings UI.
 
 ## Verification
 
