@@ -723,6 +723,28 @@ def output_text(messages: list[OutputMessage], ai_label="ai", human_label="human
     return "\n".join(_stringify_output(o, ai_label, human_label) for o in messages)
 
 
+def clear_responses_provider_state(agent) -> None:
+    key = getattr(agent, "DATA_NAME_RESPONSES_STATE", "responses_state")
+    get_data = getattr(agent, "get_data", None)
+    set_data = getattr(agent, "set_data", None)
+    if not callable(get_data) or not callable(set_data):
+        return
+
+    state = get_data(key)
+    if not isinstance(state, dict):
+        return
+
+    state = dict(state)
+    removed = False
+    for field in ("response_id", "previous_response_id"):
+        if field in state:
+            state.pop(field, None)
+            removed = True
+
+    if removed:
+        set_data(key, state)
+
+
 def _merge_outputs(a: MessageContent, b: MessageContent) -> MessageContent:
     if isinstance(a, str) and isinstance(b, str):
         return a + "\n" + b

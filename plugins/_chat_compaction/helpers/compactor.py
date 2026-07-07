@@ -5,7 +5,7 @@ from collections import deque
 import models as models_module
 from agent import Agent
 from helpers import files, tokens
-from helpers.history import History, output_text
+from helpers.history import History, clear_responses_provider_state, output_text
 from helpers.persist_chat import (
     export_json_chat,
     get_chat_folder_path,
@@ -145,6 +145,7 @@ async def run_compaction(
 
         agent.history = History(agent=agent)
         agent.history.add_message(ai=True, content=compacted_content)
+        clear_responses_provider_state(agent)
         
         # Clear subordinate chain
         agent.data.pop(Agent.DATA_NAME_SUBORDINATE, None)

@@ -65,6 +65,7 @@
 - `group_messages_abab(messages: list[BaseMessage]) -> list[BaseMessage]`
 - `output_langchain(messages: list[OutputMessage])`
 - `output_text(messages: list[OutputMessage], ai_label=..., human_label=...)`
+- `clear_responses_provider_state(agent) -> None`
 - `_merge_outputs(a: MessageContent, b: MessageContent) -> MessageContent`
 - `_merge_properties(a: Dict[str, MessageContent], b: Dict[str, MessageContent]) -> Dict[str, MessageContent]`
 - `_is_raw_message(obj: object) -> bool`
@@ -77,6 +78,7 @@
 
 - Helper modules own reusable framework APIs and must preserve public callers unless all callers, tests, and docs are updated together.
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
+- `clear_responses_provider_state(agent)` removes the active provider continuation IDs after local history rewrites while preserving stored response ID lists for later cleanup.
 - Observed side-effect areas: filesystem writes, filesystem deletion, model calls, plugin state, settings/state persistence, secret handling.
 - Imported dependency areas include: `abc`, `asyncio`, `collections`, `collections.abc`, `enum`, `helpers`, `json`, `langchain_core.messages`, `math`, `plugins._model_config.helpers.model_config`, `typing`, `uuid`.
 

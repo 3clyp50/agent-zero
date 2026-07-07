@@ -19,6 +19,7 @@
 - Backup JSON and transcript artifacts must remain UTF-8 writable when chat content contains malformed Unicode such as lone surrogates.
 - Keep generated summaries bounded by configured model and token limits.
 - Preserve loaded skill names from `skill_instructions` metadata without copying full skill bodies into compacted summaries.
+- After replacing local history, clear the active Responses provider continuation while preserving stored response IDs for cleanup.
 - Do not discard original context data unless the compaction flow explicitly owns that behavior.
 
 ## Work Guidance

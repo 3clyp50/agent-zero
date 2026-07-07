@@ -43,6 +43,49 @@ class _RecordingModel:
         return f"summary-{len(self.user_messages)}", None
 
 
+class _CompactionHistory:
+    def output(self):
+        return [{"ai": False, "content": "hello"}]
+
+
+class _CompactionLog:
+    def __init__(self):
+        self.logs = []
+        self.entries = []
+        self.reset_called = False
+        self.progress = None
+
+    def log(self, **kwargs):
+        self.entries.append(kwargs)
+        return _FakeLog()
+
+    def reset(self):
+        self.reset_called = True
+
+    def set_progress(self, *args, **kwargs):
+        self.progress = (args, kwargs)
+
+
+class _CompactionAgent:
+    DATA_NAME_RESPONSES_STATE = "responses_state"
+
+    def __init__(self):
+        self.history = _CompactionHistory()
+        self.data = {
+            "responses_state": {
+                "response_id": "resp_current",
+                "previous_response_id": "resp_previous",
+                "response_ids": ["resp_previous", "resp_current"],
+            }
+        }
+
+    def get_data(self, key):
+        return self.data.get(key)
+
+    def set_data(self, key, value):
+        self.data[key] = value
+
+
 def test_pre_compaction_backup_sanitizes_surrogate_text(tmp_path, monkeypatch):
     monkeypatch.setattr(
         compactor,
@@ -114,3 +157,39 @@ async def test_large_compaction_does_not_send_unsplit_single_line_payload(monkey
     assert len(chunk_messages) > 2
     assert all(chunk_messages)
     assert all(len(message) <= 10_000 for message in chunk_messages)
+
+
+@pytest.mark.asyncio
+async def test_manual_compaction_clears_active_responses_state(monkeypatch):
+    async def fake_single_pass(*args, **kwargs):
+        return "summary"
+
+    agent = _CompactionAgent()
+    context = SimpleNamespace(
+        id="compact-chat",
+        agent0=agent,
+        log=_CompactionLog(),
+        streaming_agent=object(),
+    )
+
+    monkeypatch.setattr(
+        compactor,
+        "_build_model",
+        lambda *args: ({"ctx_length": 128000}, _RecordingModel()),
+    )
+    monkeypatch.setattr(compactor, "_compact_single_pass", fake_single_pass)
+    monkeypatch.setattr(
+        compactor,
+        "_save_pre_compaction_backup",
+        lambda *args: {"txt": "/tmp/pre.txt"},
+    )
+    monkeypatch.setattr(compactor, "save_tmp_chat", lambda *args: None)
+    monkeypatch.setattr(compactor, "remove_msg_files", lambda *args: None)
+    monkeypatch.setattr(compactor, "mark_dirty_all", lambda *args, **kwargs: None)
+
+    await compactor.run_compaction(context)
+
+    state = agent.data["responses_state"]
+    assert "response_id" not in state
+    assert "previous_response_id" not in state
+    assert state["response_ids"] == ["resp_previous", "resp_current"]

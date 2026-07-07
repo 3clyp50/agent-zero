@@ -12,6 +12,7 @@
 
 - Preserve history consistency before saving chats.
 - Do not skip persistence for successful loops unless the hook contract explicitly permits it.
+- History compression that rewrites local history must clear the active Responses provider continuation while preserving stored response IDs for cleanup.
 
 ## Work Guidance
 
