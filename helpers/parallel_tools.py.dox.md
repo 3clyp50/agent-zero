@@ -31,6 +31,7 @@
 - Direct tool background context cleanup removes both the in-memory context and any transient chat folder left on disk.
 - Parent-visible child log items are created for each wrapped call so the WebUI can inspect concurrent children separately while the wrapper result remains model-history-only.
 - Child tool logs mirror normal tool-call visible args; job ids remain available through wrapper results and prompt extras rather than visible process-step args.
+- Wrapped `code_execution_tool` child logs use the normal `code_exe` WebUI message type and terminal heading so they render like direct code execution calls.
 - Job IDs are stable handles for later await, collect, or cancel operations.
 - Prompt extras must stay bounded and expose only job IDs, tool names, status, and compact result/error summaries.
 

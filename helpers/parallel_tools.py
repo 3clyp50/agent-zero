@@ -600,6 +600,19 @@ def _log_parallel_child_started(agent: "Agent", job: ParallelJob) -> None:
         )
         return
 
+    if job.tool_name == "code_execution_tool":
+        runtime = job.tool_args.get("runtime", "unknown")
+        session = job.tool_args.get("session", None)
+        session_text = f"[{session}] " if session or session == 0 else ""
+        job.log_item = agent.context.log.log(
+            type="code_exe",
+            heading=f"icon://terminal {session_text}code_execution_tool - {runtime}",
+            content="",
+            kvps=job.tool_args,
+            id=job.log_id,
+        )
+        return
+
     heading = f"icon://construction {agent.agent_name}: Using tool '{job.tool_name}'"
     job.log_item = agent.context.log.log(
         type="tool",

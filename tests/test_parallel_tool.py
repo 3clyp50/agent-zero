@@ -428,6 +428,52 @@ async def test_parallel_direct_tool_jobs_log_normal_tool_metadata(monkeypatch) -
 
 
 @pytest.mark.asyncio
+async def test_parallel_code_execution_child_uses_code_exe_log_type(monkeypatch) -> None:
+    class FakeDeferredTask:
+        def __init__(self, thread_name=None) -> None:
+            self.thread_name = thread_name
+
+        def start_task(self, func, *args):
+            return self
+
+        def is_ready(self):
+            return False
+
+        def is_alive(self):
+            return True
+
+        def kill(self):
+            pass
+
+    monkeypatch.setattr(parallel_tools, "DeferredTask", FakeDeferredTask)
+    agent = _FakeAgent()
+
+    jobs = await parallel_tools.start_parallel_jobs(
+        agent,  # type: ignore[arg-type]
+        [
+            parallel_tools.NormalizedToolCall(
+                index=0,
+                tool_name="code_execution_tool",
+                tool_args={
+                    "runtime": "terminal",
+                    "session": 0,
+                    "code": "pwd",
+                },
+            )
+        ],
+    )
+
+    assert jobs[0].kind == "tool"
+    assert agent.context.log.items[0].type == "code_exe"
+    assert agent.context.log.items[0].heading == "icon://terminal [0] code_execution_tool - terminal"
+    assert agent.context.log.items[0].kvps == {
+        "runtime": "terminal",
+        "session": 0,
+        "code": "pwd",
+    }
+
+
+@pytest.mark.asyncio
 async def test_parallel_tool_keeps_wrapper_out_of_visible_log() -> None:
     from tools.parallel import ParallelTool
 
