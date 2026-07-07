@@ -270,6 +270,34 @@ def test_ollama_cloud_provider_config_requires_key_and_base_url():
     assert "api_key_mode" not in ollama_cloud
 
 
+def test_direct_venice_chat_provider_defaults_to_chat_completions(monkeypatch):
+    import yaml
+
+    monkeypatch.setattr(models, "get_api_key", lambda provider: "None")
+
+    provider_path = PROJECT_ROOT / "conf/model_providers.yaml"
+    provider_config = yaml.safe_load(provider_path.read_text(encoding="utf-8"))
+
+    venice = provider_config["chat"]["venice"]
+    assert venice["kwargs"]["a0_api_mode"] == "chat"
+    assert venice["kwargs"]["api_base"] == "https://api.venice.ai/api/v1"
+    assert venice["kwargs"]["venice_parameters"] == {
+        "include_venice_system_prompt": False
+    }
+    assert "a0_api_mode" not in provider_config["chat"]["a0_venice"]["kwargs"]
+    assert "a0_api_mode" not in provider_config["embedding"]["venice"]["kwargs"]
+
+    model = models.get_chat_model("venice", "llama-3.3-70b")
+    assert model.kwargs["a0_api_mode"] == "chat"
+
+    custom = models.get_chat_model(
+        "venice",
+        "llama-3.3-70b",
+        a0_api_mode="responses",
+    )
+    assert custom.kwargs["a0_api_mode"] == "responses"
+
+
 def test_missing_api_key_banner_does_not_include_auto_modal_metadata(monkeypatch):
     from plugins._model_config.helpers import model_config
 
