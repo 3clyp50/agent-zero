@@ -1986,6 +1986,7 @@ const model = {
   },
 
   handleKeydown(event) {
+    if (isLocalEditableTarget(event?.target)) return;
     const annotateShortcut = event?.key === "." && (event.metaKey || event.ctrlKey) && !event.altKey;
     if (annotateShortcut && this._surfaceMounted) {
       event.preventDefault();
@@ -2700,8 +2701,7 @@ const model = {
     const contextId = this.normalizeContextId(this.activeBrowserContextId || this.contextId);
     if (!contextId || !this.activeBrowserId) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
-    const editable = ["INPUT", "TEXTAREA", "SELECT"].includes(event.target?.tagName);
-    if (editable) return;
+    if (isLocalEditableTarget(event?.target)) return;
     event.preventDefault();
     const printable = event.key && event.key.length === 1;
     await websocket.emit("browser_viewer_input", {
