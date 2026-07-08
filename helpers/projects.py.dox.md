@@ -47,6 +47,8 @@
 - `reactivate_project_in_chats(name: str)`
 - `deactivate_project_in_chats(name: str)`
 - `build_system_prompt_vars(name: str)`
+- `get_agents_md_chain(root: str, target: str) -> list[tuple[str, str]]`
+- `build_agents_md_protocol(name: str, target: str | None=...) -> str`
 - `get_additional_instructions_files(name: str)`
 - `get_project_instruction_files(name: str, include_agents_md: bool=...) -> list[tuple[str, str]]`
 - `get_project_agents_md_instruction_file(name: str) -> tuple[str, str] | None`
@@ -63,6 +65,8 @@
 - Project extension data may add named top-level sections such as `llm`, but it must not overwrite core project fields owned by `EditProjectData`.
 - Project extension save payloads exclude core project fields and transient inputs such as `git_token`; plugins needing core metadata should load it by project name.
 - Project metadata setup creates and repairs `.a0proj/instructions`, `.a0proj/knowledge`, and `.a0proj/skills` so settings surfaces can open those folders consistently.
+- AGENTS.md discovery is a linear root-to-target chain walk with `AGENTS.override.md` precedence; sibling directories are not scanned.
+- Active-project AGENTS.md protocol guidance excludes the exact project root AGENTS.md because `build_system_prompt_vars(...)` already loads it into project instructions; prose for that protocol block lives in `prompts/agent.protocol.projects.agents_md.md`.
 - Project MCP config uses the same JSON string shape as global MCP settings: an object with `mcpServers`.
 - Project MCP load/save paths validate project names as simple folder basenames before touching `.a0proj/mcp_servers.json`.
 - Observed side-effect areas: filesystem reads, filesystem writes, filesystem deletion, plugin state, settings/state persistence, secret handling.

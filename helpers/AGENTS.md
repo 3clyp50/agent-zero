@@ -15,7 +15,7 @@
 - Preserve public helper APIs used by core code and plugins unless all callers, docs, and tests are updated.
 - Use structured parsers and serializers for YAML, JSON, paths, and URLs instead of ad hoc string handling.
 - Keep path handling constrained to intended roots for user files, uploads, downloads, projects, and workdirs.
-- Project metadata defaults must remain backwards-compatible; missing `include_agents_md` is treated as enabled and project instruction file content is injected with an explicit source path.
+- Project metadata defaults must remain backwards-compatible; missing `include_agents_md` is treated as enabled, project instruction file content is injected with an explicit source path, and active-project AGENTS.md path-chain guidance is assembled into prompt protocol without duplicating the project root AGENTS.md.
 - Do not hardcode secrets, provider keys, local absolute paths, or environment-specific values.
 - Use `RepairableException` for errors an agent may be able to fix.
 - This directory is a file-documented DOX profile: every direct `*.py` helper module must have a same-directory `*.py.dox.md` file named by appending `.dox.md` to the full Python filename.

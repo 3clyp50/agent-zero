@@ -7,7 +7,7 @@
 ## Ownership
 
 - Ordered Python files own main, tools, MCP, secrets, skills, and project prompt sections.
-- Active project instruction bodies are moved into prompt protocol; the system prompt keeps project metadata and stable project rules.
+- Active project instruction bodies and active-project AGENTS.md path-chain guidance are moved into prompt protocol; the system prompt keeps project metadata and stable project rules.
 
 ## Local Contracts
 

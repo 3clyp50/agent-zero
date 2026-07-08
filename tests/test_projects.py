@@ -107,6 +107,20 @@ def test_project_system_prompt_includes_root_agents_md_with_path(monkeypatch, tm
     assert "Folder instruction rule." in instructions
 
 
+def test_project_system_prompt_prefers_agents_override_md(monkeypatch, tmp_path):
+    _prepare_project_tree(monkeypatch, tmp_path)
+    projects.create_project("demo", {"title": "Demo"})
+    project_root = tmp_path / "usr" / "projects" / "demo"
+    (project_root / "AGENTS.md").write_text("Standard rule.", encoding="utf-8")
+    (project_root / "AGENTS.override.md").write_text("Override rule.", encoding="utf-8")
+
+    instructions = projects.build_system_prompt_vars("demo")["project_instructions"]
+
+    assert "### path: /a0/usr/projects/demo/AGENTS.override.md" in instructions
+    assert "Override rule." in instructions
+    assert "Standard rule." not in instructions
+
+
 def test_project_system_prompt_respects_disabled_agents_md(monkeypatch, tmp_path):
     _prepare_project_tree(monkeypatch, tmp_path)
     projects.create_project(
@@ -123,3 +137,51 @@ def test_project_system_prompt_respects_disabled_agents_md(monkeypatch, tmp_path
 
     assert "Root AGENTS rule." not in prompt_vars["project_instructions"]
     assert "AGENTS.md" not in prompt_vars["project_instructions"]
+
+
+def test_agents_md_chain_walks_direct_path_only(monkeypatch, tmp_path):
+    _prepare_project_tree(monkeypatch, tmp_path)
+    root = tmp_path
+    (root / "AGENTS.md").write_text("root doc", encoding="utf-8")
+    target = root / "services" / "payments"
+    sibling = root / "services" / "auth"
+    target.mkdir(parents=True)
+    sibling.mkdir(parents=True)
+    (root / "services" / "AGENTS.md").write_text("services doc", encoding="utf-8")
+    (target / "AGENTS.md").write_text("payments doc", encoding="utf-8")
+    (sibling / "AGENTS.md").write_text("auth doc", encoding="utf-8")
+
+    chain = projects.get_agents_md_chain(str(root), str(target / "handler.py"))
+    contents = [content for _, content in chain]
+
+    assert contents == ["root doc", "services doc", "payments doc"]
+
+
+def test_agents_md_protocol_excludes_project_root_and_keeps_subdir(
+    monkeypatch, tmp_path
+):
+    _prepare_project_tree(monkeypatch, tmp_path)
+    prompt_name = "agent.protocol.projects.agents_md.md"
+    prompt_source = Path(__file__).resolve().parents[1] / "prompts" / prompt_name
+    prompt_dir = tmp_path / "prompts"
+    prompt_dir.mkdir()
+    (prompt_dir / prompt_name).write_text(
+        prompt_source.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    projects.create_project("demo", {"title": "Demo"})
+    (tmp_path / "AGENTS.md").write_text("framework doc", encoding="utf-8")
+    project_root = tmp_path / "usr" / "projects" / "demo"
+    (project_root / "AGENTS.md").write_text("project root doc", encoding="utf-8")
+    api_dir = project_root / "api"
+    api_dir.mkdir()
+    (api_dir / "AGENTS.md").write_text("api doc", encoding="utf-8")
+
+    protocol = projects.build_agents_md_protocol(
+        "demo",
+        target=str(api_dir / "handler.py"),
+    )
+
+    assert "framework doc" in protocol
+    assert "api doc" in protocol
+    assert "project root doc" not in protocol

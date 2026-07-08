@@ -94,6 +94,7 @@ async def test_project_prompt_moves_project_instructions_to_protocol(monkeypatch
         "project_name": "Demo",
         "project_description": "",
         "project_instructions": "Project rule.",
+        "include_agents_md": True,
         "project_path": "/a0/usr/projects/demo",
         "project_git_url": "",
     }
@@ -121,6 +122,11 @@ async def test_project_prompt_moves_project_instructions_to_protocol(monkeypatch
         "build_system_prompt_vars",
         lambda _name: project_vars,
     )
+    monkeypatch.setattr(
+        project_prompt.projects,
+        "build_agents_md_protocol",
+        lambda _name: "AGENTS path rule.",
+    )
 
     prompt = await project_prompt.build_prompt.__wrapped__(  # type: ignore[attr-defined]
         FakeAgent(),
@@ -128,4 +134,44 @@ async def test_project_prompt_moves_project_instructions_to_protocol(monkeypatch
     )
 
     assert "Project rule." not in prompt
+    assert "AGENTS path rule." not in prompt
+    assert list(loop_data.protocol_persistent) == [
+        "agents_md_instructions",
+        "project_instructions",
+    ]
+    assert "AGENTS path rule." in loop_data.protocol_persistent["agents_md_instructions"]
     assert "Project rule." in loop_data.protocol_persistent["project_instructions"]
+
+
+@pytest.mark.asyncio
+async def test_project_prompt_does_not_load_agents_md_without_project(monkeypatch):
+    loop_data = LoopData()
+
+    class FakeContext:
+        def get_data(self, key):
+            assert key == project_prompt.projects.CONTEXT_DATA_KEY_PROJECT
+            return None
+
+    class FakeAgent:
+        context = FakeContext()
+
+        def read_prompt(self, prompt_file: str, **kwargs) -> str:
+            if prompt_file == "agent.system.projects.main.md":
+                return "project context may be active"
+            if prompt_file == "agent.system.projects.inactive.md":
+                return "no active project"
+            raise AssertionError(f"Unexpected prompt file: {prompt_file}")
+
+    monkeypatch.setattr(
+        project_prompt.projects,
+        "build_agents_md_protocol",
+        lambda _name: (_ for _ in ()).throw(AssertionError("unexpected AGENTS load")),
+    )
+
+    await project_prompt.build_prompt.__wrapped__(  # type: ignore[attr-defined]
+        FakeAgent(),
+        loop_data=loop_data,
+    )
+
+    assert "agents_md_instructions" not in loop_data.protocol_persistent
+    assert "project_instructions" not in loop_data.protocol_persistent

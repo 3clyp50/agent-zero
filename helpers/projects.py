@@ -1,5 +1,5 @@
 import os
-from typing import Literal, NotRequired, TypedDict, TYPE_CHECKING, cast
+from typing import NotRequired, TypedDict, TYPE_CHECKING, cast
 
 from helpers import files, dirty_json, persist_chat, file_tree, extension
 from helpers.print_style import PrintStyle
@@ -15,7 +15,13 @@ PROJECT_KNOWLEDGE_DIR = "knowledge"
 PROJECT_SKILLS_DIR = "skills"
 PROJECT_HEADER_FILE = "project.json"
 PROJECT_MCP_SERVERS_FILE = "mcp_servers.json"
-PROJECT_AGENTS_MD_FILES = ("AGENTS.md", "Agents.md", "agents.md")
+PROJECT_AGENTS_MD_FILES = (
+    "AGENTS.override.md",
+    "AGENTS.Override.md",
+    "AGENTS.md",
+    "Agents.md",
+    "agents.md",
+)
 DEFAULT_MCP_SERVERS_CONFIG = '{\n    "mcpServers": {}\n}'
 
 CONTEXT_DATA_KEY_PROJECT = "project"
@@ -466,9 +472,10 @@ def deactivate_project_in_chats(name: str):
 def build_system_prompt_vars(name: str):
     project_data = load_basic_project_data(name)
     main_instructions = project_data.get("instructions", "") or ""
+    include_agents_md = project_data.get("include_agents_md", True)
     instruction_files = get_project_instruction_files(
         name,
-        include_agents_md=project_data.get("include_agents_md", True),
+        include_agents_md=include_agents_md,
     )
     instruction_parts = [
         main_instructions,
@@ -481,9 +488,73 @@ def build_system_prompt_vars(name: str):
         "project_name": project_data.get("title", ""),
         "project_description": project_data.get("description", ""),
         "project_instructions": complete_instructions or "",
+        "include_agents_md": include_agents_md,
         "project_path": files.normalize_a0_path(get_project_folder(name)),
         "project_git_url": project_data.get("git_url", ""),
     }
+
+
+def get_agents_md_chain(root: str, target: str) -> list[tuple[str, str]]:
+    root_real = os.path.realpath(files.fix_dev_path(root))
+    target_real = os.path.realpath(files.fix_dev_path(target))
+    if os.path.isfile(target_real):
+        target_real = os.path.dirname(target_real)
+
+    if files.is_in_dir(target_real, root_real):
+        dirs = []
+        cursor = target_real
+        while True:
+            dirs.append(cursor)
+            if cursor == root_real:
+                break
+            parent = os.path.dirname(cursor)
+            if parent == cursor:
+                break
+            cursor = parent
+        dirs.reverse()
+    else:
+        dirs = [root_real]
+
+    chain = []
+    for dir_path in dirs:
+        for filename in PROJECT_AGENTS_MD_FILES:
+            matches = files.read_text_files_in_dir(dir_path, pattern=filename)
+            if filename not in matches:
+                continue
+            chain.append((files.get_abs_path(dir_path, filename), matches[filename]))
+            break
+    return chain
+
+
+def build_agents_md_protocol(name: str, target: str | None = None) -> str:
+    project_folder = get_project_folder(name)
+    project_agents_md = get_project_agents_md_instruction_file(name)
+    project_agents_md_path = (
+        os.path.realpath(files.fix_dev_path(project_agents_md[0]))
+        if project_agents_md
+        else ""
+    )
+    entries = [
+        (path, content)
+        for path, content in get_agents_md_chain(
+            files.get_abs_path(""),
+            target or project_folder,
+        )
+        if os.path.realpath(path) != project_agents_md_path
+    ]
+    if not entries:
+        return ""
+
+    instructions = []
+    for path, content in entries:
+        instructions.append(
+            f"### path: {files.normalize_a0_path(path)}\n\n{content.strip()}"
+        )
+    return files.read_prompt_file(
+        "agent.protocol.projects.agents_md.md",
+        _directories=["prompts"],
+        agents_md_instructions="\n\n".join(instructions),
+    ).strip()
 
 
 def get_additional_instructions_files(name: str):
@@ -522,11 +593,8 @@ def get_project_instruction_files(
 
 def get_project_agents_md_instruction_file(name: str) -> tuple[str, str] | None:
     project_folder = get_project_folder(name)
-    for filename in PROJECT_AGENTS_MD_FILES:
-        matches = files.read_text_files_in_dir(project_folder, pattern=filename)
-        if filename in matches:
-            path = files.get_abs_path(project_folder, filename)
-            return (files.normalize_a0_path(path), matches[filename])
+    for path, content in get_agents_md_chain(project_folder, project_folder):
+        return (files.normalize_a0_path(path), content)
     return None
 
 
