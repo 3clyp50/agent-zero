@@ -473,6 +473,27 @@ def test_browser_skills_rank_for_browser_trigger_phrases(monkeypatch):
     assert "browser-form-workflows" in form_results
 
 
+def test_skill_search_does_not_score_description_terms_alone(monkeypatch):
+    browser_automation = runtime.Skill(
+        name="browser-automation",
+        description=(
+            "Use for browser automation, screenshots, forms, uploads, "
+            "and complex tool workflows."
+        ),
+        path=Path("/skills/browser-automation"),
+        skill_md_path=Path("/skills/browser-automation/SKILL.md"),
+    )
+    monkeypatch.setattr(runtime, "list_skills", lambda *args, **kwargs: [browser_automation])
+
+    rendered_user_message = (
+        'user: {"user_message": "Please reply with exactly OK. Do not use tools.", '
+        '"attachments": []}'
+    )
+
+    assert runtime.search_skills(rendered_user_message) == []
+    assert runtime.search_skills("Open a browser screenshot?", limit=1) == [browser_automation]
+
+
 def test_host_computer_use_ranks_before_linux_desktop_for_host_screen_queries(monkeypatch):
     host_skill = runtime.skill_from_markdown(
         PROJECT_ROOT / "plugins" / "_a0_connector" / "skills" / "host-computer-use" / "SKILL.md"

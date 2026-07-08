@@ -543,11 +543,15 @@ def search_skills(
     if not q:
         return []
 
-    raw_terms = [t for t in re.split(r"\s+", q) if t]
+    raw_terms = re.findall(r"[a-z0-9][a-z0-9_-]*", q)
     terms = [
         t for t in raw_terms
-        if len(t) >= 3 or any(ch.isdigit() for ch in t)
-    ] or raw_terms
+        if len(t) >= 4 or any(ch.isdigit() for ch in t)
+    ]
+    long_terms = [
+        t for t in raw_terms
+        if len(t) >= 6 or any(ch.isdigit() for ch in t)
+    ]
     candidates = list_skills(agent, include_hidden=include_hidden)
 
     scored: List[Tuple[int, Skill]] = []
@@ -568,14 +572,13 @@ def search_skills(
             score += 4
         if any(q in tag for tag in tags):
             score += 3
-        if any(q in trigger for trigger in triggers):
+        if any(q in trigger or trigger in q for trigger in triggers):
             score += 8
 
         for term in terms:
             if term in name:
                 score += 3
-            if term in desc:
-                score += 2
+        for term in long_terms:
             if any(term in tag for tag in tags):
                 score += 1
             if any(term in trigger for trigger in triggers):

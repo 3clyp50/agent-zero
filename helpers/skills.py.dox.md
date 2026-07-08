@@ -58,6 +58,7 @@
 - Loaded skill names are chat-wide context data under `CONTEXT_DATA_NAME_LOADED_SKILLS`; legacy agent-local `loaded_skills` lists are migrated into context data and cleared when read.
 - Loaded skill bodies live in chat history; hiding a skill changes catalog visibility but does not remove the loaded-skill ledger.
 - `build_active_skills_prompt()` returns empty because selected skills are loaded through history, not prompt protocol.
+- `search_skills()` normalizes query words, scores normal terms against skill names, and scores only long terms against tags/triggers; descriptions match only full query phrases so generic prose does not produce irrelevant suggestions.
 - Invalid `SKILL.md` frontmatter emits a once-per-path scan warning with the skipped skill path/name and a line number when the parser can identify one directly.
 - Observed side-effect areas: filesystem reads, filesystem deletion, plugin state, settings/state persistence, context data, secret handling.
 - Imported dependency areas include: `__future__`, `dataclasses`, `helpers`, `os`, `pathlib`, `re`, `typing`.

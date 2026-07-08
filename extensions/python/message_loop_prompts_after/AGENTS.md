@@ -16,6 +16,7 @@
 - Keep injected content bounded and clearly attributed.
 - Preserve ordering where later prompt extras depend on earlier recall or load results.
 - Do not expose secrets or private files from workdir extras.
+- Relevant-skill recall should search the raw user message when available, not the rendered history wrapper.
 
 ## Work Guidance
 
