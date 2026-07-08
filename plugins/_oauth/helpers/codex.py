@@ -6,9 +6,11 @@ import hashlib
 import json
 import os
 import secrets
+import stat
 import subprocess
 import threading
 import time
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -33,9 +35,28 @@ except ImportError:
 
 
 AUTH_FILENAME = "auth.json"
+INSTALLATION_ID_FILENAME = "installation_id"
 ACCESS_EXPIRY_MARGIN = timedelta(minutes=5)
 REFRESH_INTERVAL = timedelta(minutes=55)
 DEFAULT_CODEX_MODEL = "gpt-5.5"
+CODEX_ORIGINATOR = "codex_cli_rs"
+CLIENT_METADATA_INSTALLATION_ID = "x-codex-installation-id"
+CLIENT_METADATA_WINDOW_ID = "x-codex-window-id"
+CLIENT_METADATA_KEYS = (
+    "slug",
+    "id",
+    "display_name",
+    "description",
+    "visibility",
+    "supported_in_api",
+    "default_reasoning_level",
+    "supported_reasoning_levels",
+    "additional_speed_tiers",
+    "service_tiers",
+    "context_window",
+    "max_context_window",
+    "priority",
+)
 OAUTH_ERROR_KEYS = ("error_description", "error")
 DEVICE_CODE_TIMEOUT_SECONDS = 15 * 60
 WINDOWS_LOCK_RETRY_SECONDS = 0.05
@@ -565,11 +586,17 @@ def request_codex(
     auth = load_auth()
     target = build_upstream_url(path, cfg["upstream_base_url"])
     request_headers = sanitize_forward_headers(headers or {})
+    metadata = client_metadata_from_body(body) or build_client_metadata()
     request_headers.update(
         {
             "Authorization": f"Bearer {auth.access_token}",
             "chatgpt-account-id": auth.account_id,
             "OpenAI-Beta": "responses=experimental",
+            "originator": CODEX_ORIGINATOR,
+            CLIENT_METADATA_INSTALLATION_ID: metadata[CLIENT_METADATA_INSTALLATION_ID],
+            CLIENT_METADATA_WINDOW_ID: metadata[CLIENT_METADATA_WINDOW_ID],
+            "session-id": metadata["session_id"],
+            "thread-id": metadata["thread_id"],
         }
     )
 
@@ -584,11 +611,14 @@ def request_codex(
     )
 
 
-def fetch_models() -> list[str]:
+def fetch_model_catalog() -> list[dict[str, Any]]:
     cfg = codex_config()
     configured = cfg["models"]
     if configured:
-        return configured
+        return [
+            {"slug": model, "id": model, "display_name": model}
+            for model in configured
+        ]
 
     client_version = resolve_codex_version()
     params = {"client_version": client_version} if client_version else None
@@ -601,29 +631,101 @@ def fetch_models() -> list[str]:
 
     payload = response.json()
     raw_models = payload.get("models") if isinstance(payload, dict) else None
+    if raw_models is None and isinstance(payload, dict):
+        raw_models = payload.get("data")
     if not isinstance(raw_models, list):
         raise RuntimeError("Codex returned a malformed models response.")
 
-    models: list[str] = []
+    catalog: list[dict[str, Any]] = []
     seen: set[str] = set()
     for item in raw_models:
-        slug = item.get("slug") if isinstance(item, dict) else None
-        if isinstance(slug, str) and slug and slug not in seen:
+        if isinstance(item, dict):
+            slug = _string(item.get("slug") or item.get("id"))
+            model = {
+                key: item[key]
+                for key in CLIENT_METADATA_KEYS
+                if key in item
+            }
+        else:
+            slug = _string(item)
+            model = {}
+        if slug and slug not in seen:
             seen.add(slug)
-            models.append(slug)
-    if not models:
+            model["slug"] = slug
+            model.setdefault("id", slug)
+            model.setdefault("display_name", slug)
+            catalog.append(model)
+    if not catalog:
         raise RuntimeError("Codex returned an empty models list.")
-    return models
+    return catalog
+
+
+def fetch_models() -> list[str]:
+    return [model["slug"] for model in fetch_model_catalog()]
 
 
 def prepare_responses_body(body: dict[str, Any], *, force_stream: bool) -> dict[str, Any]:
     normalized = dict(body)
     normalized.setdefault("instructions", "")
     normalized.setdefault("store", False)
+    normalized["client_metadata"] = merge_client_metadata(normalized.get("client_metadata"))
     if force_stream:
         normalized["stream"] = True
+    if isinstance(normalized.get("reasoning"), dict):
+        include = normalized.get("include")
+        values = list(include) if isinstance(include, list) else []
+        if "reasoning.encrypted_content" not in values:
+            values.append("reasoning.encrypted_content")
+        normalized["include"] = values
     normalized.pop("max_output_tokens", None)
     return normalized
+
+
+def build_client_metadata() -> dict[str, str]:
+    request_id = f"agent-zero-{uuid.uuid4()}"
+    return {
+        CLIENT_METADATA_INSTALLATION_ID: resolve_installation_id(),
+        "session_id": request_id,
+        "thread_id": request_id,
+        CLIENT_METADATA_WINDOW_ID: "agent-zero",
+    }
+
+
+def merge_client_metadata(value: Any) -> dict[str, str]:
+    metadata = {
+        str(key): str(item)
+        for key, item in (value.items() if isinstance(value, dict) else [])
+        if item is not None and str(item)
+    }
+    metadata.update(build_client_metadata())
+    return metadata
+
+
+def client_metadata_from_body(body: bytes | str | None) -> dict[str, str] | None:
+    if body is None:
+        return None
+    try:
+        text = body.decode("utf-8") if isinstance(body, bytes) else body
+        payload = json.loads(text)
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    metadata = payload.get("client_metadata")
+    if not isinstance(metadata, dict):
+        return None
+    result = {
+        str(key): str(value)
+        for key, value in metadata.items()
+        if value is not None and str(value)
+    }
+    required = {
+        CLIENT_METADATA_INSTALLATION_ID,
+        "session_id",
+        "thread_id",
+        CLIENT_METADATA_WINDOW_ID,
+    }
+    return result if required.issubset(result) else None
 
 
 def collect_completed_response(response: requests.Response) -> dict[str, Any]:
@@ -728,9 +830,7 @@ def extract_sse_text_deltas(payload: dict[str, Any], event_type: str = "") -> li
 
     if (payload.get("type") or event_type) in {
         "response.output_text.delta",
-        "response.output_text.done",
         "response.text.delta",
-        "response.text.done",
     }:
         _append_text_value(pieces, payload.get("text"))
 
@@ -983,6 +1083,39 @@ def resolve_codex_version() -> str:
     except Exception:
         pass
     return ""
+
+
+def resolve_installation_id() -> str:
+    for path in installation_id_candidates():
+        try:
+            value = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if value:
+            return value
+
+    value = str(uuid.uuid4())
+    path = plugin_installation_id_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(value, encoding="utf-8")
+        os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        pass
+    return value
+
+
+def installation_id_candidates() -> list[Path]:
+    candidates = [plugin_installation_id_path()]
+    codex_home = os.environ.get("CODEX_HOME")
+    if codex_home:
+        candidates.append(Path(codex_home).expanduser() / INSTALLATION_ID_FILENAME)
+    candidates.append(Path.home() / ".codex" / INSTALLATION_ID_FILENAME)
+    return candidates
+
+
+def plugin_installation_id_path() -> Path:
+    return Path(files.get_abs_path("usr", "plugins", "_oauth", "codex", INSTALLATION_ID_FILENAME))
 
 
 def resolve_auth_file_candidates() -> list[Path]:

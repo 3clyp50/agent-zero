@@ -390,6 +390,13 @@ def test_status_api_contains_provider_status_exceptions(monkeypatch):
     class FailingProvider:
         provider_id = XAI_GROK_PROVIDER_ID
 
+        def metadata(self):
+            return {
+                "provider_id": XAI_GROK_PROVIDER_ID,
+                "display_name": "xAI Grok",
+                "auth_flow": "browser_pkce",
+            }
+
         def status(self):
             raise RuntimeError("status failed")
 
@@ -409,6 +416,8 @@ def test_status_api_contains_provider_status_exceptions(monkeypatch):
     assert response["provider_map"][CODEX_PROVIDER_ID]["connected"] is True
     assert response["provider_map"][XAI_GROK_PROVIDER_ID] == {
         "provider_id": XAI_GROK_PROVIDER_ID,
+        "display_name": "xAI Grok",
+        "auth_flow": "browser_pkce",
         "connected": False,
         "error": "status failed",
     }
@@ -949,6 +958,38 @@ def test_manual_callback_unknown_provider_returns_structured_error():
     assert response["ok"] is False
     assert response["provider_id"] == "missing"
     assert "Unknown OAuth provider" in response["error"]
+
+
+def test_models_api_returns_optional_model_metadata(monkeypatch):
+    class FakeProvider:
+        provider_id = CODEX_PROVIDER_ID
+
+        def model_catalog(self):
+            return [
+                {
+                    "slug": "gpt-5.5",
+                    "display_name": "GPT-5.5",
+                    "description": "Frontier coding model.",
+                }
+            ]
+
+        def models(self):
+            return ["ignored-when-catalog-exists"]
+
+    models_module = sys.modules["plugins._oauth.api.models"]
+    monkeypatch.setattr(models_module, "get_provider", lambda provider_id: FakeProvider())
+
+    response = asyncio.run(Models(None, None).process({"provider_id": CODEX_PROVIDER_ID}, FakeRequest()))
+
+    assert response["ok"] is True
+    assert response["models"] == ["gpt-5.5"]
+    assert response["model_metadata"] == [
+        {
+            "slug": "gpt-5.5",
+            "display_name": "GPT-5.5",
+            "description": "Frontier coding model.",
+        }
+    ]
 
 
 def test_unknown_provider_id_on_provider_aware_api_returns_structured_error():

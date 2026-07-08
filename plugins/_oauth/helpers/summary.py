@@ -63,11 +63,23 @@ def _provider_status(provider: Any) -> dict[str, Any]:
             status["usage_windows"] = usage_windows
         return status
     except Exception as exc:
+        metadata = _provider_metadata(provider)
         return {
+            **metadata,
             "provider_id": str(getattr(provider, "provider_id", "")),
             "connected": False,
             "error": str(exc),
         }
+
+
+def _provider_metadata(provider: Any) -> dict[str, Any]:
+    try:
+        metadata = provider.metadata()
+        to_dict = getattr(metadata, "to_dict", None)
+        value = to_dict() if callable(to_dict) else metadata
+        return value if isinstance(value, dict) else {}
+    except Exception:
+        return {}
 
 
 def _account_summary(provider: dict[str, Any], catalog: dict[str, Any]) -> dict[str, Any]:

@@ -137,6 +137,145 @@ def test_codex_fetch_models_omits_fake_client_version(monkeypatch):
     assert calls == [("/models", None)]
 
 
+def test_codex_fetch_model_catalog_preserves_model_metadata(monkeypatch):
+    class FakeResponse:
+        ok = True
+
+        def json(self):
+            return {
+                "models": [
+                    {
+                        "slug": "gpt-5.5",
+                        "display_name": "GPT-5.5",
+                        "description": "Frontier coding model.",
+                        "default_reasoning_level": "medium",
+                        "base_instructions": "too large for the settings UI",
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(codex, "codex_config", lambda: {"models": []})
+    monkeypatch.setattr(codex, "resolve_codex_version", lambda: "0.142.5")
+    monkeypatch.setattr(codex, "request_codex", lambda path, params=None: FakeResponse())
+
+    assert codex.fetch_model_catalog() == [
+        {
+            "slug": "gpt-5.5",
+            "id": "gpt-5.5",
+            "display_name": "GPT-5.5",
+            "description": "Frontier coding model.",
+            "default_reasoning_level": "medium",
+        }
+    ]
+
+
+def test_prepare_responses_body_adds_codex_client_metadata(monkeypatch):
+    monkeypatch.setattr(
+        codex,
+        "build_client_metadata",
+        lambda: {
+            "x-codex-installation-id": "install-1",
+            "session_id": "session-1",
+            "thread_id": "thread-1",
+            "x-codex-window-id": "agent-zero",
+        },
+    )
+
+    body = codex.prepare_responses_body(
+        {
+            "model": "gpt-5.5",
+            "input": "hello",
+            "client_metadata": {
+                "caller": "plugin-test",
+                "x-codex-installation-id": "stale",
+            },
+            "reasoning": {"effort": "medium"},
+            "include": ["output_text"],
+        },
+        force_stream=True,
+    )
+
+    assert body["client_metadata"] == {
+        "caller": "plugin-test",
+        "x-codex-installation-id": "install-1",
+        "session_id": "session-1",
+        "thread_id": "thread-1",
+        "x-codex-window-id": "agent-zero",
+    }
+    assert body["stream"] is True
+    assert body["include"] == ["output_text", "reasoning.encrypted_content"]
+
+
+def test_request_codex_sends_current_codex_headers_from_body(monkeypatch):
+    calls = []
+    body = json.dumps(
+        {
+            "client_metadata": {
+                "x-codex-installation-id": "install-1",
+                "session_id": "session-1",
+                "thread_id": "thread-1",
+                "x-codex-window-id": "agent-zero",
+            }
+        }
+    )
+
+    class FakeResponse:
+        ok = True
+
+    monkeypatch.setattr(
+        codex,
+        "codex_config",
+        lambda: {
+            "upstream_base_url": "https://chatgpt.example/backend-api/codex",
+            "request_timeout_seconds": 120,
+        },
+    )
+    monkeypatch.setattr(
+        codex,
+        "load_auth",
+        lambda: codex.EffectiveAuth(
+            access_token="access-token",
+            account_id="account-1",
+        ),
+    )
+
+    def fake_request(method, target, headers, data, params, timeout, stream):
+        calls.append(
+            {
+                "method": method,
+                "target": target,
+                "headers": headers,
+                "data": data,
+                "params": params,
+                "timeout": timeout,
+                "stream": stream,
+            }
+        )
+        return FakeResponse()
+
+    monkeypatch.setattr(codex.requests, "request", fake_request)
+
+    response = codex.request_codex(
+        "/responses",
+        method="POST",
+        headers={"Content-Type": "application/json"},
+        body=body,
+        stream=True,
+    )
+
+    assert response.ok is True
+    call = calls[0]
+    assert call["target"] == "https://chatgpt.example/backend-api/codex/responses"
+    assert call["headers"]["Authorization"] == "Bearer access-token"
+    assert call["headers"]["chatgpt-account-id"] == "account-1"
+    assert call["headers"]["OpenAI-Beta"] == "responses=experimental"
+    assert call["headers"]["originator"] == "codex_cli_rs"
+    assert call["headers"]["x-codex-installation-id"] == "install-1"
+    assert call["headers"]["session-id"] == "session-1"
+    assert call["headers"]["thread-id"] == "thread-1"
+    assert call["headers"]["x-codex-window-id"] == "agent-zero"
+
+
 def test_chat_messages_to_response_body_preserves_image_parts_for_responses():
     data_url = "data:image/png;base64,abcd"
 
@@ -229,6 +368,16 @@ def test_extract_sse_text_deltas_reads_chat_completion_chunks():
     )
 
     assert deltas == ["Hel", "lo"]
+
+
+def test_extract_sse_text_deltas_ignores_final_done_text():
+    assert (
+        codex.extract_sse_text_deltas(
+            {"type": "response.output_text.done", "text": "Hello"},
+            "response.output_text.done",
+        )
+        == []
+    )
 
 
 def test_collect_completed_response_falls_back_to_text_deltas():

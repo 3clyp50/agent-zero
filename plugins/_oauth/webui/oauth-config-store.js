@@ -107,6 +107,7 @@ export const store = createStore("oauthConfig", {
   disconnecting: false,
   loadingModels: false,
   providerModels: {},
+  providerModelMetadata: {},
   providerUi: providerUiDefaults(),
   connectingProvider: "",
   disconnectingProvider: "",
@@ -150,6 +151,7 @@ export const store = createStore("oauthConfig", {
     this.disconnecting = false;
     this.loadingModels = false;
     this.providerModels = {};
+    this.providerModelMetadata = {};
     this.providerUi = providerUiDefaults();
     this.connectingProvider = "";
     this.disconnectingProvider = "";
@@ -554,6 +556,14 @@ export const store = createStore("oauthConfig", {
   activeProviderModels() {
     if (!this.providerConnected(this.activeModelProvider)) return [];
     return this.providerModels[this.activeModelProvider] || [];
+  },
+
+  modelMetadata(providerId, model) {
+    return this.providerModelMetadata[providerId]?.[model] || {};
+  },
+
+  modelDescription(providerId, model) {
+    return this.modelMetadata(providerId, model).description || "";
   },
 
   activeModelsDescription() {
@@ -967,12 +977,20 @@ export const store = createStore("oauthConfig", {
         throw new Error(response?.error || `Could not load ${this.providerLabel(selectedProvider)} models.`);
       }
       const models = Array.isArray(response.models) ? response.models : [];
+      const metadata = Array.isArray(response.model_metadata) ? response.model_metadata : [];
+      const metadataMap = metadata.reduce((result, item) => {
+        const key = String(item?.slug || item?.id || "");
+        if (key) result[key] = item;
+        return result;
+      }, {});
       this.providerModels = { ...this.providerModels, [selectedProvider]: models };
+      this.providerModelMetadata = { ...this.providerModelMetadata, [selectedProvider]: metadataMap };
       this.models = models;
       if (openDropdown) this.openModelDropdown(openDropdown);
       if (!silent) void toastFrontendSuccess(`${this.providerLabel(selectedProvider)} models loaded.`, "OAuth Connections");
     } catch (error) {
       this.providerModels = { ...this.providerModels, [selectedProvider]: [] };
+      this.providerModelMetadata = { ...this.providerModelMetadata, [selectedProvider]: {} };
       this.models = [];
       if (!silent) void toastFrontendError(messageOf(error), "OAuth Connections");
     } finally {
@@ -999,6 +1017,9 @@ export const store = createStore("oauthConfig", {
       const providerModels = { ...this.providerModels };
       delete providerModels[providerId];
       this.providerModels = providerModels;
+      const providerModelMetadata = { ...this.providerModelMetadata };
+      delete providerModelMetadata[providerId];
+      this.providerModelMetadata = providerModelMetadata;
       if (this.activeModelProvider === providerId) this.models = [];
       this.clearProviderDevice(providerId);
       if (this.connectingProvider === providerId) this.connectingProvider = "";

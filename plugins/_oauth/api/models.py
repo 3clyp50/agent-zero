@@ -10,8 +10,23 @@ class Models(ApiHandler):
         raw_provider_id = _provider_id(input)
         try:
             provider = get_provider(raw_provider_id)
-            models = provider.models()
-            return {"ok": True, "provider_id": provider.provider_id, "models": models}
+            model_catalog = getattr(provider, "model_catalog", None)
+            if callable(model_catalog):
+                catalog = model_catalog()
+                models = [
+                    str(item.get("slug") or item.get("id") or "")
+                    for item in catalog
+                    if isinstance(item, dict) and (item.get("slug") or item.get("id"))
+                ]
+            else:
+                catalog = []
+                models = provider.models()
+            return {
+                "ok": True,
+                "provider_id": provider.provider_id,
+                "models": models,
+                "model_metadata": catalog,
+            }
         except Exception as exc:
             return {
                 "ok": False,

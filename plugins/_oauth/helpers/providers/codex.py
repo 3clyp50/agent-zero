@@ -232,6 +232,11 @@ class CodexOAuthProvider:
 
         return codex.fetch_models()
 
+    def model_catalog(self) -> list[dict[str, Any]]:
+        from plugins._oauth.helpers import codex
+
+        return codex.fetch_model_catalog()
+
     def disconnect(self) -> dict[str, Any]:
         from plugins._oauth.helpers import codex
 

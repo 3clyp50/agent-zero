@@ -259,8 +259,16 @@
                           type="button"
                           class="oauth-model-item"
                           @click="$store.oauthConfig.selectModel(slot.key, model)"
-                          x-text="model"
-                        ></button>
+                        >
+                          <span
+                            class="oauth-model-name"
+                            x-text="model"
+                          ></span>
+                          <small
+                            x-show="$store.oauthConfig.modelDescription(slot.provider, model)"
+                            x-text="$store.oauthConfig.modelDescription(slot.provider, model)"
+                          ></small>
+                        </button>
                       </template>
                       <div class="oauth-model-item muted" x-show="$store.oauthConfig.filteredModels(slot.key).length === 0">
                         No models found. You can still type the model name manually.
@@ -282,7 +290,10 @@
           </div>
           <div class="oauth-models">
             <template x-for="model in $store.oauthConfig.activeProviderModels()" :key="model">
-              <span x-text="model"></span>
+              <span
+                :title="$store.oauthConfig.modelDescription($store.oauthConfig.activeModelProvider, model)"
+                x-text="model"
+              ></span>
             </template>
           </div>
         </section>
@@ -991,7 +1002,9 @@
     }
 
     .oauth-model-item {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
       width: 100%;
       min-height: 34px;
       padding: 8px 10px;
@@ -1002,6 +1015,19 @@
       font-size: 0.8rem;
       text-align: left;
       cursor: pointer;
+    }
+
+    .oauth-model-name {
+      font-weight: 650;
+    }
+
+    .oauth-model-item small {
+      overflow: hidden;
+      color: var(--color-text-secondary);
+      font-size: 0.72rem;
+      line-height: 1.3;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .oauth-model-item:hover,
