@@ -28,6 +28,7 @@
 - Startup scripts in `index.html` must be local and non-parser-blocking: use ES modules, `defer`, or `async` for every script with `src`.
 - Rubik (`--font-family-main`) is the default WebUI text and control font; use the code/mono font tokens only for code, logs, paths, and fixed-width data.
 - Hover, focus, and active border treatments should follow existing neutral border/background patterns; avoid hard-coded blue border highlights unless matching an established specialized surface.
+- Keep transient UI affordances such as Bootstrap tooltips and notification toasts above normal and legacy modal layers while confirmation dialogs remain on top.
 
 ## Work Guidance
 

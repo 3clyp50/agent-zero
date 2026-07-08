@@ -969,6 +969,29 @@ def test_surface_buttons_keep_modal_and_canvas_entry_points_separate():
     assert "/plugins/_desktop/webui/main.html" in surfaces_js
 
 
+def test_transient_ui_layers_above_modals_below_confirm_dialogs():
+    index_css = (PROJECT_ROOT / "webui" / "index.css").read_text(encoding="utf-8")
+    modals_js = (PROJECT_ROOT / "webui" / "js" / "modals.js").read_text(encoding="utf-8")
+    modals_css = (PROJECT_ROOT / "webui" / "css" / "modals.css").read_text(encoding="utf-8")
+    toast_html = (
+        PROJECT_ROOT / "webui" / "components" / "notifications" / "notification-toast-stack.html"
+    ).read_text(encoding="utf-8")
+
+    modal_base_z = int(re.search(r"const baseZIndex = (\d+);", modals_js).group(1))
+    legacy_overlay_z = int(re.search(r"\.modal-overlay \{[^}]*z-index: (\d+);", modals_css, re.S).group(1))
+    confirm_z = int(re.search(r"\.confirm-dialog-backdrop \{[^}]*z-index: (\d+);", modals_css, re.S).group(1))
+    toast_z = int(re.search(r"\.toast-stack-container \{[^}]*z-index: (\d+);", toast_html, re.S).group(1))
+    tooltip_z_indexes = [
+        int(z)
+        for z in re.findall(r"\.tooltip \{[^}]*z-index: (\d+);", index_css, re.S)
+    ]
+
+    assert tooltip_z_indexes
+    assert toast_z > max(modal_base_z + 20, legacy_overlay_z)
+    assert all(z > toast_z for z in tooltip_z_indexes)
+    assert all(z < confirm_z for z in [toast_z, *tooltip_z_indexes])
+
+
 def test_browser_tool_does_not_auto_open_canvas_policy_is_documented():
     prompt = (
         PROJECT_ROOT / "plugins" / "_browser" / "prompts" / "agent.system.tool.browser.md"

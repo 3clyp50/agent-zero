@@ -15,6 +15,7 @@
 
 - Use the notification system for user-facing success, warning, info, and error feedback.
 - Keep public helper names stable for core and plugin callers.
+- Keep the toast stack visible above normal and legacy modal overlays while staying below confirmation dialogs.
 - Avoid exposing secrets or raw auth payloads in notification text.
 
 ## Work Guidance
