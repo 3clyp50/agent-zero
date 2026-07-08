@@ -430,8 +430,8 @@ def test_loaded_skills_extension_reattaches_missing_body_after_compaction(
     module = _load_loaded_skills_extension(monkeypatch, tmp_path)
     agent = _FakeLoadedSkillAgent()
     loop_data = types.SimpleNamespace(
-        protocol_persistent={"loaded_skills": "legacy"},
-        extras_persistent={"loaded_skills": "legacy"},
+        protocol_persistent={},
+        extras_persistent={},
         history_output=[
             {
                 "ai": False,
@@ -442,8 +442,6 @@ def test_loaded_skills_extension_reattaches_missing_body_after_compaction(
 
     asyncio.run(module.IncludeLoadedSkills(agent).execute(loop_data))
 
-    assert "loaded_skills" not in loop_data.protocol_persistent
-    assert "loaded_skills" not in loop_data.extras_persistent
     assert len(agent.added_tool_results) == 1
     added = agent.added_tool_results[0]
     assert added["tool_name"] == "skills_tool"

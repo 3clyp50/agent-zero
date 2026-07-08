@@ -2,14 +2,14 @@
 
 ## Purpose
 
-- Own prompt protocol and extras appended around primary message-loop prompt construction.
+- Own prompt protocol, prompt extras, and history reattachment around primary message-loop prompt construction.
 
 ## Ownership
 
-- Ordered Python files own current datetime, skill recall/load context, agent info, parallel job status, and workdir extras injection.
+- Ordered Python files own current datetime, relevant-skill hints, loaded-skill history reattachment, agent info, parallel job status, and workdir extras injection.
 - Explicitly loaded skill bodies belong in tool-result history with metadata so they can survive persistence and be reattached after compaction.
 - Explicitly loaded skill IDs are chat-wide context data, not agent-local state.
-- Legacy active-skill prompt protocol injection must stay empty; selected skills are loaded through history.
+- Skills must not write selected or loaded skill bodies into protocol or extras.
 
 ## Local Contracts
 

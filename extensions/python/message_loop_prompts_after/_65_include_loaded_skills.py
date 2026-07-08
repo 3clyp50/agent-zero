@@ -14,9 +14,6 @@ class IncludeLoadedSkills(Extension):
         if not self.agent:
             return
 
-        loop_data.protocol_persistent.pop("loaded_skills", None)
-        loop_data.extras_persistent.pop("loaded_skills", None)
-
         skill_names = skills.get_loaded_skill_names(self.agent)
         if not skill_names:
             return

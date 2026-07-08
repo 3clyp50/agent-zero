@@ -8,7 +8,6 @@
 
 - `hooks.py` owns skill config normalization.
 - `api/skills_catalog.py` owns skill catalog access and loading selected skills into chat history.
-- `prompts/agent.system.active_skills.md` is retained only for legacy prompt-protocol compatibility.
 - `webui/` owns skill settings UI and store.
 - `default_config.yaml`, `plugin.yaml`, `README.md`, and `LICENSE` own defaults, metadata, docs, and license.
 
