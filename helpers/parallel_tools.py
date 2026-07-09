@@ -487,19 +487,35 @@ async def _run_direct_tool_job(parent_context_id: str, job: ParallelJob) -> str:
 
         worker_agent = worker_context.agent0
         worker_agent.loop_data = LoopData()
-        return await execute_tool_call(worker_agent, job.tool_name, job.tool_args)
+        return await execute_tool_call(
+            worker_agent,
+            job.tool_name,
+            job.tool_args,
+            log_item=job.log_item,
+        )
     finally:
         if worker_context:
             await _remove_context(worker_context.id)
 
 
-async def execute_tool_call(agent: "Agent", tool_name: str, tool_args: dict[str, Any]) -> str:
+async def execute_tool_call(
+    agent: "Agent",
+    tool_name: str,
+    tool_args: dict[str, Any],
+    *,
+    log_item: "LogItem | None" = None,
+) -> str:
     if tool_name == "parallel":
         raise ValueError("`parallel` cannot be nested inside a parallel worker.")
 
     tool = _resolve_parallel_tool(agent, tool_name, tool_args, strict=True)
     if not tool:
         raise ValueError(f"Tool '{tool_name}' not found or could not be initialized.")
+
+    original_get_log_object = None
+    if log_item is not None:
+        original_get_log_object = tool.get_log_object
+        tool.get_log_object = lambda: log_item
 
     agent.loop_data.current_tool = tool
     try:
@@ -524,6 +540,8 @@ async def execute_tool_call(agent: "Agent", tool_name: str, tool_args: dict[str,
         await agent.handle_intervention()
         return response.message
     finally:
+        if original_get_log_object is not None:
+            tool.get_log_object = original_get_log_object
         agent.loop_data.current_tool = None
 
 

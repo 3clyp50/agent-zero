@@ -552,6 +552,67 @@ async def test_parallel_wait_child_uses_wait_log_type(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_parallel_execute_reuses_child_log_object(monkeypatch) -> None:
+    class FakeTool:
+        def __init__(self, agent, args):
+            self.agent = agent
+            self.args = args
+
+        def get_log_object(self):
+            return self.agent.context.log.log(
+                type="tool",
+                heading="generic tool log",
+                content="",
+                kvps=self.args,
+            )
+
+        async def before_execution(self, **kwargs):
+            self.log = self.get_log_object()
+
+        async def execute(self, **kwargs):
+            return Response(message="done", break_loop=False)
+
+        async def after_execution(self, response):
+            self.log.update(content=response.message)
+
+    class FakeWorkerAgent(_FakeAgent):
+        def __init__(self) -> None:
+            super().__init__()
+            self.loop_data = SimpleNamespace(current_tool=None)
+
+        def get_tool(self, **kwargs):
+            return FakeTool(self, kwargs["args"])
+
+        async def handle_intervention(self):
+            pass
+
+    async def noop_extensions(*_args, **_kwargs):
+        pass
+
+    monkeypatch.setattr(parallel_tools, "call_extensions_async", noop_extensions)
+
+    agent = FakeWorkerAgent()
+    child_log = agent.context.log.log(
+        type="progress",
+        heading="icon://timer Wait: Waiting...",
+        content="",
+        kvps={"seconds": 1},
+    )
+
+    result = await parallel_tools.execute_tool_call(
+        agent,  # type: ignore[arg-type]
+        "wait",
+        {"seconds": 1},
+        log_item=child_log,
+    )
+
+    assert result == "done"
+    assert agent.context.log.items == [child_log]
+    assert child_log.type == "progress"
+    assert child_log.content == "done"
+
+
+@pytest.mark.asyncio
 async def test_parallel_tool_keeps_wrapper_out_of_visible_log() -> None:
     from tools.parallel import ParallelTool
 

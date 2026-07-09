@@ -32,6 +32,7 @@
 - Parent-visible child log items are created for each wrapped call so the WebUI can inspect concurrent children separately while the wrapper result remains model-history-only.
 - Child tool logs mirror normal tool-call visible args; job ids remain available through wrapper results and prompt extras rather than visible process-step args.
 - Wrapped tool child logs use each tool's native `get_log_object()` output when available, preserving special log rendering (for example: `code_execution_tool` uses `code_exe`, `wait` uses `progress`, MCP tools use `mcp`, and regular tools use `tool`).
+- Direct parallel worker execution reuses the parent-visible child log item so tool `before_execution()` cannot create a second generic worker log or lose the native badge type.
 - Job IDs are stable handles for later await, collect, or cancel operations.
 - Prompt extras must stay bounded and expose only job IDs, tool names, status, and compact result/error summaries.
 
