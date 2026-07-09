@@ -351,6 +351,29 @@ def test_debounced_snapshots_coalesce_to_one_commit(workspace):
         tt.clear_debounced_snapshots()
 
 
+def test_debounced_snapshot_skips_removed_workspace(workspace, monkeypatch):
+    root, service = workspace
+    errors = []
+    monkeypatch.setattr(tt.PrintStyle, "error", lambda message: errors.append(message))
+    tt.clear_debounced_snapshots()
+    try:
+        (root / "file.txt").write_text("one\n", encoding="utf-8")
+        tt.schedule_debounced_snapshot(
+            service.workspace,
+            trigger="watchdog",
+            metadata={"source": "watchdog"},
+            delay=60,
+        )
+        shutil.rmtree(root)
+
+        tt.flush_debounced_snapshots()
+
+        assert errors == []
+        assert not service.workspace.repo_git_path.exists()
+    finally:
+        tt.clear_debounced_snapshots()
+
+
 def test_workspace_resolution_prefers_project_and_rejects_external_paths(monkeypatch: pytest.MonkeyPatch, workspace):
     root, _service = workspace
     projects_mod = ModuleType("helpers.projects")

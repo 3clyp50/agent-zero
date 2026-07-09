@@ -618,6 +618,8 @@ def _flush_debounced_snapshot(workspace_id: str) -> None:
 
     try:
         workspace = payload["workspace"]
+        if not workspace.real_path.is_dir():
+            return
         TimeTravelService(workspace).snapshot(
             trigger=str(payload.get("trigger") or "watchdog"),
             metadata=payload.get("metadata") or {},
