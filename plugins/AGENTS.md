@@ -78,6 +78,7 @@ Direct child DOX files:
 | [_editor/AGENTS.md](_editor/AGENTS.md) | Native Markdown editor surface and sessions. |
 | [_email_integration/AGENTS.md](_email_integration/AGENTS.md) | IMAP/Exchange polling and SMTP reply integration. |
 | [_error_retry/AGENTS.md](_error_retry/AGENTS.md) | Critical exception retry lifecycle hooks. |
+| [_goal/AGENTS.md](_goal/AGENTS.md) | Built-in chat goal strip, `/goal` slash command, and agent-facing goal tools. |
 | [_infection_check/AGENTS.md](_infection_check/AGENTS.md) | Prompt-injection safety analysis before tool execution. |
 | [_kokoro_tts/AGENTS.md](_kokoro_tts/AGENTS.md) | Kokoro text-to-speech integration. |
 | [_memory/AGENTS.md](_memory/AGENTS.md) | Optional persistent recall plugin, knowledge import, tools, and dashboard; do not assume it is enabled outside this plugin. |

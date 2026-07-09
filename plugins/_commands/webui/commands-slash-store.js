@@ -353,6 +353,7 @@ const model = {
     const effects = Array.isArray(result.effects) ? result.effects : [];
     let hadToast = false;
     let hadError = false;
+    let shouldSend = false;
 
     for (const effect of effects) {
       if (!effect || typeof effect !== "object") continue;
@@ -364,6 +365,11 @@ const model = {
       if (type === "append_input") {
         const chunk = String(effect.text || "");
         nextText = nextText ? `${nextText}\n${chunk}` : chunk;
+        continue;
+      }
+      if (type === "send_message") {
+        nextText = String(effect.text || nextText || "");
+        shouldSend = true;
         continue;
       }
       if (type === "toast") {
@@ -411,6 +417,10 @@ const model = {
           String(effect.title || "Slash Command"),
           String(effect.content || ""),
         );
+        continue;
+      }
+      if (type === "goal_changed") {
+        window.dispatchEvent(new CustomEvent("goal:changed", { detail: effect }));
         continue;
       }
       if (type === "open_plugin_config") {
@@ -463,6 +473,9 @@ const model = {
     this.rawArguments = "";
     this.rawMessage = nextText;
     this.selectedIndex = 0;
+    if (shouldSend && nextText.trim()) {
+      await chatInputStore?.sendMessage?.();
+    }
     return { hadToast, hadError };
   },
 

@@ -28,6 +28,7 @@
 - Commands contributed by enabled plugins live in their `commands/` directory and must not be rediscovered through the generic plugin-distributed path from `_commands` itself.
 - On startup, `_commands` copies legacy `usr/plugins/commands` command and skill files into `usr/plugins/_commands` without overwriting existing files, copies scoped legacy command folders to `_commands`, and disables the legacy `commands` plugin roots to prevent duplicate WebUI popovers.
 - Script commands must expose `run(payload)` and return a string or a dict with `text` and optional `effects`; `show_markdown` effects render as auto-dismissing toast notifications.
+- Script commands may emit `send_message` with `text` to submit the rendered composer text immediately after command resolution.
 
 ## Work Guidance
 
