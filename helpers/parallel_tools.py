@@ -497,24 +497,7 @@ async def execute_tool_call(agent: "Agent", tool_name: str, tool_args: dict[str,
     if tool_name == "parallel":
         raise ValueError("`parallel` cannot be nested inside a parallel worker.")
 
-    tool = None
-    try:
-        import helpers.mcp_handler as mcp_helper
-
-        tool = mcp_helper.MCPConfig.get_instance().get_tool(agent, tool_name)
-    except ImportError:
-        tool = None
-    except Exception as exc:
-        PrintStyle.warning(f"Failed to initialize MCP tool '{tool_name}' for parallel job: {exc}")
-
-    if not tool:
-        tool = agent.get_tool(
-            name=tool_name,
-            method=None,
-            args=tool_args,
-            message=json.dumps({"tool_name": tool_name, "tool_args": tool_args}),
-            loop_data=agent.loop_data,
-        )
+    tool = _resolve_parallel_tool(agent, tool_name, tool_args, strict=True)
     if not tool:
         raise ValueError(f"Tool '{tool_name}' not found or could not be initialized.")
 
@@ -542,6 +525,58 @@ async def execute_tool_call(agent: "Agent", tool_name: str, tool_args: dict[str,
         return response.message
     finally:
         agent.loop_data.current_tool = None
+
+
+def _resolve_parallel_tool(
+    agent: "Agent",
+    tool_name: str,
+    tool_args: dict[str, Any],
+    *,
+    strict: bool = False,
+):
+    message = json.dumps({"tool_name": tool_name, "tool_args": tool_args})
+
+    tool = None
+    try:
+        import helpers.mcp_handler as mcp_helper
+
+        tool = mcp_helper.MCPConfig.get_instance().get_tool(agent, tool_name)
+    except ImportError:
+        tool = None
+    except Exception as exc:
+        if strict:
+            raise
+        PrintStyle.warning(f"Failed to initialize MCP tool '{tool_name}' for parallel job: {exc}")
+
+    if not tool:
+        get_tool = getattr(agent, "get_tool", None)
+        if not callable(get_tool):
+            if strict:
+                raise ValueError(f"Tool '{tool_name}' not found or could not be initialized.")
+            return None
+        try:
+            tool = get_tool(
+                name=tool_name,
+                method=None,
+                args=tool_args,
+                message=message,
+                loop_data=getattr(agent, "loop_data", None),
+            )
+        except Exception as exc:
+            if strict:
+                raise
+            PrintStyle.warning(f"Failed to initialize tool '{tool_name}' for parallel job: {exc}")
+            tool = None
+
+    if not tool:
+        return None
+
+    try:
+        tool.args = dict(tool_args)
+    except Exception:
+        pass
+
+    return tool
 
 
 async def _cancel_job(
@@ -600,18 +635,16 @@ def _log_parallel_child_started(agent: "Agent", job: ParallelJob) -> None:
         )
         return
 
-    if job.tool_name == "code_execution_tool":
-        runtime = job.tool_args.get("runtime", "unknown")
-        session = job.tool_args.get("session", None)
-        session_text = f"[{session}] " if session or session == 0 else ""
-        job.log_item = agent.context.log.log(
-            type="code_exe",
-            heading=f"icon://terminal {session_text}code_execution_tool - {runtime}",
-            content="",
-            kvps=job.tool_args,
-            id=job.log_id,
-        )
-        return
+    tool = _resolve_parallel_tool(agent, job.tool_name, job.tool_args)
+    if tool is not None:
+        try:
+            job.log_item = tool.get_log_object()
+            if job.log_item is not None:
+                return
+        except Exception as exc:
+            PrintStyle.warning(
+                f"Failed to derive parallel child log for {job.tool_name}: {exc}"
+            )
 
     heading = f"icon://construction {agent.agent_name}: Using tool '{job.tool_name}'"
     job.log_item = agent.context.log.log(
