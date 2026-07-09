@@ -1,7 +1,9 @@
 import json
 import os
+from copy import deepcopy
+
 from helpers.extension import Extension
-from helpers import settings as settings_helper, files, plugins
+from helpers import files, plugins, yaml as yaml_helper
 from helpers.print_style import PrintStyle
 
 
@@ -27,10 +29,20 @@ class MigrateModelConfig(Extension):
         "browser_model_vision", "browser_model_rl_requests", "browser_model_rl_input",
         "browser_model_rl_output", "browser_model_kwargs", "browser_http_headers",
     ]
+    CONFIG_SECTIONS = ("chat_model", "utility_model", "embedding_model")
+    PRESET_SECTIONS = ("chat", "utility", "embedding")
+    VENICE_KWARGS = {
+        "a0_api_mode": "chat",
+        "venice_parameters": {"include_venice_system_prompt": False},
+    }
 
     def execute(self, **kwargs):
+        self._repair_saved_venice_config()
+
         # Check if global plugin config already exists
-        global_config_path = files.get_abs_path("plugins/_model_config/config.json")
+        global_config_path = files.get_abs_path(
+            files.USER_DIR, files.PLUGINS_DIR, "_model_config", plugins.CONFIG_FILE_NAME
+        )
         if os.path.exists(global_config_path):
             return  # already migrated or manually configured
 
@@ -91,8 +103,70 @@ class MigrateModelConfig(Extension):
             if isinstance(kw, str):
                 plugin_config[section]["kwargs"] = {}
 
+        self._repair_venice_config_slots(plugin_config)
+
         # Save as global plugin config
         plugins.save_plugin_config("_model_config", "", "", plugin_config)
         PrintStyle(background_color="#6734C3", font_color="white", padding=True).print(
             "Migrated legacy model settings to _model_config plugin config."
         )
+
+    def _repair_saved_venice_config(self):
+        changed = False
+        config_path = files.get_abs_path(
+            files.USER_DIR, files.PLUGINS_DIR, "_model_config", plugins.CONFIG_FILE_NAME
+        )
+        presets_path = files.get_abs_path(
+            files.USER_DIR, files.PLUGINS_DIR, "_model_config", "presets.yaml"
+        )
+
+        if os.path.exists(config_path):
+            try:
+                config = json.loads(files.read_file(config_path))
+            except Exception:
+                config = None
+            if isinstance(config, dict) and self._repair_venice_config_slots(config):
+                files.write_file(config_path, json.dumps(config))
+                changed = True
+
+        if os.path.exists(presets_path):
+            try:
+                presets = yaml_helper.loads(files.read_file(presets_path))
+            except Exception:
+                presets = None
+            if isinstance(presets, list) and self._repair_venice_presets(presets):
+                files.write_file(presets_path, yaml_helper.dumps(presets))
+                changed = True
+
+        if changed:
+            PrintStyle(background_color="#6734C3", font_color="white", padding=True).print(
+                "Updated saved Venice model settings for chat completions."
+            )
+
+    def _repair_venice_config_slots(self, config: dict) -> bool:
+        changed = False
+        for section in self.CONFIG_SECTIONS:
+            changed = self._repair_venice_slot(config.get(section)) or changed
+        return changed
+
+    def _repair_venice_presets(self, presets: list) -> bool:
+        changed = False
+        for preset in presets:
+            if not isinstance(preset, dict):
+                continue
+            for section in self.PRESET_SECTIONS:
+                changed = self._repair_venice_slot(preset.get(section)) or changed
+            if not any(section in preset for section in self.PRESET_SECTIONS):
+                changed = self._repair_venice_slot(preset) or changed
+        return changed
+
+    def _repair_venice_slot(self, slot) -> bool:
+        if not isinstance(slot, dict):
+            return False
+        provider = str(slot.get("provider") or "").strip().lower()
+        if provider != "venice":
+            return False
+        if slot.get("kwargs") == self.VENICE_KWARGS:
+            return False
+        slot["kwargs"] = deepcopy(self.VENICE_KWARGS)
+        return True

@@ -1,3 +1,4 @@
+import json
 import sys
 import threading
 import types
@@ -297,6 +298,88 @@ def test_direct_venice_chat_provider_defaults_to_chat_completions(monkeypatch):
         a0_api_mode="responses",
     )
     assert custom.kwargs["a0_api_mode"] == "responses"
+
+
+def test_model_config_migration_repairs_saved_venice_user_slots(monkeypatch, tmp_path):
+    import yaml
+
+    from helpers import files
+    from plugins._model_config.extensions.python.startup_migration._10_migrate_model_config import (
+        MigrateModelConfig,
+    )
+
+    monkeypatch.setattr(files, "_base_dir", str(tmp_path))
+    plugin_dir = tmp_path / "usr" / "plugins" / "_model_config"
+    plugin_dir.mkdir(parents=True)
+    expected = {
+        "a0_api_mode": "chat",
+        "venice_parameters": {"include_venice_system_prompt": False},
+    }
+
+    config_path = plugin_dir / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "chat_model": {
+                    "provider": "venice",
+                    "name": "llama-3.3-70b",
+                    "kwargs": {"a0_api_mode": "responses"},
+                },
+                "utility_model": {
+                    "provider": "a0_venice",
+                    "name": "venice-proxy",
+                    "kwargs": {"a0_api_mode": "responses"},
+                },
+                "embedding_model": {
+                    "provider": "venice",
+                    "name": "embed",
+                    "kwargs": {},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    presets_path = plugin_dir / "presets.yaml"
+    presets_path.write_text(
+        yaml.safe_dump(
+            [
+                {
+                    "name": "Venice",
+                    "chat": {
+                        "provider": "venice",
+                        "name": "llama-3.3-70b",
+                        "kwargs": {"venice_parameters": {"include_venice_system_prompt": True}},
+                    },
+                    "utility": {
+                        "provider": "a0_venice",
+                        "name": "proxy",
+                        "kwargs": {"keep": True},
+                    },
+                },
+                {
+                    "name": "Legacy raw preset",
+                    "provider": "venice",
+                    "name": "raw",
+                    "kwargs": {"a0_api_mode": "responses"},
+                },
+            ],
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    MigrateModelConfig(agent=None).execute()
+
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    presets = yaml.safe_load(presets_path.read_text(encoding="utf-8"))
+
+    assert config["chat_model"]["kwargs"] == expected
+    assert config["embedding_model"]["kwargs"] == expected
+    assert config["utility_model"]["kwargs"] == {"a0_api_mode": "responses"}
+    assert presets[0]["chat"]["kwargs"] == expected
+    assert presets[0]["utility"]["kwargs"] == {"keep": True}
+    assert presets[1]["kwargs"] == expected
 
 
 def test_local_chat_providers_default_to_chat_completions():
