@@ -63,6 +63,7 @@ class BackupService:
         return f"""# User data
 # All persistent user data is now centralized in /usr for easier backup and restore
 {agent_root}/usr/**
+!{agent_root}/usr/.time_travel/**
 """
 
     def _get_agent_zero_version(self) -> str:

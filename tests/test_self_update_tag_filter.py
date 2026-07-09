@@ -829,6 +829,39 @@ def test_self_update_manager_usr_backup_skips_runtime_sockets():
         )
 
 
+def test_self_update_manager_usr_backup_skips_time_travel_history(tmp_path):
+    manager = load_self_update_manager()
+    repo_dir = tmp_path / "repo"
+    usr_dir = repo_dir / "usr"
+    time_travel = usr_dir / ".time_travel" / "workspaces" / "demo" / "repo.git"
+    time_travel.mkdir(parents=True)
+    (usr_dir / "settings.json").write_text('{"ok": true}\n', encoding="utf-8")
+    (time_travel / "objects.pack").write_text("history\n", encoding="utf-8")
+    messages = []
+
+    class ListLogger:
+        def log(self, message=""):
+            messages.append(message)
+
+    backup_path = manager.create_usr_backup(
+        repo_dir=repo_dir,
+        backup_path=str(tmp_path / "backups"),
+        backup_name="usr-backup.zip",
+        conflict_policy="rename",
+        logger=ListLogger(),
+    )
+
+    with zipfile.ZipFile(backup_path) as archive:
+        names = set(archive.namelist())
+
+    assert "usr/settings.json" in names
+    assert "usr/.time_travel/workspaces/demo/repo.git/objects.pack" not in names
+    assert any(
+        "Skipping Time Travel history during usr backup: usr/.time_travel" in message
+        for message in messages
+    )
+
+
 def test_self_update_manager_usr_backup_skips_transient_desktop_ssh_agent_dir(tmp_path):
     manager = load_self_update_manager()
     repo_dir = tmp_path / "repo"

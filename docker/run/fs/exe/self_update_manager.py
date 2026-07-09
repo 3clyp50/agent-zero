@@ -405,6 +405,11 @@ def should_exclude_from_usr_backup(
     logger: AttemptLogger,
 ) -> bool:
     parts = relative_dir.parts
+    if parts and parts[0] == ".time_travel":
+        logger.log(
+            f"Skipping Time Travel history during usr backup: {Path('usr') / relative_dir}"
+        )
+        return True
     if (
         len(parts) >= 6
         and parts[0] == "plugins"

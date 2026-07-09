@@ -17,6 +17,28 @@ class UploadedBackup:
 
 
 @pytest.mark.asyncio
+async def test_default_backup_patterns_exclude_time_travel_history(tmp_path):
+    root = tmp_path / "a0"
+    usr = root / "usr"
+    time_travel = usr / ".time_travel" / "workspaces" / "demo" / "repo.git"
+    time_travel.mkdir(parents=True)
+    (usr / "settings.json").write_text('{"ok": true}\n', encoding="utf-8")
+    (time_travel / "objects.pack").write_text("history\n", encoding="utf-8")
+
+    service = BackupService()
+    service.agent_zero_root = str(root)
+    service.base_paths = {str(root): str(root)}
+    metadata = service.get_default_backup_metadata()
+
+    files = await service.test_patterns(metadata, max_files=None)
+    paths = {item["real_path"] for item in files}
+
+    assert str(usr / "settings.json") in paths
+    assert str(time_travel / "objects.pack") not in paths
+    assert f"{root}/usr/.time_travel/**" in metadata["exclude_patterns"]
+
+
+@pytest.mark.asyncio
 async def test_pattern_scan_can_run_without_file_limit(tmp_path):
     root = tmp_path / "a0"
     usr = root / "usr"
