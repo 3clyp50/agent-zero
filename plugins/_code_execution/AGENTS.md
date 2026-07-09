@@ -14,6 +14,7 @@
 ## Local Contracts
 
 - Keep session concurrency, timeout, streaming, and reset behavior predictable.
+- Terminal reset/close must not hang on foreground commands or shells that ignore SIGTERM.
 - Explicitly target local versus SSH execution runtimes.
 - Do not hardcode secrets, SSH credentials, or local user paths.
 
