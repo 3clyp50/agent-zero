@@ -49,6 +49,7 @@ const TAB_ITEMS = Object.freeze([
       { id: "section-auth", label: "Authentication", icon: "passkey" },
       { id: "section-external-api", label: "External API", icon: "api" },
       { id: "section-tunnel", label: "Remote Control", icon: "share" },
+      { id: "section-external-plugins", label: "Plugins", icon: "extension" },
     ],
   },
   {

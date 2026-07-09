@@ -14,6 +14,7 @@
 ## Local Contracts
 
 - Keep settings payloads synchronized with backend APIs and plugin settings contracts.
+- Settings tabs that expose plugin `settings_sections` must mount `settings/plugins/plugins-subsection.html` with matching `data-tab` and sidebar/nav section IDs.
 - Do not store secrets in localStorage, URLs, or console output.
 - Preserve Store Gating and modal footer conventions in settings components.
 - MCP manager tool toggles write `disabled_tools` into the draft JSON and require Apply before changing the running MCP tool set.
