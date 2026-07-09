@@ -40,7 +40,7 @@
 - Stored upstream base URLs and OAuth token endpoints must be validated against provider-owned allowlists before sending bearer or refresh tokens.
 - Browser callback providers must support manual callback paste when the browser cannot reach the local callback route.
 - Local proxy routes must remain loopback or token protected and must not add broad CORS access.
-- Codex Responses proxy requests must include Codex client metadata and compatibility headers such as `client_metadata`, `x-codex-installation-id`, `originator`, `session-id`, and `thread-id`.
+- Codex Responses proxy requests must include Codex client metadata and compatibility headers such as `client_metadata`, `x-codex-installation-id`, `originator`, `session-id`, and `thread-id`, and must forward `input` as a list for upstream Codex compatibility.
 
 ## Work Guidance
 

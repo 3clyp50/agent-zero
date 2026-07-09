@@ -202,8 +202,25 @@ def test_prepare_responses_body_adds_codex_client_metadata(monkeypatch):
         "thread_id": "thread-1",
         "x-codex-window-id": "agent-zero",
     }
+    assert body["input"] == [{"role": "user", "content": "hello"}]
     assert body["stream"] is True
     assert body["include"] == ["output_text", "reasoning.encrypted_content"]
+
+
+def test_prepare_responses_body_sends_empty_continuation_input_as_list(monkeypatch):
+    monkeypatch.setattr(codex, "build_client_metadata", lambda: {})
+
+    body = codex.prepare_responses_body(
+        {
+            "model": "gpt-5.5",
+            "input": "",
+            "previous_response_id": "resp_1",
+        },
+        force_stream=True,
+    )
+
+    assert body["input"] == []
+    assert body["previous_response_id"] == "resp_1"
 
 
 def test_request_codex_sends_current_codex_headers_from_body(monkeypatch):

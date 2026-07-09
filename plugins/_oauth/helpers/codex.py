@@ -666,6 +666,13 @@ def fetch_models() -> list[str]:
 
 def prepare_responses_body(body: dict[str, Any], *, force_stream: bool) -> dict[str, Any]:
     normalized = dict(body)
+    input_value = normalized.get("input")
+    if isinstance(input_value, str):
+        normalized["input"] = (
+            [{"role": "user", "content": input_value}] if input_value else []
+        )
+    elif not isinstance(input_value, list):
+        normalized["input"] = []
     normalized.setdefault("instructions", "")
     normalized.setdefault("store", False)
     normalized["client_metadata"] = merge_client_metadata(normalized.get("client_metadata"))
