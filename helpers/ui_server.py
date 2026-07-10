@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import timedelta
 import asyncio
+import json
 import logging
 import os
 import secrets
@@ -262,6 +263,13 @@ class UiRouteHandlers:
             user_time_format_setting = str(settings_helper.get_settings().get("time_format", "12h"))
         except Exception:
             user_time_format_setting = "12h"
+        try:
+            user_ui_control_visibility = json.dumps(
+                settings_helper.get_settings()["ui_control_visibility"],
+                separators=(",", ":"),
+            )
+        except Exception:
+            user_ui_control_visibility = json.dumps(settings_helper.UI_CONTROL_VISIBILITY_DEFAULTS)
 
         index = files.read_file("webui/index.html")
         return files.replace_placeholders_text(
@@ -273,6 +281,7 @@ class UiRouteHandlers:
             logged_in=("true" if login.get_credentials_hash() else "false"),
             user_timezone_setting=user_timezone_setting,
             user_time_format_setting=user_time_format_setting,
+            user_ui_control_visibility=user_ui_control_visibility,
         )
 
     @requires_auth

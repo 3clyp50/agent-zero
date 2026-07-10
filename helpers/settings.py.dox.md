@@ -25,6 +25,7 @@
 - `_is_valid_timezone(value: str) -> bool`
 - `_normalize_timezone_setting(value: Any, default: str=...) -> str`
 - `_normalize_time_format(value: Any, default: str=...) -> str`
+- `_normalize_ui_control_visibility(value: Any) -> dict[str, dict[str, bool]]`
 - `_resolve_runtime_timezone(setting_value: str, browser_timezone: str | None=...) -> str`
 - `_timezone_options() -> list[FieldOption]`
 - `convert_out(settings: Settings) -> SettingsOutput`
@@ -50,7 +51,7 @@
 - `_dict_to_env(data_dict)`
 - `set_root_password(password: str)`
 - `get_runtime_config(set: Settings)`
-- Notable constants/configuration names: `T`, `PASSWORD_PLACEHOLDER`, `API_KEY_PLACEHOLDER`, `TIMEZONE_AUTO`, `TIME_FORMAT_12H`, `TIME_FORMAT_24H`, `SETTINGS_FILE`.
+- Notable constants/configuration names: `T`, `PASSWORD_PLACEHOLDER`, `API_KEY_PLACEHOLDER`, `TIMEZONE_AUTO`, `TIME_FORMAT_12H`, `TIME_FORMAT_24H`, `UI_CONTROL_VISIBILITY_DEFAULTS`, `SETTINGS_FILE`.
 
 ## Runtime Contracts
 
@@ -65,6 +66,7 @@
 - Applying settings refreshes active context configs while preserving each subordinate agent's own profile.
 - Applying settings starts a deferred `MCPConfig.update(...)` with the current `mcp_servers` string when global MCP server settings change.
 - `max_consecutive_unusable_responses` defaults to `2` and controls the cost circuit breaker for malformed or repeated main-model outputs.
+- `ui_control_visibility` stores validated mobile and desktop visibility flags for the project selector, clock, connection status, and right canvas rail; missing or malformed values fall back per device.
 - Keep request/response, tool, or helper semantics documented here at the same time as source changes.
 
 ## Work Guidance

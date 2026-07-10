@@ -25,6 +25,7 @@
 - The setup gate must delegate Cloud/Local setup, account connections, and advanced model configuration to the existing onboarding and plugin settings modals; do not duplicate provider/model/key forms inline.
 - A connected OAuth account without Main/Utility model selection is its own gate state; route to model configuration and do not select models automatically.
 - Model setup surfaces that change readiness must notify the gate with `model-setup-changed`, `model-configured`, or an existing modal/onboarding completion signal so the pending prompt can retry automatically.
+- The top-section project selector, clock, and connection indicator must respect the instance-level mobile/desktop visibility preferences.
 
 ## Work Guidance
 

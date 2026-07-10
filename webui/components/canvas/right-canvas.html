@@ -2,6 +2,7 @@
 <head>
   <script type="module">
     import { store } from "/components/canvas/right-canvas-store.js";
+    import { store as preferencesStore } from "/components/sidebar/bottom/preferences/preferences-store.js";
   </script>
 </head>
 <body>
@@ -24,7 +25,7 @@
       >
         <div class="right-canvas-resize-handle" title="Resize canvas" @pointerdown="$store.rightCanvas.startResize($event)"></div>
 
-        <nav class="right-canvas-rail" aria-label="Canvas surfaces">
+        <nav class="right-canvas-rail" aria-label="Canvas surfaces" x-show="$store.preferences.isUiControlVisible('rightCanvasRail')">
           <button
             type="button"
             class="right-canvas-rail-button right-canvas-toggle-button"

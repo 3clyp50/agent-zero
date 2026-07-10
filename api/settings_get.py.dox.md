@@ -28,6 +28,7 @@
 ## Key Concepts
 
 - Important called helpers/classes observed in the source: `settings.get_settings`, `settings.convert_out`.
+- The returned settings map includes normalized `ui_control_visibility` mobile and desktop flags for the configurable WebUI controls.
 - Keep request/response, tool, or helper semantics documented here at the same time as source changes.
 
 ## Work Guidance

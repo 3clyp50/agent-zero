@@ -1,6 +1,7 @@
 import { createStore } from "/js/AlpineStore.js";
 import * as API from "/js/api.js";
 import { store as notificationStore } from "/components/notifications/notification-store.js";
+import { store as preferencesStore } from "/components/sidebar/bottom/preferences/preferences-store.js";
 import {
   getBrowserTimezone,
   setConfiguredTimeFormat,
@@ -14,6 +15,13 @@ const UPDATE_STATUS_REFRESH_COOLDOWN_MS = 60 * 1000;
 // Match the modal header/padding breathing room before promoting a section link.
 const SECTION_ACTIVATION_OFFSET = 56;
 
+const UI_CONTROLS = Object.freeze([
+  { id: "projectSelector", label: "Project selector", icon: "folder_open" },
+  { id: "time", label: "Time", icon: "schedule" },
+  { id: "connectionStatus", label: "Connection status", icon: "wifi" },
+  { id: "rightCanvasRail", label: "Right canvas rail", icon: "dock_to_right" },
+]);
+
 const TAB_ITEMS = Object.freeze([
   {
     id: "agent",
@@ -25,6 +33,7 @@ const TAB_ITEMS = Object.freeze([
       { id: "section-voice", label: "Voice", icon: "mic" },
       { id: "section-workdir", label: "Workdir", icon: "folder" },
       { id: "section-locale", label: "Locale", icon: "language" },
+      { id: "section-interface", label: "Interface", icon: "dashboard_customize" },
       { id: "section-agent-plugins", label: "Plugins", icon: "extension" },
     ],
   },
@@ -110,6 +119,7 @@ const model = {
   _updateStatusRefreshedAt: 0,
   expandedNavGroups: {},
   searchQuery: "",
+  uiVisibility: null,
   
   // Tab state
   _activeTab: DEFAULT_TAB,
@@ -140,6 +150,7 @@ const model = {
   async onOpen() {
     this.error = null;
     this.isLoading = true;
+    this.uiVisibility = preferencesStore.uiVisibilitySnapshot();
     
     try {
       const response = await API.callJsonApi("settings_get", null);
@@ -147,6 +158,8 @@ const model = {
         this.settings = response.settings;
         this.additional = response.additional || null;
         this.applyLocaleRuntime(this.settings);
+        preferencesStore.setUiVisibility(this.settings.ui_control_visibility);
+        this.uiVisibility = preferencesStore.uiVisibilitySnapshot();
       } else {
         throw new Error("Invalid settings response");
       }
@@ -182,6 +195,34 @@ const model = {
     this.error = null;
     this.isLoading = false;
     this.searchQuery = "";
+    this.uiVisibility = null;
+  },
+
+  get uiControls() {
+    return UI_CONTROLS;
+  },
+
+  isUiControlVisible(control, device) {
+    return this.uiVisibility?.[control]?.[device] !== false;
+  },
+
+  toggleUiControl(control, device) {
+    this.uiVisibility = {
+      ...this.uiVisibility,
+      [control]: {
+        ...this.uiVisibility?.[control],
+        [device]: !this.isUiControlVisible(control, device),
+      },
+    };
+  },
+
+  uiControlVisibilityLabel(control) {
+    const mobile = this.isUiControlVisible(control, "mobile");
+    const desktop = this.isUiControlVisible(control, "desktop");
+    if (mobile && desktop) return "Shown everywhere";
+    if (mobile) return "Mobile only";
+    if (desktop) return "Desktop only";
+    return "Hidden everywhere";
   },
 
   // Tab management
@@ -589,6 +630,7 @@ const model = {
       return false;
     }
 
+    this.settings.ui_control_visibility = this.uiVisibility;
     this.isLoading = true;
     try {
       const response = await API.callJsonApi("settings_set", {
@@ -599,6 +641,7 @@ const model = {
         this.settings = response.settings;
         this.additional = response.additional || this.additional;
         this.applyLocaleRuntime(this.settings);
+        preferencesStore.setUiVisibility(response.settings.ui_control_visibility);
         toast("Settings saved successfully", "success");
         document.dispatchEvent(
           new CustomEvent("settings-updated", { detail: response.settings })

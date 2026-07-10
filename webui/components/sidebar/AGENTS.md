@@ -21,6 +21,7 @@
 - A restored selected parent chat with children auto-expands once during context hydration unless the user has already toggled it.
 - The Tasks list is reserved for scheduler-backed task contexts and must not be used for chat-bound parallel children.
 - Avoid text or controls overflowing fixed sidebar widths.
+- Instance-level interface visibility preferences own independent mobile and desktop states for the chat-top controls and right canvas rail; mobile uses the shared 768px breakpoint.
 
 ## Work Guidance
 

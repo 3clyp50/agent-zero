@@ -26,6 +26,7 @@
 ## Key Concepts
 
 - Important called helpers/classes observed in the source: `settings.convert_in`, `settings.set_settings`, `settings.convert_out`, `settings.Settings`.
+- The settings payload accepts normalized `ui_control_visibility` mobile and desktop flags and returns the persisted map with the rest of the settings.
 - Keep request/response, tool, or helper semantics documented here at the same time as source changes.
 
 ## Work Guidance

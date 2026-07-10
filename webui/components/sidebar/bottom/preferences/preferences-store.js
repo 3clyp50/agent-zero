@@ -3,8 +3,29 @@ import * as css from "/js/css.js";
 import { ttsService } from "/js/tts-service.js";
 import { applyModeSteps } from "/components/messages/process-group/process-group-dom.js";
 
+const UI_VISIBILITY_DEFAULTS = Object.freeze({
+  projectSelector: { mobile: true, desktop: true },
+  time: { mobile: false, desktop: true },
+  connectionStatus: { mobile: true, desktop: true },
+  rightCanvasRail: { mobile: true, desktop: true },
+});
+
+function normalizeUiVisibility(value = {}) {
+  return Object.fromEntries(
+    Object.entries(UI_VISIBILITY_DEFAULTS).map(([control, defaults]) => [
+      control,
+      {
+        mobile: typeof value?.[control]?.mobile === "boolean" ? value[control].mobile : defaults.mobile,
+        desktop: typeof value?.[control]?.desktop === "boolean" ? value[control].desktop : defaults.desktop,
+      },
+    ])
+  );
+}
+
 // Preferences store centralizes user preference toggles and side-effects
 const model = {
+  _initialized: false,
+
   // UI toggles (initialized with safe defaults, loaded from localStorage in init)
   get autoScroll() {
     return this._autoScroll;
@@ -70,6 +91,22 @@ const model = {
   },
   _detailMode: "current", // Default: show current step only
 
+  _uiVisibility: normalizeUiVisibility(globalThis.runtimeInfo?.uiControlVisibility),
+  _isMobileViewport: false,
+
+  uiVisibilitySnapshot() {
+    return normalizeUiVisibility(this._uiVisibility);
+  },
+
+  setUiVisibility(value) {
+    this._uiVisibility = normalizeUiVisibility(value);
+  },
+
+  isUiControlVisible(control) {
+    const device = this._isMobileViewport ? "mobile" : "desktop";
+    return this._uiVisibility?.[control]?.[device] !== false;
+  },
+
   // Detail mode options for UI sidebar
   detailModeOptions: [
     { label: "NO", value: "collapsed", title: "All collapsed" },
@@ -80,6 +117,9 @@ const model = {
 
   // Initialize preferences and apply current state
   init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
     try {
       // Load persisted preferences with safe fallbacks
       try {
@@ -123,6 +163,11 @@ const model = {
       } catch {
         this._showUtils = false; // Default to speech off if localStorage is unavailable
       }
+
+      this._isMobileViewport = globalThis.innerWidth <= 768;
+      globalThis.addEventListener("resize", () => {
+        this._isMobileViewport = globalThis.innerWidth <= 768;
+      });
 
       // Apply all preferences
       this._applyDarkMode(this._darkMode);
