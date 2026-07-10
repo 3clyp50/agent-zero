@@ -242,6 +242,15 @@ def test_model_config_provider_switch_resets_custom_api_base():
     assert '@change="model.api_base = \'\'"' in provider_select
 
 
+def test_model_config_model_field_opens_search_on_click():
+    model_field_path = PROJECT_ROOT / "plugins" / "_model_config" / "webui" / "model-field.html"
+    content = model_field_path.read_text(encoding="utf-8")
+
+    assert '@click="openSearch($el)"' in content
+    assert '<button class="model-search-btn"' in content
+    assert 'aria-label="Search available models"' in content
+
+
 def test_model_config_primary_context_controls_are_outside_advanced_settings():
     model_field_path = PROJECT_ROOT / "plugins" / "_model_config" / "webui" / "model-field.html"
     content = model_field_path.read_text(encoding="utf-8")

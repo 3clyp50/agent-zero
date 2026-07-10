@@ -40,7 +40,7 @@
                   <strong x-text="card.display_name"></strong>
                   <span x-text="$store.oauthConfig.providerReadinessLabel(card.provider_id)"></span>
                 </div>
-                <span class="oauth-account-state" :class="{ connected: card.connected }" x-text="card.connected ? 'Connected' : 'Available'"></span>
+                <span class="oauth-account-state connected" x-show="card.connected">Connected</span>
                 <div class="oauth-row-actions">
                   <button
                     class="oauth-connect compact"
@@ -51,15 +51,6 @@
                   >
                     <span class="material-symbols-outlined" x-text="$store.oauthConfig.connectingProvider === card.provider_id ? 'progress_activity' : ($store.oauthConfig.providerSetupReady(card.provider_id) ? 'login' : 'tune')"></span>
                     <span x-text="$store.oauthConfig.providerPrimaryLabel(card.provider_id)"></span>
-                  </button>
-                  <button
-                    class="oauth-connect secondary compact"
-                    type="button"
-                    @click.stop="$store.oauthConfig.loadModels({ providerId: card.provider_id })"
-                    :disabled="!card.connected || $store.oauthConfig.loadingModelsProvider === card.provider_id"
-                  >
-                    <span class="material-symbols-outlined" x-text="$store.oauthConfig.loadingModelsProvider === card.provider_id ? 'progress_activity' : 'search'"></span>
-                    <span>Check models</span>
                   </button>
                   <button
                     class="oauth-connect danger compact"
@@ -178,7 +169,6 @@
           <div class="oauth-section-head">
             <div>
               <h3>Choose your models</h3>
-              <p>Select account-backed models used by the Main model and Utility model slots.</p>
             </div>
             <span class="oauth-save-chip" x-show="$store.oauthConfig.modelConfigDirty">Pending changes</span>
           </div>
@@ -211,12 +201,10 @@
                     </div>
                   </div>
 
-                  <p class="oauth-model-description" x-text="slot.description"></p>
-
                   <div class="oauth-model-picker" @click.outside="$store.oauthConfig.closeModelDropdown(slot.key)">
                     <label class="oauth-model-provider-field">
-                      <span>Provider</span>
                       <select
+                        :aria-label="`${slot.title} provider`"
                         :value="$store.oauthConfig.slotCanUseModels(slot.key) ? $store.oauthConfig.modelSlot(slot.key).provider : ''"
                         @change="$store.oauthConfig.useProviderForSlot(slot.key, $event.target.value)"
                         :disabled="!$store.oauthConfig.connectedProviderCards().length"
@@ -233,16 +221,16 @@
                         type="text"
                         x-model="$store.oauthConfig.modelSlot(slot.key).name"
                         @input="$store.oauthConfig.markModelDirty(slot.key)"
-                        @focus="$store.oauthConfig.openModelDropdown(slot.key)"
+                        @click="$store.oauthConfig.openModelDropdown(slot.key, $el)"
                         :disabled="!$store.oauthConfig.slotCanUseModels(slot.key)"
                         :placeholder="$store.oauthConfig.slotCanUseModels(slot.key) ? 'Search or enter a provider model' : 'Choose a connected provider first'"
                       />
                       <button
                         class="oauth-model-search"
                         type="button"
-                        title="Check models"
-                        aria-label="Check models"
-                        @click="$store.oauthConfig.loadModels({ providerId: $store.oauthConfig.modelSlot(slot.key).provider, openDropdown: slot.key })"
+                        title="Browse available models"
+                        aria-label="Browse available models"
+                        @click="$store.oauthConfig.openModelDropdown(slot.key, $el)"
                         :disabled="!$store.oauthConfig.slotCanUseModels(slot.key) || $store.oauthConfig.loadingModelsProvider === $store.oauthConfig.modelSlot(slot.key).provider"
                       >
                         <span class="material-symbols-outlined" x-text="$store.oauthConfig.loadingModelsProvider === $store.oauthConfig.modelSlot(slot.key).provider ? 'progress_activity' : 'search'"></span>
@@ -808,7 +796,6 @@
     }
 
     .oauth-section-head p,
-    .oauth-model-description,
     .oauth-model-loading {
       margin: 0;
       color: var(--color-text-secondary);
@@ -889,41 +876,34 @@
       gap: 6px;
     }
 
-    .oauth-model-action,
-    .oauth-model-search {
+    .oauth-model-action {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 5px;
+      min-height: 32px;
+      padding: 0 9px;
       border: 1px solid color-mix(in srgb, var(--color-border) 76%, transparent);
       border-radius: 8px;
       background: transparent;
       color: var(--color-text);
-      cursor: pointer;
-    }
-
-    .oauth-model-action {
-      gap: 5px;
-      min-height: 32px;
-      padding: 0 9px;
       font-size: 0.76rem;
       font-weight: 750;
       white-space: nowrap;
+      cursor: pointer;
     }
 
-    .oauth-model-action.icon,
-    .oauth-model-search {
+    .oauth-model-action.icon {
       width: 34px;
       height: 34px;
       padding: 0;
     }
 
-    .oauth-model-action .material-symbols-outlined,
-    .oauth-model-search .material-symbols-outlined {
+    .oauth-model-action .material-symbols-outlined {
       font-size: 18px;
     }
 
-    .oauth-model-action:disabled,
-    .oauth-model-search:disabled {
+    .oauth-model-action:disabled {
       cursor: default;
       opacity: .45;
     }
@@ -965,40 +945,68 @@
     }
 
     .oauth-model-input-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
+      position: relative;
     }
 
     .oauth-model-input-row input {
       width: 100%;
       min-width: 0;
-      min-height: 36px;
-      padding: 7px 10px;
-      border: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
-      border-radius: 8px;
-      background: var(--color-input);
+      padding: .5rem 32px .5rem .5rem;
+      border: 1px solid var(--color-border);
+      border-radius: .25rem;
+      background: var(--color-background);
       color: var(--color-text);
-      font: inherit;
-      font-size: 0.82rem;
+      font-family: "Rubik", Arial, Helvetica, sans-serif;
     }
 
     .oauth-model-input-row input:disabled {
       opacity: .58;
     }
 
+    .oauth-model-search {
+      position: absolute;
+      z-index: 1;
+      top: 50%;
+      right: 8px;
+      display: grid;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      transform: translateY(-50%);
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: var(--color-text);
+      cursor: pointer;
+      opacity: .6;
+    }
+
+    .oauth-model-search:hover {
+      opacity: 1;
+    }
+
+    .oauth-model-search:disabled {
+      cursor: default;
+      opacity: .45;
+    }
+
+    .oauth-model-search .material-symbols-outlined {
+      font-size: 18px;
+    }
+
     .oauth-model-dropdown {
       position: absolute;
-      z-index: 20;
-      right: 42px;
+      z-index: 50;
+      top: calc(100% + 4px);
+      right: 0;
       left: 0;
       overflow: auto;
-      max-height: 220px;
-      margin-top: 6px;
+      max-height: 200px;
+      padding: 4px;
       border: 1px solid var(--color-border);
-      border-radius: 8px;
-      background: var(--color-panel);
-      box-shadow: 0 12px 28px rgba(0, 0, 0, .24);
+      border-radius: 6px;
+      background: var(--color-input);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .3);
     }
 
     .oauth-model-item {
@@ -1006,9 +1014,10 @@
       flex-direction: column;
       gap: 3px;
       width: 100%;
-      min-height: 34px;
-      padding: 8px 10px;
+      min-height: 30px;
+      padding: 5px 8px;
       border: 0;
+      border-radius: 4px;
       background: transparent;
       color: var(--color-text);
       font: inherit;

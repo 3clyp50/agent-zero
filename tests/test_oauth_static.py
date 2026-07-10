@@ -21,6 +21,8 @@ def test_oauth_settings_exposes_provider_cards_and_model_slots():
     assert "oauth-plan-catalog" not in config_html
     assert "oauth-model-provider-field" in config_html
     assert "slotProviderChoices(slot.key)" in config_html
+    assert "<span>Provider</span>" not in config_html
+    assert ':aria-label="`${slot.title} provider`"' in config_html
     assert "connectedProviderCards().length" in config_html
     assert "useProviderForSlot(slot.key, $event.target.value)" in config_html
     assert ":value=\"$store.oauthConfig.slotCanUseModels(slot.key) ? $store.oauthConfig.modelSlot(slot.key).provider : ''\"" in config_html
@@ -42,8 +44,14 @@ def test_oauth_settings_exposes_provider_specific_controls_and_generic_copy():
     config_html = (PROJECT_ROOT / "plugins/_oauth/webui/config.html").read_text(encoding="utf-8")
     store_js = (PROJECT_ROOT / "plugins/_oauth/webui/oauth-config-store.js").read_text(encoding="utf-8")
 
-    assert "Check Models" not in config_html
-    assert "Check models" in config_html
+    assert "Check models" not in config_html
+    assert "card.connected ? 'Connected' : 'Available'" not in config_html
+    assert '<span class="oauth-account-state connected" x-show="card.connected">Connected</span>' in config_html
+    assert "Select account-backed models used by the Main model and Utility model slots." not in config_html
+    assert "Primary model for chat, reasoning, and browser tasks." not in config_html + store_js
+    assert "Background model for summaries, memory, and prompt preparation." not in config_html + store_js
+    assert '@click="$store.oauthConfig.openModelDropdown(slot.key, $el)"' in config_html
+    assert "top: calc(100% + 4px);" in config_html
     assert "enterprise_domain" in config_html + store_js
     assert "manualCallback" in config_html + store_js
     assert "Paste callback URL, query string, or code" in config_html + store_js
@@ -117,7 +125,12 @@ def test_oauth_model_slots_reuse_model_config_api():
     assert "if (!this.providerConnected(providerId)) return;" in store_js
     assert "const providerId = slot.provider;" in store_js
     assert "const providerId = this.isOauthProvider(this.activeModelProvider)" not in store_js
-    assert "autoApplyConnectedProviderIfNeeded" not in store_js
+    assert "applySoleConnectedProviderDefaults" in store_js
+    assert "this.applySoleConnectedProviderDefaults();" in store_js
+    assert "if (providers.length !== 1 || !this.modelConfig) return;" in store_js
+    assert "if (model.provider && model.provider !== providerId) continue;" in store_js
+    assert "model.name = \"\";" in store_js
+    assert "this.modelSlotCurrentProviders[key] ?? slot.provider" in store_js
     assert "currentChatModelConfigured" not in store_js
     assert "providerDefaultModel" not in store_js
     assert 'new CustomEvent("model-setup-changed"' in store_js

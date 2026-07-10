@@ -28,7 +28,10 @@
 - OAuth settings pending-auth controls such as device codes, manual callback input, and provider setup fields must render inline under the relevant provider row, not as a detached section below all providers.
 - OAuth device-code polling must honor provider `interval`, `expires_at`, and `slow_down` updates; do not poll immediately or keep a stale fixed interval after a provider asks the client to slow down.
 - OAuth settings model slots must keep provider choice editable per slot, list only connected OAuth account providers, and persist the selected provider IDs into `chat_model.provider` and `utility_model.provider`.
-- OAuth settings must dispatch `model-setup-changed` when a provider connection completes, but model selection remains explicit and must not be filled automatically.
+- When exactly one OAuth provider is connected, use it as an unsaved default only for empty slots or slots already using that provider. A different saved provider must keep the explicit `Choose connected provider` prompt until the user opts into the switch.
+- OAuth provider rows show a status pill only for connected accounts; model catalogs open from the model-slot field or its embedded magnifier, not from provider-row model-check actions.
+- OAuth model-slot fields must match `_model_config` input and below-field dropdown geometry while opening the catalog when the field is clicked.
+- OAuth settings must dispatch `model-setup-changed` when a provider connection completes; provider defaults may be inferred from one connected account, but model-name selection remains explicit.
 - `helpers/providers/registry.py` is the source of truth for connectable OAuth providers.
 - The models API must preserve the legacy plain `models` slug list and may add `model_metadata` entries for richer provider catalogs.
 - OAuth provider config must not expose the dummy `oauth` API key in `conf/model_providers.yaml`; the dummy key is a runtime-only shim supplied by the `get_api_key` extension after the account provider reports connected.
