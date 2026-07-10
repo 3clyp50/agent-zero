@@ -22,6 +22,7 @@
 - `SKILL.md` must tell agents to read only the relevant reference file before acting.
 - Claude Code reference guidance must avoid plain `claude` and bare `claude auth login` until the user chooses `--claudeai`, `--console`, `--sso`, or external API-key auth.
 - Claude Code API-key auth must source Agent Zero secrets from `/a0/usr/.env`, not from the workdir.
+- Gemini CLI container runs must use `§§secret(GEMINI_API_KEY)` when that key is in Agent Zero secrets; do not assume it is exported from `/a0/usr/.env`.
 - If a full-screen Claude Code TUI is already open, the Claude reference must reset the terminal session instead of sending Enter or `/login`.
 - Root shells must not use Claude Code `bypassPermissions`; non-root shells may use it as the default non-interactive mode.
 - Long-running commands should stay in a shell session and be polled there.

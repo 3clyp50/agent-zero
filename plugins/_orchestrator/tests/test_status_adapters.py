@@ -230,6 +230,9 @@ def test_skill_documents_human_setup_loop_and_a0_exception():
     assert "--approval-mode=yolo" in gemini_text
     assert "--skip-trust" in gemini_text
     assert "GEMINI_API_KEY" in gemini_text
+    assert "§§secret(GEMINI_API_KEY)" in gemini_text
+    assert "do not source `/a0/usr/.env`" in gemini_text
+    assert "Do not append version, help, or smoke commands" in gemini_text
     assert "GOOGLE_APPLICATION_CREDENTIALS" in gemini_text
     assert "Do not start bare `gemini`" in gemini_text
 
