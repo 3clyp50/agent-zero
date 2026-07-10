@@ -268,6 +268,35 @@ export const store = createStore("modelConfig", {
   },
 
   // Global presets
+  createPresetEditor() {
+    const store = this;
+    let nextPresetKey = 0;
+    const presets = clonePlain(this.globalPresets).map(preset => ({
+      ...preset,
+      _key: nextPresetKey++,
+    }));
+
+    return {
+      presets,
+      addPreset() {
+        this.presets = [...this.presets, {
+          _key: nextPresetKey++,
+          name: `Preset ${this.presets.length + 1}`,
+          chat: { provider: '', name: '', api_key: '', api_base: '', kwargs: {}, _kwargs_text: '' },
+          utility: { provider: '', name: '', api_key: '', api_base: '', kwargs: {}, _kwargs_text: '' },
+        }];
+      },
+      removePreset(index) {
+        this.presets.splice(index, 1);
+        this.presets = [...this.presets];
+      },
+      async savePresets() {
+        await store.persistAllDirtyApiKeys();
+        await store.saveGlobalPresets(this.presets);
+      },
+    };
+  },
+
   async loadGlobalPresets() {
     try {
       const res = await fetchApi(`${API_BASE}/model_presets`, {

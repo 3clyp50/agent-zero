@@ -131,6 +131,7 @@ Key Files:
 </div>
 ```
 - Store Registration: Use createStore from /js/AlpineStore.js.
+- Template Expression Scope: Keep Alpine attributes declarative: property reads, bindings, guards, and short method calls. Put object or array construction, cloning, multi-step mutation, async workflows, and reusable behavior in named JavaScript store or component methods; simple toggles and assignments may stay inline.
 - Modals: Use openModal(path) and closeModal() from /js/modals.js.
 
 ### Plugin Architecture

@@ -24,8 +24,13 @@ def test_model_config_text_buttons_have_shared_primitive() -> None:
 
 def test_model_preset_rows_keep_stable_identity_after_middle_delete() -> None:
     preset_modal = read("plugins", "_model_config", "webui", "main.html")
+    preset_store = read("plugins", "_model_config", "webui", "model-config-store.js")
 
+    assert 'x-data="$store.modelConfig.createPresetEditor()"' in preset_modal
     assert ':key="preset._key"' in preset_modal
-    assert "_key: idx" in preset_modal
-    assert "_key: nextPresetKey++" in preset_modal
+    assert "createPresetEditor()" in preset_store
+    assert "_key: nextPresetKey++" in preset_store
+    assert "removePreset(index)" in preset_store
     assert ':key="idx"' not in preset_modal
+    assert "JSON.parse(JSON.stringify" not in preset_modal
+    assert "presets.splice" not in preset_modal
