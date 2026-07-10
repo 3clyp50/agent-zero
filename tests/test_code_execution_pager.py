@@ -8,6 +8,7 @@ import asyncio
 
 from plugins._code_execution.helpers import shell_local, shell_ssh
 from plugins._code_execution.helpers.tty_session import TTYSession
+from plugins._code_execution.tools.code_execution_tool import _group_multiline_command
 
 
 def test_local_env_disables_pagers_and_preserves_existing():
@@ -33,6 +34,14 @@ def test_local_env_does_not_mutate_input():
 def test_ssh_command_disables_pagers():
     assert "GIT_PAGER=cat" in shell_ssh.PAGER_DISABLE_COMMAND
     assert "PAGER=cat" in shell_ssh.PAGER_DISABLE_COMMAND
+
+
+def test_multiline_terminal_commands_are_one_current_shell_compound():
+    assert _group_multiline_command("pwd") == "pwd"
+    assert _group_multiline_command("cd /tmp\npwd") == "{\ncd /tmp\npwd\n}"
+    assert _group_multiline_command("$env:FOO='bar'\n$env:FOO", powershell=True) == (
+        ". {\n$env:FOO='bar'\n$env:FOO\n}"
+    )
 
 
 def test_tty_close_kills_term_resistant_process():

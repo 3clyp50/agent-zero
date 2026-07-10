@@ -27,6 +27,14 @@ def _is_closed_pty_error(exc: BaseException) -> bool:
     return False
 
 
+def _group_multiline_command(command: str, powershell: bool = False) -> str:
+    body = command.rstrip("\n")
+    if "\n" not in body:
+        return body
+    opener = ". {" if powershell else "{"
+    return f"{opener}\n{body}\n}}"
+
+
 @dataclass
 class ShellWrap:
     id: int
@@ -164,6 +172,9 @@ class CodeExecution(Tool):
             ("bash>" if not runtime.is_windows() or cfg["ssh_enabled"] else "PS>")
             + self.format_command_for_output(command)
             + "\n\n"
+        )
+        command = _group_multiline_command(
+            command, powershell=runtime.is_windows() and not cfg["ssh_enabled"]
         )
         return await self.terminal_session(cfg, session, command, reset, prefix)
 
