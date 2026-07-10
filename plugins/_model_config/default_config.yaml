@@ -15,7 +15,7 @@ chat_model:
 
 utility_model:
   provider: "openrouter"
-  name: "google/gemini-3.1-flash-lite-preview"
+  name: "google/gemini-3.1-flash-lite"
   api_base: ""
   ctx_length: 128000
   ctx_input: 0.7
