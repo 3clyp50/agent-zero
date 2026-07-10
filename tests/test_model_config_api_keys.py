@@ -231,7 +231,7 @@ def test_connector_model_switcher_notifies_state_sync(monkeypatch):
     assert calls == [("ctx-1", "a0_connector.model_switcher")]
 
 
-def test_model_config_provider_switch_resets_custom_api_base():
+def test_model_config_provider_switch_resets_provider_specific_fields():
     model_field_path = PROJECT_ROOT / "plugins" / "_model_config" / "webui" / "model-field.html"
     content = model_field_path.read_text(encoding="utf-8")
     select_start = content.index('<select x-model="model.provider"')
@@ -239,7 +239,9 @@ def test_model_config_provider_switch_resets_custom_api_base():
     provider_select = content[select_start:select_end]
 
     assert 'x-model="model.provider"' in provider_select
-    assert '@change="model.api_base = \'\'"' in provider_select
+    assert "model.api_base = ''" in provider_select
+    assert "model.kwargs = {}" in provider_select
+    assert "model._kwargs_text = ''" in provider_select
 
 
 def test_model_config_model_field_opens_search_on_click():

@@ -77,7 +77,7 @@ The project preset file uses the same plain YAML list schema as global presets. 
     name: openai/gpt-5.4-mini
 ```
 
-Preset slots are partial overlays. Missing fields inherit from the current effective config, so a preset can switch only the model identity while preserving tuned context windows, rate limits, and nested `kwargs`. The `utility` and `embedding` slots are optional and only apply when they declare a provider or model name; otherwise those configured models are inherited. Selecting a preset for a project writes the merged result into the project's `config.json`.
+Preset slots are partial overlays. Missing fields inherit from the current effective config, so a preset can switch only the model identity while preserving tuned context windows and rate limits. Provider-specific `kwargs` are replaced or cleared. The `utility` and `embedding` slots are optional and only apply when they declare a provider or model name; otherwise those configured models are inherited. Selecting a preset for a project writes the merged result into the project's `config.json`.
 
 ## Plugin Metadata
 

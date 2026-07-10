@@ -28,7 +28,7 @@
       <div class="field-control">
         <select x-model="model.provider"
                 x-effect="$nextTick(() => { if (providers.length) $el.value = model.provider })"
-                @change="model.api_base = ''">
+                @change="model.api_base = ''; model.kwargs = {}; model._kwargs_text = ''">
           <option value="">&mdash; select &mdash;</option>
           <template x-for="p in providers" :key="p.value">
             <option :value="p.value" x-text="p.label"></option>
