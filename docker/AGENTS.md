@@ -13,7 +13,8 @@
 
 ## Local Contracts
 
-- Preserve the two-runtime model documented in the root contract: framework runtime under `/opt/venv-a0` and agent execution runtime under `/opt/venv`.
+- Preserve the two-runtime model: the Python 3.12 framework runtime under `/opt/venv-a0` runs the WebUI, APIs, scheduler, framework imports, and plugin hooks; the Python 3.13 agent execution runtime under `/opt/venv` runs agent terminal tasks and user code.
+- Verify backend imports and plugin hooks with `/opt/venv-a0`; packages installed into `/opt/venv` do not prove framework compatibility.
 - Do not bake secrets, local `.env` values, or user data into images.
 - Keep compose mounts aligned with `usr/`, `logs/`, and other runtime-state expectations.
 - Image changes that affect GitHub publishing must stay synchronized with `.github/workflows/docker-publish.yml`.
