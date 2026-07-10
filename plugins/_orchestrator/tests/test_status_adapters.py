@@ -9,6 +9,8 @@ repo_root = next(
 sys.path.insert(0, str(repo_root))
 
 from plugins._orchestrator.helpers.adapters.cursor import CursorCliAdapter
+from plugins._orchestrator.helpers.adapters.gemini import _env_file_has_key
+from plugins._orchestrator.helpers.adapters.gemini import GeminiCliAdapter
 from plugins._orchestrator.helpers.adapters.grok import _toml_has_secret
 from plugins._orchestrator.helpers.adapters.grok import GrokBuildAdapter
 from plugins._orchestrator.helpers.adapters.base import TerminalAgentAdapter
@@ -41,6 +43,7 @@ def test_registry_order_puts_a0_first():
         "codex",
         "claude",
         "cursor",
+        "gemini",
         "grok",
         "hermes",
         "opencode",
@@ -100,6 +103,23 @@ def test_cursor_detects_agent_zero_cursor_env_key():
             os.environ["API_KEY_CURSOR"] = old_a0_cursor
 
 
+def test_gemini_detects_supported_auth_sources():
+    old_value = os.environ.get("GEMINI_API_KEY")
+    try:
+        os.environ["GEMINI_API_KEY"] = "secret"
+        assert GeminiCliAdapter().auth_status()["auth_path"] == "GEMINI_API_KEY"
+    finally:
+        if old_value is None:
+            os.environ.pop("GEMINI_API_KEY", None)
+        else:
+            os.environ["GEMINI_API_KEY"] = old_value
+
+    with tempfile.TemporaryDirectory() as tmp:
+        env_path = Path(tmp) / ".env"
+        env_path.write_text('GEMINI_API_KEY="secret"\n')
+        assert _env_file_has_key(env_path)
+
+
 def test_grok_env_key_requires_present_environment_value():
     old_value = os.environ.pop("GROK_TEST_KEY", None)
     try:
@@ -136,6 +156,7 @@ def test_skill_documents_human_setup_loop_and_a0_exception():
     codex_text = (references / "codex.md").read_text()
     claude_text = (references / "claude.md").read_text()
     cursor_text = (references / "cursor.md").read_text()
+    gemini_text = (references / "gemini.md").read_text()
     grok_text = (references / "grok.md").read_text()
     hermes_text = (references / "hermes.md").read_text()
     opencode_text = (references / "opencode.md").read_text()
@@ -168,6 +189,7 @@ def test_skill_documents_human_setup_loop_and_a0_exception():
     assert "references/codex.md" in skill_text
     assert "references/claude.md" in skill_text
     assert "references/cursor.md" in skill_text
+    assert "references/gemini.md" in skill_text
     assert "references/grok.md" in skill_text
     assert "references/hermes.md" in skill_text
     assert "references/opencode.md" in skill_text
@@ -203,6 +225,14 @@ def test_skill_documents_human_setup_loop_and_a0_exception():
     assert "agent status" in cursor_text
     assert "not with an invented flag" in cursor_text
 
+    assert 'gemini -p "Respond exactly: TERMINAL_AGENT_SMOKE_OK"' in gemini_text
+    assert "--output-format json" in gemini_text
+    assert "--approval-mode=yolo" in gemini_text
+    assert "--skip-trust" in gemini_text
+    assert "GEMINI_API_KEY" in gemini_text
+    assert "GOOGLE_APPLICATION_CREDENTIALS" in gemini_text
+    assert "Do not start bare `gemini`" in gemini_text
+
     assert "grok --no-auto-update --cwd \"$WORKDIR\" -p" in grok_text
     assert "--output-format json" in grok_text
     assert "--always-approve" in grok_text
@@ -224,6 +254,7 @@ if __name__ == "__main__":
     test_claude_defaults_skip_permissions()
     test_cursor_defaults_headless_automation()
     test_cursor_detects_agent_zero_cursor_env_key()
+    test_gemini_detects_supported_auth_sources()
     test_grok_defaults_headless_automation()
     test_grok_env_key_requires_present_environment_value()
     test_grok_detects_agent_zero_xai_env_key()

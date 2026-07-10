@@ -4,7 +4,7 @@
 
 - Teach Agent Zero how to delegate work to external terminal/headless coding agents only after the skill is loaded.
 - Keep generic orchestration rules in `SKILL.md` and agent-specific command runbooks in `references/`.
-- Provide copy-ready command patterns for A0 Headless, Codex CLI, Claude Code, Cursor CLI, Grok Build, Hermes Agent, and OpenCode through reference files.
+- Provide copy-ready command patterns for A0 Headless, Codex CLI, Claude Code, Cursor CLI, Gemini CLI, Grok Build, Hermes Agent, and OpenCode through reference files.
 
 ## Ownership
 

@@ -7,7 +7,7 @@
 
 ## Ownership
 
-- Owns one markdown file per agent id, currently `a0.md`, `codex.md`, `claude.md`, `cursor.md`, `grok.md`, `hermes.md`, and `opencode.md`.
+- Owns one markdown file per agent id, currently `a0.md`, `codex.md`, `claude.md`, `cursor.md`, `gemini.md`, `grok.md`, `hermes.md`, and `opencode.md`.
 - Does not own adapter status code, settings UI, or global orchestration rules.
 
 ## Local Contracts

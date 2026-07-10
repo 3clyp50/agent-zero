@@ -10,7 +10,7 @@ The plugin provides:
 - a Settings > External Services status screen for configured binaries and
   detected auth state;
 - adapter metadata for Agent Zero headless, OpenAI Codex CLI, Claude Code,
-  Cursor CLI, Grok Build, Hermes Agent, OpenCode, and future terminal agents.
+  Cursor CLI, Gemini CLI, Grok Build, Hermes Agent, OpenCode, and future terminal agents.
 
 There is intentionally no `terminal_agent` tool and no settings-screen install
 button. When the user explicitly asks for a terminal agent, the skill first
@@ -30,6 +30,7 @@ Docker runtime.
 | OpenAI Codex | `codex` | ChatGPT device login from settings or external CLI login |
 | Claude Code | `claude` | External `claude` login or `ANTHROPIC_API_KEY` |
 | Cursor CLI | `agent` | `CURSOR_API_KEY`, `NO_OPEN_BROWSER=1 agent login`, or cached Cursor login |
+| Gemini CLI | `gemini` | Cached Google login, `GEMINI_API_KEY`, or Vertex AI credentials |
 | Grok Build | `grok` | `XAI_API_KEY`, `grok login --device-auth`, or cached Grok login |
 | Hermes Agent | `hermes` | External Hermes/provider setup, `~/.hermes/.env`, `~/.hermes/auth.json`, or provider env vars |
 | OpenCode | `opencode` | External `opencode auth login`, provider env vars, or `~/.local/share/opencode/auth.json` |
@@ -152,6 +153,9 @@ cursor:
   binary: agent
   output_format: text
   force: true
+gemini:
+  binary: gemini
+  model: ""
 grok:
   binary: grok
   model: ""

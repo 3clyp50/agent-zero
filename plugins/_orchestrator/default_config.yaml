@@ -15,6 +15,9 @@ cursor:
   binary: agent
   output_format: text
   force: true
+gemini:
+  binary: gemini
+  model: ""
 grok:
   binary: grok
   model: ""

@@ -4,7 +4,7 @@
 
 - Provide a bundled Agent Zero plugin for delegating repository and coding work to external terminal/headless agents.
 - Keep heavy delegation instructions out of the always-loaded prompt by exposing the `orchestrator` skill instead of a `terminal_agent` tool.
-- Own adapter status metadata, settings UI, Codex device login APIs, and skill instructions for Agent Zero headless, Codex CLI, Claude Code, Cursor CLI, Grok Build, Hermes Agent, OpenCode, and future terminal agents.
+- Own adapter status metadata, settings UI, Codex device login APIs, and skill instructions for Agent Zero headless, Codex CLI, Claude Code, Cursor CLI, Gemini CLI, Grok Build, Hermes Agent, OpenCode, and future terminal agents.
 
 ## Ownership
 

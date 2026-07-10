@@ -7,7 +7,7 @@
 
 ## Ownership
 
-- Owns `base.py` plus adapter modules for A0 Headless, Codex CLI, Claude Code, Cursor CLI, Grok Build, Hermes Agent, OpenCode, and future status adapters.
+- Owns `base.py` plus adapter modules for A0 Headless, Codex CLI, Claude Code, Cursor CLI, Gemini CLI, Grok Build, Hermes Agent, OpenCode, and future status adapters.
 - Owns credential-path detection and safe disconnect behavior only when the adapter can identify the exact credential store.
 
 ## Local Contracts
@@ -42,6 +42,9 @@
   - Treat `XAI_API_KEY` as environment auth.
   - Detect `~/.grok/config.toml`, `~/.grok/auth.json`, and `~/.grok/auth/` without returning secret contents.
   - Do not model the full-screen TUI as a status API flow.
+- Gemini CLI:
+  - Detect `GEMINI_API_KEY`, `GOOGLE_API_KEY`, service-account/ADC files, and current or legacy Gemini credential files without returning secret contents.
+  - Do not model Gemini's interactive sign-in TUI as a status API flow.
 - Hermes Agent and OpenCode:
   - Detect known provider environment variables and known auth files.
   - Secret detection should answer yes/no without returning secret values.

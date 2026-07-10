@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Use when delegating coding or repository work to external terminal coding agents such as the user's host Claude Code/Codex/Cursor CLI or container-installed pal agents.
+description: Use when delegating coding or repository work to external terminal coding agents such as the user's host Claude Code/Codex/Cursor/Gemini CLI or container-installed pal agents.
 triggers:
   - "terminal agent"
   - "external coding agent"
@@ -8,6 +8,7 @@ triggers:
   - "delegate to claude code"
   - "delegate to cursor"
   - "delegate to cursor cli"
+  - "delegate to gemini cli"
   - "delegate to grok build"
   - "delegate to a0 headless"
   - "delegate to hermes"
@@ -27,12 +28,12 @@ Prefer the user's own host-machine CLI when that is what they mean. Container-in
 
 ## Rules
 
-- For Codex, Claude Code, Cursor CLI, Grok Build, Hermes Agent, and OpenCode, first decide the execution place: the user's local machine through A0 CLI, or the Agent Zero Docker/container shell.
+- For Codex, Claude Code, Cursor CLI, Gemini CLI, Grok Build, Hermes Agent, and OpenCode, first decide the execution place: the user's local machine through A0 CLI, or the Agent Zero Docker/container shell.
 - If the user did not specify local/host versus container, check memory for this coding agent's execution-place preference. If no current preference is known, ask: "Do you want me to use your own local <agent> through A0 CLI, or the <agent> installed inside the Agent Zero container?"
 - After the user chooses, save a stable per-agent preference with `memory_save`, for example: "For orchestrator, the user prefers Claude Code to run on the host machine through A0 CLI by default." If memory tools are unavailable, continue without saving.
 - Never use Computer Use to drive coding-agent terminals, menus, or TUIs. Use headless CLI commands through `code_execution_remote` or `code_execution_tool`; if that is not possible, stop and ask.
 - ACP may be available as a community plugin, but do not assume it is installed. Mention it only if the user explicitly asks for ACP or the direct CLI path is unsuitable.
-- For Codex, Claude Code, Cursor CLI, Grok Build, Hermes Agent, and OpenCode, setup is part of the workflow: check whether the CLI is installed, install only the requested CLI if missing, probe its version/help, run a tiny smoke prompt, then run the real task.
+- For Codex, Claude Code, Cursor CLI, Gemini CLI, Grok Build, Hermes Agent, and OpenCode, setup is part of the workflow: check whether the CLI is installed, install only the requested CLI if missing, probe its version/help, run a tiny smoke prompt, then run the real task.
 - Keep authentication human-in-the-loop. You may start the CLI login/setup command, relay the exact URL, device code, browser step, or prompt to the user, then wait for the user to confirm completion before retrying the smoke prompt.
 - Never start a full-screen CLI/TUI as a login fallback. If you accidentally opened one and see welcome, theme, provider, or unreadable menu output, reset the terminal session instead of sending keys into it.
 - If login/setup shows a menu or provider choices, show those choices to the user in chat and ask which one to select. Keep the terminal session open, then send the user's selected number/key back to that session.
@@ -45,7 +46,7 @@ Prefer the user's own host-machine CLI when that is what they mean. Container-in
 
 ## Host CLI Flow
 
-Use this when the user wants their own local Claude Code, Codex, Cursor CLI, Grok Build, Hermes Agent, or OpenCode.
+Use this when the user wants their own local Claude Code, Codex, Cursor CLI, Gemini CLI, Grok Build, Hermes Agent, or OpenCode.
 
 1. Use `code_execution_remote`, not `code_execution_tool`, because paths, shell, login, and installed CLIs belong to the A0 CLI host machine.
 2. If `code_execution_remote` is unavailable or reports no connected CLI / remote execution disabled, tell the user exactly:
@@ -98,6 +99,7 @@ You can consult both host and container agents in one workflow. Keep their shell
 - Codex CLI: `references/codex.md`
 - Claude Code: `references/claude.md`
 - Cursor CLI: `references/cursor.md`
+- Gemini CLI: `references/gemini.md`
 - Grok Build: `references/grok.md`
 - Hermes Agent: `references/hermes.md`
 - OpenCode: `references/opencode.md`

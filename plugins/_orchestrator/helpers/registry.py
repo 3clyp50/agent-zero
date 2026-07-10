@@ -7,6 +7,7 @@ from plugins._orchestrator.helpers.adapters.base import TerminalAgentAdapter
 from plugins._orchestrator.helpers.adapters.claude import ClaudeCodeAdapter
 from plugins._orchestrator.helpers.adapters.codex import CodexAdapter
 from plugins._orchestrator.helpers.adapters.cursor import CursorCliAdapter
+from plugins._orchestrator.helpers.adapters.gemini import GeminiCliAdapter
 from plugins._orchestrator.helpers.adapters.grok import GrokBuildAdapter
 from plugins._orchestrator.helpers.adapters.hermes import HermesAgentAdapter
 from plugins._orchestrator.helpers.adapters.opencode import OpenCodeAdapter
@@ -19,6 +20,7 @@ _ADAPTERS: dict[str, TerminalAgentAdapter] = {
         CodexAdapter(),
         ClaudeCodeAdapter(),
         CursorCliAdapter(),
+        GeminiCliAdapter(),
         GrokBuildAdapter(),
         HermesAgentAdapter(),
         OpenCodeAdapter(),
