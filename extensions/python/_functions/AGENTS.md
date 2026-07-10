@@ -16,6 +16,7 @@
 - Extension functions must match the implicit hook's supplied arguments.
 - Preserve ordering prefixes where exception handling, watchdog registration, or cleanup depends on them.
 - Hooks that mirror persisted AI responses into UI logs must reuse existing stream log items and avoid duplicating live response-tool logs.
+- Recovery-loop circuit breakers must stop at the General Settings limit and render their user-visible cost warning from a core framework prompt.
 
 ## Work Guidance
 

@@ -56,6 +56,7 @@ class Settings(TypedDict):
 
     agent_profile: str
     agent_knowledge_subdir: str
+    max_consecutive_unusable_responses: int
     timezone: str
     time_format: str
 
@@ -401,6 +402,9 @@ def normalize_settings(settings: Settings) -> Settings:
 
     # mcp server token is set automatically
     copy["mcp_server_token"] = create_auth_token()
+    copy["max_consecutive_unusable_responses"] = max(
+        1, copy["max_consecutive_unusable_responses"]
+    )
     copy["timezone"] = _normalize_timezone_setting(copy.get("timezone"), default["timezone"])
     copy["time_format"] = _normalize_time_format(copy.get("time_format"), default["time_format"])
 
@@ -498,6 +502,9 @@ def get_default_settings() -> Settings:
         root_password="",
         agent_profile=get_default_value("agent_profile", "agent0"),
         agent_knowledge_subdir=get_default_value("agent_knowledge_subdir", "custom"),
+        max_consecutive_unusable_responses=get_default_value(
+            "max_consecutive_unusable_responses", 2
+        ),
         timezone=_normalize_timezone_setting(get_default_value("timezone", TIMEZONE_AUTO)),
         time_format=_normalize_time_format(get_default_value("time_format", TIME_FORMAT_12H)),
         workdir_path=get_default_value("workdir_path", files.get_abs_path_dockerized("usr/workdir")),
