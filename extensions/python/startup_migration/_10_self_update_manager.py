@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import shutil
 import stat
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,8 @@ REQUIRED_RUNTIME_MARKERS = (
     "Skipping non-regular usr backup entry",
     "def clean_transient_desktop_agent_state(",
     "clean_transient_desktop_agent_state(REPO_DIR, logger)",
+    "def refresh_codex_cli(",
+    "refresh_codex_cli(logger)",
 )
 
 
@@ -33,6 +37,9 @@ class SelfUpdateManagerRuntimeSync(Extension):
         result = ensure_self_update_manager_runtime_current()
         if result.get("updated"):
             PrintStyle.info("Self-update manager runtime synchronized:", result["target"])
+            warning = start_codex_cli_refresh(result["target"])
+            if warning:
+                PrintStyle.warning("Codex CLI refresh could not be started:", warning)
         elif result.get("warning"):
             PrintStyle.warning("Self-update manager runtime sync skipped:", result["warning"])
 
@@ -82,6 +89,20 @@ def ensure_self_update_manager_runtime_current(
         "target": str(target),
         "backup": str(backup),
     }
+
+
+def start_codex_cli_refresh(manager_path: Path | str) -> str:
+    try:
+        subprocess.Popen(
+            [sys.executable, str(manager_path), "refresh-codex"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError as exc:
+        return str(exc)
+    return ""
 
 
 def _missing_required_markers(text: str) -> list[str]:

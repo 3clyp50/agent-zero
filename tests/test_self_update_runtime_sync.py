@@ -28,8 +28,13 @@ def clean_transient_desktop_agent_state(repo_dir, logger):
     return None
 
 
+def refresh_codex_cli(logger):
+    return None
+
+
 def docker_run_ui():
     clean_transient_desktop_agent_state(REPO_DIR, logger)
+    refresh_codex_cli(logger)
 """
 
 
@@ -68,6 +73,20 @@ def test_self_update_runtime_sync_accepts_repository_manager_source(tmp_path):
     assert result["ok"] is True
     assert result["updated"] is True
     assert target.read_text(encoding="utf-8") == source.read_text(encoding="utf-8")
+
+
+def test_self_update_runtime_sync_starts_codex_refresh(monkeypatch, tmp_path):
+    calls = []
+    manager_path = tmp_path / "self_update_manager.py"
+    monkeypatch.setattr(
+        migration.subprocess,
+        "Popen",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert migration.start_codex_cli_refresh(manager_path) == ""
+    assert calls[0][0][0] == [sys.executable, str(manager_path), "refresh-codex"]
+    assert calls[0][1]["start_new_session"] is True
 
 
 def test_self_update_runtime_sync_skips_current_manager(tmp_path):
