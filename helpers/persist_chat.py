@@ -1,12 +1,15 @@
+import json
+import os
+import tempfile
+import uuid
 from collections import OrderedDict
 from datetime import datetime
 from typing import Any
-import uuid
+
 from agent import Agent, AgentConfig, AgentContext, AgentContextType
 from helpers import files, history
 from helpers.litellm_transport import delete_stored_response_ids
 from helpers.localization import Localization
-import json
 from initialize import initialize_agent
 
 from helpers.log import Log, LogItem
@@ -51,10 +54,9 @@ def save_tmp_chat(context: AgentContext):
         return
 
     path = _get_chat_file_path(context.id)
-    files.make_dirs(path)
     data = _serialize_context(context)
     js = _safe_json_serialize(data, ensure_ascii=False)
-    files.write_file(path, js)
+    _write_atomic(path, js)
     mark_chat_saved(context)
 
 
@@ -92,6 +94,28 @@ def load_tmp_chats():
 
 def _get_chat_file_path(ctxid: str):
     return files.get_abs_path(CHATS_FOLDER, ctxid, CHAT_FILE_NAME)
+
+
+def _write_atomic(path: str, content: str) -> None:
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=f".{os.path.basename(path)}.", suffix=".tmp", dir=directory
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content.encode("utf-8", "replace").decode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+        directory_fd = os.open(directory, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 def mark_chat_saved(context: AgentContext) -> None:

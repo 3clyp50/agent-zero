@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 
 def test_deserialize_log_preserves_item_id() -> None:
@@ -53,3 +56,35 @@ def test_load_tmp_chats_skips_directories_without_chat_json(monkeypatch, capsys)
 
     assert persist_chat.load_tmp_chats() == ["valid"]
     assert "Error loading chat" not in capsys.readouterr().out
+
+
+def test_save_tmp_chat_preserves_existing_file_until_atomic_replace(
+    monkeypatch, tmp_path
+) -> None:
+    from agent import AgentContextType
+    from helpers import persist_chat
+
+    path = tmp_path / "chat.json"
+    path.write_text("previous", encoding="utf-8")
+    context = SimpleNamespace(id="chat", type=AgentContextType.USER, data={})
+
+    monkeypatch.setattr(persist_chat, "_get_chat_file_path", lambda _ctxid: str(path))
+    monkeypatch.setattr(persist_chat, "_serialize_context", lambda _context: {"new": True})
+    real_replace = persist_chat.os.replace
+
+    def interrupted_replace(_source: str, destination: str) -> None:
+        assert Path(destination).read_text(encoding="utf-8") == "previous"
+        raise OSError("simulated interruption")
+
+    monkeypatch.setattr(persist_chat.os, "replace", interrupted_replace)
+    with pytest.raises(OSError, match="simulated interruption"):
+        persist_chat.save_tmp_chat(context)
+
+    assert path.read_text(encoding="utf-8") == "previous"
+    assert list(tmp_path.glob("*.tmp")) == []
+
+    monkeypatch.setattr(persist_chat.os, "replace", real_replace)
+    persist_chat.save_tmp_chat(context)
+
+    assert json.loads(path.read_text(encoding="utf-8")) == {"new": True}
+    assert context.data[persist_chat.SAVED_CHAT_CONTEXT_DATA_KEY] is True

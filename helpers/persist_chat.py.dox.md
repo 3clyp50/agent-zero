@@ -45,6 +45,7 @@
 - Serialized chats store `agent_profile` both at the context level for the main chat and on each serialized agent so subordinate profiles survive server restart.
 - Deserialization must rebuild each agent with its serialized profile when present, falling back to the context profile for older chat files.
 - Chat loading skips directories that do not contain `chat.json`; malformed existing chat files still report load errors.
+- Chat saves write and fsync a same-directory temporary file, atomically replace `chat.json`, and fsync the directory so an interrupted save cannot truncate the previous chat.
 - Contexts are marked with private `SAVED_CHAT_CONTEXT_DATA_KEY` only after a successful save or load from disk so snapshot code can detect deleted chat files without hiding fresh unsaved chats.
 
 ## Key Concepts
