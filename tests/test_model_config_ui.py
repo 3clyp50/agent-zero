@@ -20,3 +20,12 @@ def test_model_config_text_buttons_have_shared_primitive() -> None:
     assert 'class="text-button preset-add-btn"' in preset_modal
     assert 'class="text-button preset-delete-btn"' in preset_modal
     assert 'class="text-button"' in config_modal
+
+
+def test_model_preset_rows_keep_stable_identity_after_middle_delete() -> None:
+    preset_modal = read("plugins", "_model_config", "webui", "main.html")
+
+    assert ':key="preset._key"' in preset_modal
+    assert "_key: idx" in preset_modal
+    assert "_key: nextPresetKey++" in preset_modal
+    assert ':key="idx"' not in preset_modal

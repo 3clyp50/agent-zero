@@ -15,13 +15,16 @@
          await $store.modelConfig.refreshApiKeyStatus();
        ">
     <template x-if="$store.modelConfig._loaded && $store.modelConfig._presetsLoaded">
-      <div class="presets-page" x-data="{ presets: JSON.parse(JSON.stringify($store.modelConfig.globalPresets)) }">
+      <div class="presets-page" x-data="{
+        presets: JSON.parse(JSON.stringify($store.modelConfig.globalPresets)).map((preset, idx) => ({ ...preset, _key: idx })),
+        nextPresetKey: $store.modelConfig.globalPresets.length
+      }">
         <div class="presets-header">
           <div class="field-title" style="font-size:1rem;">Model Presets</div>
           <div class="field-description">Global presets shared across all projects and agents. Used by the model switcher in the chat area.</div>
         </div>
 
-        <template x-for="(preset, idx) in presets" :key="idx">
+        <template x-for="(preset, idx) in presets" :key="preset._key">
           <div class="preset-card" x-data="{ expanded: false }">
             <div class="preset-card-header" @click="expanded = !expanded">
               <span class="material-symbols-outlined preset-expand-icon"
@@ -64,6 +67,7 @@
           <button class="text-button preset-add-btn"
                   @click="
                     presets = [...presets, {
+                      _key: nextPresetKey++,
                       name: 'Preset ' + (presets.length + 1),
                       chat: { provider: '', name: '', api_key: '', api_base: '', kwargs: {}, _kwargs_text: '' },
                       utility: { provider: '', name: '', api_key: '', api_base: '', kwargs: {}, _kwargs_text: '' }
