@@ -81,6 +81,7 @@ const model = {
   scope: null,
   contextScope: { project_name: "" },
   commands: [],
+  builtinCommands: [],
   pendingScope: null,
   pendingCreate: null,
   editor: createEmptyEditor(),
@@ -88,10 +89,6 @@ const model = {
 
   get selectedScopeLabel() {
     return this.scope?.scope_label || "Global";
-  },
-
-  get selectedScopeDirectory() {
-    return this.scope?.directory_path || "";
   },
 
   get hasCommands() {
@@ -139,6 +136,7 @@ const model = {
       console.error("Failed to initialize commands manager:", error);
       this.scope = null;
       this.commands = [];
+      this.builtinCommands = [];
       notifyError(error?.message || "Failed to open the commands manager.");
     }
 
@@ -157,6 +155,7 @@ const model = {
     this.scope = null;
     this.contextScope = { project_name: "" };
     this.commands = [];
+    this.builtinCommands = [];
     this.pendingScope = null;
     this.pendingCreate = null;
     this.resetEditor();
@@ -205,10 +204,14 @@ const model = {
       });
 
       this.commands = Array.isArray(response?.commands) ? response.commands : [];
+      this.builtinCommands = Array.isArray(response?.builtin_commands)
+        ? response.builtin_commands
+        : [];
       this.scope = response?.scope || null;
     } catch (error) {
       console.error("Failed to load commands:", error);
       this.commands = [];
+      this.builtinCommands = [];
       this.scope = null;
       notifyError(error?.message || "Failed to load commands.");
     } finally {
@@ -225,13 +228,31 @@ const model = {
     await this.loadCommands();
   },
 
-  overrideBadgeLabel(command) {
-    const count = Number(command?.override_count || 0);
-    if (!count) return "";
-    if (count === 1) {
-      return `Overrides ${command.override_scopes[0]}`;
+  scopedOverride(command) {
+    return (this.commands || []).find((item) => item.name === command?.name);
+  },
+
+  async editBuiltinCommand(command) {
+    const existing = this.scopedOverride(command);
+    if (existing) {
+      await this.openEditCommand(existing);
+      return;
     }
-    return `Overrides ${count} lower scopes`;
+
+    try {
+      const response = await callJsonApi(COMMANDS_API_PATH, {
+        action: "duplicate",
+        path: command.path,
+        project_name: this.projectName || "",
+      });
+      await this.loadCommands();
+      emitCommandsUpdated();
+      notifySuccess(`Created ${this.selectedScopeLabel} override for /${command.name}`);
+      if (response?.command) await this.openEditCommand(response.command);
+    } catch (error) {
+      console.error("Failed to create command override:", error);
+      notifyError(error?.message || "Failed to create command override.");
+    }
   },
 
   async browseScopeFolder() {

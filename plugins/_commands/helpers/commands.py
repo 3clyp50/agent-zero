@@ -336,6 +336,11 @@ def list_effective_commands(
     return effective, strip_private_scope(resolved_scope)
 
 
+def list_builtin_commands() -> list[dict[str, Any]]:
+    """Return bundled commands for display in the command manager."""
+    return sorted(_discover_builtin_commands(), key=lambda item: item["name"])
+
+
 def get_command(
     path: str,
     project_name: str = "",
@@ -489,7 +494,7 @@ def duplicate_command(
     project_name: str = "",
     agent_profile: str = "",
 ) -> dict[str, Any]:
-    """Duplicate an existing command, assigning it a unique ``-copy`` suffixed name.
+    """Duplicate a command, preserving built-in names so the copy overrides the default.
 
         Returns the newly created command dict.
 
@@ -499,7 +504,11 @@ def duplicate_command(
 
     """
     command = get_command(path, project_name, "")
-    duplicated_name = _generate_duplicate_name(command["name"], project_name=project_name)
+    duplicated_name = (
+        command["name"]
+        if command.get("scope_key") == "builtin"
+        else _generate_duplicate_name(command["name"], project_name=project_name)
+    )
     return save_command(
         project_name=project_name,
         name=duplicated_name,

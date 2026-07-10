@@ -12,7 +12,7 @@
 - `api/commands.py` owns the Commands API actions used by the WebUI.
 - `webui/` owns the manager/editor modal stores, HTML surfaces, and thumbnail asset.
 - `commands/` owns bundled read-only slash command definitions shipped by `_commands`.
-- `extensions/` owns the chat composer picker and sidebar quick-action entry.
+- `extensions/` owns the chat composer slash picker.
 - `extensions/python/startup_migration/` owns one-time migration from the legacy community `commands` plugin namespace.
 - `skills/commands-create-slash-command/` owns the agent-facing authoring workflow for reusable slash commands.
 - `tests/` owns regression coverage for parsing, CRUD, scope precedence, plugin-distributed commands, legacy migration, and skill discovery.
@@ -23,6 +23,7 @@
 - Each command is one `.command.yaml` config plus one same-directory `.txt` text template or `.py` script hook.
 - Project commands override global commands, global commands override bundled `_commands/commands/` defaults, and bundled defaults override other plugin-distributed commands with the same name.
 - Bundled `_commands/commands/` definitions and commands contributed by other plugins are read-only from this manager.
+- The manager lists bundled commands separately; editing one copies it unchanged into the selected project or global scope under the same name, then edits that higher-precedence override.
 - Bundled command files use canonical command names only; do not ship alias-only built-ins such as `/img` for `/attach`.
 - Command configs may set `webui_hidden: true` to stay resolvable but be omitted from the chat composer picker.
 - Commands contributed by enabled plugins live in their `commands/` directory and must not be rediscovered through the generic plugin-distributed path from `_commands` itself.
@@ -34,6 +35,7 @@
 
 - Keep the command storage and route namespace aligned with `_commands`.
 - Preserve unknown command config keys when editing commands.
+- Keep built-in source files immutable; user edits must be same-name scope overrides.
 - Keep WebUI paths pointed at `/plugins/_commands/...`.
 
 ## Verification

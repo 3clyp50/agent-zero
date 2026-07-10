@@ -147,6 +147,9 @@ def test_discover_builtin_commands_marks_own_commands_read_only():
     with pytest.raises(ValueError, match="Built-in commands are read-only"):
         commands_helper.delete_command(command["path"])
 
+    response = object.__new__(Commands)._list_scope({"project_name": ""})
+    assert "new" in {item["name"] for item in response["builtin_commands"]}
+
 
 def test_builtin_commands_use_canonical_names_only():
     discovered = commands_helper._discover_builtin_commands()

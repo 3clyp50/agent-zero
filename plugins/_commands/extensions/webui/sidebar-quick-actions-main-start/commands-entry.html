@@ -1,9 +1,0 @@
-<div x-data>
-    <button x-move-after=".config-button#plugins"
-            class="config-button"
-            id="commands-plugin"
-            title="Commands"
-            @click="import('/plugins/_commands/webui/commands-store.js').then(({ store }) => store.openManager())">
-        <span class="material-symbols-outlined">terminal</span>
-    </button>
-</div>

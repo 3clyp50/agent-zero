@@ -190,6 +190,32 @@ def test_list_effective_commands_project_overrides_global(
     assert scoped_command["override_scopes"] == ["Global"]
 
 
+def test_duplicate_builtin_creates_same_name_project_override(
+    scope_fixture: ScopeFixture,
+) -> None:
+    builtin = next(
+        command
+        for command in commands_helper.list_builtin_commands()
+        if command["name"] == "new"
+    )
+
+    override = _track_paths(
+        scope_fixture,
+        commands_helper.duplicate_command(
+            builtin["path"],
+            project_name=scope_fixture.project_name,
+        ),
+    )
+
+    assert override["name"] == builtin["name"]
+    assert override["scope_label"] == "Project"
+    assert override["body"] == builtin["body"]
+
+    effective, _ = commands_helper.list_effective_commands(scope_fixture.project_name)
+    resolved = next(command for command in effective if command["name"] == "new")
+    assert resolved["path"] == override["path"]
+
+
 def test_models_command_always_opens_modal():
     result = connector_commands.run(
         {

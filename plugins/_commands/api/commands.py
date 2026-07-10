@@ -51,6 +51,7 @@ class Commands(ApiHandler):
         return {
             "ok": True,
             "commands": commands,
+            "builtin_commands": commands_helper.list_builtin_commands(),
             "scope": scope,
         }
 

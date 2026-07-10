@@ -137,8 +137,7 @@ When the built-in `_commands` plugin starts, it migrates files from the older co
 
 ## UI Surfaces
 
-- Plugin modal: open the Commands manager from the Plugins dialog
-- Sidebar quick action: terminal icon next to the Plugins button
+- Plugin modal: manage project/global commands and create editable same-name overrides of bundled commands
 - Chat composer: type `/` at the start of the inline input to browse commands
 
 ## Agent Skill

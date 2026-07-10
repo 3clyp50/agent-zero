@@ -45,20 +45,17 @@
                     </div>
                 </div>
 
-                <div class="commands-scope-banner" x-show="$store.commandsManager.scope">
-                    <div class="commands-scope-banner-label">
-                        <span class="material-symbols-outlined">target</span>
-                        <span x-text="$store.commandsManager.selectedScopeLabel"></span>
-                    </div>
-                    <div class="commands-scope-banner-path" x-text="$store.commandsManager.selectedScopeDirectory"></div>
-                </div>
-
                 <div class="commands-loading" x-show="$store.commandsManager.loading">
                     <span class="material-symbols-outlined spinning">progress_activity</span>
                     <span>Loading commands...</span>
                 </div>
 
                 <div class="commands-list" x-show="!$store.commandsManager.loading">
+                    <div class="commands-section-heading">
+                        <div class="commands-section-title" x-text="`${$store.commandsManager.selectedScopeLabel} commands`"></div>
+                        <div class="commands-section-copy">Editable commands saved in the selected scope.</div>
+                    </div>
+
                     <template x-if="$store.commandsManager.hasCommands">
                         <div class="commands-grid">
                             <template x-for="command in $store.commandsManager.commands" :key="command.path">
@@ -84,21 +81,6 @@
                                         </div>
                                     </div>
 
-                                    <div class="commands-card-badges">
-                                        <span class="commands-badge scope" x-text="command.scope_label"></span>
-                                        <span class="commands-badge type" x-text="command.command_type === 'script' ? 'Python Hook' : 'Text Template'"></span>
-                                        <template x-if="command.override_count">
-                                            <span class="commands-badge override" x-text="$store.commandsManager.overrideBadgeLabel(command)"></span>
-                                        </template>
-                                    </div>
-
-                                    <template x-if="command.argument_hint">
-                                        <div class="commands-card-hint">
-                                            <span class="material-symbols-outlined">subdirectory_arrow_right</span>
-                                            <span x-text="command.argument_hint"></span>
-                                        </div>
-                                    </template>
-
                                     <div class="commands-card-path" x-text="command.path"></div>
                                 </article>
                             </template>
@@ -116,6 +98,41 @@
                                 <span>Create Slash Command</span>
                             </button>
                         </div>
+                    </template>
+
+                    <template x-if="$store.commandsManager.builtinCommands.length">
+                        <section class="commands-section">
+                            <div class="commands-section-heading">
+                                <div class="commands-section-title">Built-in commands</div>
+                                <div class="commands-section-copy">
+                                    Editing creates an override in <span x-text="$store.commandsManager.selectedScopeLabel"></span>; core files stay unchanged.
+                                </div>
+                            </div>
+
+                            <div class="commands-grid">
+                                <template x-for="command in $store.commandsManager.builtinCommands" :key="command.path">
+                                    <article class="commands-card">
+                                        <div class="commands-card-header">
+                                            <div class="commands-card-copy">
+                                                <div class="commands-card-title">
+                                                    <span class="commands-slash">/</span><span x-text="command.name"></span>
+                                                </div>
+                                                <div class="commands-card-description" x-text="command.description"></div>
+                                            </div>
+
+                                            <button type="button"
+                                                    class="button icon"
+                                                    :title="$store.commandsManager.scopedOverride(command) ? 'Edit override' : 'Create editable override'"
+                                                    :aria-label="$store.commandsManager.scopedOverride(command) ? `Edit /${command.name} override` : `Create editable /${command.name} override`"
+                                                    @click="$store.commandsManager.editBuiltinCommand(command)">
+                                                <span class="material-symbols-outlined">edit</span>
+                                            </button>
+                                        </div>
+
+                                    </article>
+                                </template>
+                            </div>
+                        </section>
                     </template>
                 </div>
             </div>
@@ -184,31 +201,6 @@
             margin-left: auto;
         }
 
-        .commands-scope-banner {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            align-items: center;
-            padding: 0.85rem 1rem;
-            border: 1px solid var(--color-border);
-            border-radius: 12px;
-            background: color-mix(in srgb, var(--color-background) 84%, var(--color-panel));
-        }
-
-        .commands-scope-banner-label {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            font-weight: 600;
-        }
-
-        .commands-scope-banner-path {
-            color: var(--color-text-secondary);
-            font-family: "Roboto Mono", monospace;
-            font-size: 0.82rem;
-            word-break: break-all;
-        }
-
         .commands-loading {
             display: flex;
             align-items: center;
@@ -226,6 +218,25 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
             gap: 0.9rem;
+        }
+
+        .commands-section {
+            margin-top: 1.25rem;
+        }
+
+        .commands-section-heading {
+            margin-bottom: 0.75rem;
+        }
+
+        .commands-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .commands-section-copy {
+            margin-top: 0.2rem;
+            color: var(--color-text-secondary);
+            font-size: 0.86rem;
         }
 
         .commands-card {
@@ -262,58 +273,14 @@
         .commands-card-description {
             margin-top: 0.25rem;
             color: var(--color-text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.45;
+            font-size: 0.82rem;
+            line-height: 1.35;
         }
 
         .commands-card-actions {
             display: inline-flex;
             gap: 0.35rem;
             flex-shrink: 0;
-        }
-
-        .commands-card-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.45rem;
-        }
-
-        .commands-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.22rem 0.5rem;
-            border-radius: 999px;
-            font-size: 0.74rem;
-            font-weight: 600;
-            border: 1px solid transparent;
-        }
-
-        .commands-badge.scope {
-            background: color-mix(in srgb, var(--color-highlight) 12%, transparent);
-            border-color: color-mix(in srgb, var(--color-highlight) 24%, transparent);
-        }
-
-        .commands-badge.override {
-            background: color-mix(in srgb, #f39c12 12%, transparent);
-            border-color: color-mix(in srgb, #f39c12 28%, transparent);
-        }
-
-        .commands-badge.type {
-            background: color-mix(in srgb, #5b8def 12%, transparent);
-            border-color: color-mix(in srgb, #5b8def 30%, transparent);
-        }
-
-        .commands-card-hint {
-            display: inline-flex;
-            align-items: flex-start;
-            gap: 0.35rem;
-            color: var(--color-text-secondary);
-            font-size: 0.86rem;
-        }
-
-        .commands-card-hint .material-symbols-outlined {
-            font-size: 1rem;
-            margin-top: 0.05rem;
         }
 
         .commands-card-path {
