@@ -114,6 +114,11 @@ chat:
       endpoint_url: "/models"
     kwargs:
       api_base: https://api.tokenfactory.nebius.com/v1
+  nvidia_nim:
+    name: NVIDIA NIM
+    litellm_provider: nvidia_nim
+    models_list:
+      endpoint_url: "https://integrate.api.nvidia.com/v1/models"
   ollama:
     name: Ollama
     litellm_provider: ollama
@@ -239,6 +244,11 @@ embedding:
   mistral:
     name: Mistral AI
     litellm_provider: mistral
+  nvidia_nim:
+    name: NVIDIA NIM
+    litellm_provider: nvidia_nim
+    models_list:
+      endpoint_url: "https://integrate.api.nvidia.com/v1/models"
   ollama:
     name: Ollama
     litellm_provider: ollama

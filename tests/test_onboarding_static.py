@@ -188,6 +188,25 @@ def test_nebius_provider_config_uses_openai_compatible_token_factory_endpoint():
     assert "api_key_mode" not in nebius
 
 
+def test_nvidia_nim_is_a_first_class_provider():
+    provider_config = yaml.safe_load(
+        (PROJECT_ROOT / "conf/model_providers.yaml").read_text(encoding="utf-8")
+    )
+    provider_ui = (PROJECT_ROOT / "plugins/_onboarding/webui/onboarding-providers.js").read_text(
+        encoding="utf-8"
+    )
+
+    for model_type in ("chat", "embedding"):
+        provider = provider_config[model_type]["nvidia_nim"]
+        assert provider["litellm_provider"] == "nvidia_nim"
+        assert provider["models_list"]["endpoint_url"] == (
+            "https://integrate.api.nvidia.com/v1/models"
+        )
+
+    assert '"nvidia_nim"' in provider_ui
+    assert "https://docs.api.nvidia.com/nim/reference/llm-apis" in provider_ui
+
+
 def test_discovery_auto_modal_extension_contains_required_guards():
     content = (PROJECT_ROOT / "plugins/_discovery/extensions/webui/initFw_end/auto-modal.js").read_text(encoding="utf-8")
 
