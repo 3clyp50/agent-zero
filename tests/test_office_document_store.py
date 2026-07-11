@@ -1037,6 +1037,123 @@ def test_official_desktop_session_manager_opens_binary_session(office_state, tmp
     assert manager.close(payload["session_id"], save_first=False)["persistent"] is True
 
 
+def test_desktop_save_targets_requested_libreoffice_window(office_state, tmp_path, monkeypatch):
+    doc = document_store.create_document("spreadsheet", "Targeted Save", "ods", "Name,Value\nA,1")
+    session = desktop_session.DesktopSession(
+        session_id=desktop_session.SYSTEM_SESSION_ID,
+        file_id=doc["file_id"],
+        extension=doc["extension"],
+        path=doc["path"],
+        title=doc["basename"],
+        display=desktop_session.DISPLAY_BASE,
+        xpra_port=desktop_session.XPRA_PORT_BASE,
+        token=desktop_session.SYSTEM_SESSION_ID,
+        url="/desktop/session/agent-zero-desktop/index.html",
+        profile_dir=tmp_path / "profile",
+        processes={"xpra": types.SimpleNamespace(poll=lambda: None)},
+    )
+    manager = desktop_session.DesktopSessionManager()
+    manager._sessions[session.session_id] = session
+    commands = []
+
+    monkeypatch.setattr(desktop_session.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(desktop_session.time, "sleep", lambda _seconds: None)
+
+    def fake_run(command, **_kwargs):
+        commands.append(command)
+        if command[1] == "search":
+            assert command == ["/usr/bin/xdotool", "search", "--onlyvisible", "--class", "libreoffice"]
+            return subprocess.CompletedProcess(command, 0, "222\n", "")
+        if command[1] == "getwindowname":
+            return subprocess.CompletedProcess(command, 0, f"{doc['basename']} — LibreOffice Calc\n", "")
+        Path(doc["path"]).write_bytes(Path(doc["path"]).read_bytes() + b"changed")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(desktop_session.subprocess, "run", fake_run)
+
+    result = manager.save(session.session_id, doc["file_id"])
+
+    assert result["ok"] is True
+    assert result["changed"] is True
+    assert commands[-1] == [
+        "/usr/bin/xdotool",
+        "windowactivate",
+        "--sync",
+        "222",
+        "key",
+        "--clearmodifiers",
+        "ctrl+s",
+    ]
+
+    session.file_id = desktop_session.SYSTEM_FILE_ID
+    command_count = len(commands)
+    assert manager.save(session.session_id)["changed"] is False
+    assert len(commands) == command_count
+
+
+def test_desktop_startup_waiters_probe_display_and_reject_dead_xfce(tmp_path, monkeypatch):
+    session = desktop_session.DesktopSession(
+        session_id=desktop_session.SYSTEM_SESSION_ID,
+        file_id=desktop_session.SYSTEM_FILE_ID,
+        extension="desktop",
+        path=str(tmp_path),
+        title=desktop_session.SYSTEM_TITLE,
+        display=desktop_session.DISPLAY_BASE,
+        xpra_port=desktop_session.XPRA_PORT_BASE,
+        token=desktop_session.SYSTEM_SESSION_ID,
+        url="/desktop/session/agent-zero-desktop/index.html",
+        profile_dir=tmp_path / "profile",
+        processes={"xvfb": types.SimpleNamespace(poll=lambda: None)},
+    )
+    manager = desktop_session.DesktopSessionManager()
+    probes = iter((None, (1920, 1080)))
+    monkeypatch.setattr(
+        desktop_session.virtual_desktop,
+        "current_display_size",
+        lambda *_args, **_kwargs: next(probes),
+    )
+    monkeypatch.setattr(desktop_session.time, "sleep", lambda _seconds: None)
+
+    manager._wait_for_display(session)
+
+    session.processes = {"xfce": types.SimpleNamespace(poll=lambda: 1)}
+    with pytest.raises(RuntimeError, match="XFCE desktop session exited"):
+        manager._wait_for_xfce(session)
+
+
+def test_desktop_manifest_is_replaced_atomically(tmp_path, monkeypatch):
+    session_dir = tmp_path / "sessions"
+    session_dir.mkdir()
+    manifest = session_dir / f"{desktop_session.SYSTEM_SESSION_ID}.json"
+    manifest.write_text('{"old": true}', encoding="utf-8")
+    session = desktop_session.DesktopSession(
+        session_id=desktop_session.SYSTEM_SESSION_ID,
+        file_id=desktop_session.SYSTEM_FILE_ID,
+        extension="desktop",
+        path=str(tmp_path),
+        title=desktop_session.SYSTEM_TITLE,
+        display=desktop_session.DISPLAY_BASE,
+        xpra_port=desktop_session.XPRA_PORT_BASE,
+        token=desktop_session.SYSTEM_SESSION_ID,
+        url="/desktop/session/agent-zero-desktop/index.html",
+        profile_dir=tmp_path / "profile",
+    )
+    real_replace = os.replace
+
+    def assert_atomic_replace(source, destination):
+        assert json.loads(Path(destination).read_text(encoding="utf-8")) == {"old": True}
+        assert json.loads(Path(source).read_text(encoding="utf-8"))["display"] == session.display
+        real_replace(source, destination)
+
+    monkeypatch.setattr(desktop_session, "SESSION_DIR", session_dir)
+    monkeypatch.setattr(desktop_session.os, "replace", assert_atomic_replace)
+
+    desktop_session.DesktopSessionManager()._write_manifest(session)
+
+    assert json.loads(manifest.read_text(encoding="utf-8"))["session_id"] == session.session_id
+    assert list(session_dir.glob(".*.tmp")) == []
+
+
 def test_shutdown_panel_launcher_requires_second_click(tmp_path):
     profile_dir = tmp_path / "desktop" / "profiles" / desktop_session.SYSTEM_SESSION_ID
     profile_dir.mkdir(parents=True)

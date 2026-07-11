@@ -5,7 +5,6 @@ import fcntl
 import hashlib
 import json
 import os
-import re
 import shutil
 import socket
 import subprocess
@@ -223,39 +222,69 @@ class DesktopSessionManager:
             return {"ok": True, "refreshed": refreshed, "desktop": session.public(doc)}
 
     def save(self, session_id: str, file_id: str = "") -> dict[str, Any]:
-        session = self.require(session_id)
-        doc = self._document_for_save(session, file_id)
-        xdotool = shutil.which("xdotool")
-        if not xdotool:
-            updated = document_store.register_document(doc["path"]) if doc else None
-            return {
-                "ok": False,
-                "error": "xdotool is not installed; use LibreOffice's Save control inside the canvas.",
-                "document": _public_doc(updated) if updated else None,
-            }
+        with self._lock:
+            session = self.require(session_id)
+            doc = self._document_for_save(session, file_id)
+            if not doc:
+                return {
+                    "ok": True,
+                    "session_id": session.session_id,
+                    "document": None,
+                    "changed": False,
+                }
 
-        result = subprocess.run(
-            [xdotool, "key", "--clearmodifiers", "ctrl+s"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=8,
-            env=self._display_env(session),
-        )
-        time.sleep(0.8)
-        updated = document_store.register_document(doc["path"]) if doc else None
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or "").strip()
+            xdotool = shutil.which("xdotool")
+            if not xdotool:
+                updated = document_store.register_document(doc["path"])
+                return {
+                    "ok": False,
+                    "error": "xdotool is not installed; use LibreOffice's Save control inside the canvas.",
+                    "document": _public_doc(updated),
+                }
+
+            window_id = self._office_window_id_locked(
+                session,
+                title=str(doc.get("basename") or Path(doc["path"]).name),
+                fallback=False,
+            )
+            if not window_id:
+                return {
+                    "ok": False,
+                    "error": f"LibreOffice window not found for {doc['basename']}.",
+                    "document": _public_doc(doc),
+                }
+
+            result = subprocess.run(
+                [
+                    xdotool,
+                    "windowactivate",
+                    "--sync",
+                    window_id,
+                    "key",
+                    "--clearmodifiers",
+                    "ctrl+s",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=8,
+                env=self._display_env(session),
+            )
+            time.sleep(0.8)
+            updated = document_store.register_document(doc["path"])
+            if result.returncode != 0:
+                detail = (result.stderr or result.stdout or "").strip()
+                return {
+                    "ok": False,
+                    "error": detail or "LibreOffice desktop save shortcut failed.",
+                    "document": _public_doc(updated),
+                }
             return {
-                "ok": False,
-                "error": detail or "LibreOffice desktop save shortcut failed.",
-                "document": _public_doc(updated) if updated else None,
+                "ok": True,
+                "session_id": session.session_id,
+                "document": _public_doc(updated),
+                "changed": updated.get("sha256") != doc.get("sha256"),
             }
-        return {
-            "ok": True,
-            "session_id": session.session_id,
-            "document": _public_doc(updated) if updated else None,
-        }
 
     def sync(self, session_id: str = "", file_id: str = "") -> dict[str, Any]:
         session = self.get(session_id) if session_id else self._find_by_file_id(file_id)
@@ -820,57 +849,48 @@ class DesktopSessionManager:
             return ""
         env = self._display_env(session)
         title = str(title or "").strip()
-        searches: list[list[str]] = []
+        try:
+            result = subprocess.run(
+                [xdotool, "search", "--onlyvisible", "--class", "libreoffice"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=2,
+                env=env,
+            )
+            window_ids = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        except (OSError, subprocess.TimeoutExpired):
+            window_ids = []
         if title:
-            escaped_title = re.escape(title)
-            searches.append([
-                xdotool,
-                "search",
-                "--onlyvisible",
-                "--name",
-                escaped_title,
-            ])
-            for window_class in (
-                "libreoffice",
-                "libreoffice-writer",
-                "libreoffice-calc",
-                "libreoffice-impress",
-            ):
-                searches.append([
-                    xdotool,
-                    "search",
-                    "--onlyvisible",
-                    "--class",
-                    window_class,
-                    "--name",
-                    escaped_title,
-                ])
+            for window_id in reversed(window_ids):
+                try:
+                    result = subprocess.run(
+                        [xdotool, "getwindowname", window_id],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=2,
+                        env=env,
+                    )
+                except (OSError, subprocess.TimeoutExpired):
+                    continue
+                if title.casefold() in result.stdout.strip().casefold():
+                    return window_id
+        if fallback and window_ids:
+            return window_ids[-1]
         if fallback:
-            for window_class in (
-                "libreoffice",
-                "libreoffice-writer",
-                "libreoffice-calc",
-                "libreoffice-impress",
-            ):
-                searches.append([xdotool, "search", "--onlyvisible", "--class", window_class])
-            searches.append([xdotool, "search", "--onlyvisible", "--name", "LibreOffice"])
-        for command in searches:
             try:
                 result = subprocess.run(
-                    command,
+                    [xdotool, "search", "--onlyvisible", "--name", "LibreOffice"],
                     check=False,
                     capture_output=True,
                     text=True,
                     timeout=2,
                     env=env,
                 )
+                window_ids = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             except (OSError, subprocess.TimeoutExpired):
-                continue
-            window_ids = [
-                line.strip()
-                for line in result.stdout.splitlines()
-                if line.strip()
-            ]
+                window_ids = []
             if window_ids:
                 return window_ids[-1]
         return ""
@@ -1573,14 +1593,20 @@ fi
                 self._remove_manifest(session_id)
 
     def _wait_for_display(self, session: DesktopSession) -> None:
-        marker = Path(f"/tmp/.X11-unix/X{session.display}")
         deadline = time.time() + DISPLAY_START_TIMEOUT_SECONDS
         while time.time() < deadline:
             process = session.processes.get("xvfb") or session.processes.get("xpra")
             if process and process.poll() is not None:
                 raise RuntimeError("The LibreOffice X display exited before it was ready.")
-            if marker.exists():
-                return
+            try:
+                if virtual_desktop.current_display_size(
+                    session.display,
+                    xauthority=self._xauthority(session),
+                    home=str(session.profile_dir),
+                ):
+                    return
+            except (OSError, subprocess.TimeoutExpired):
+                pass
             time.sleep(0.1)
         raise TimeoutError("Timed out waiting for the LibreOffice X display.")
 
@@ -1589,7 +1615,7 @@ fi
         while time.time() < deadline:
             process = session.processes.get("xfce")
             if process and process.poll() is not None:
-                return
+                raise RuntimeError("The XFCE desktop session exited before it was ready.")
             if virtual_desktop.has_window(
                 display=session.display,
                 name="xfce4-panel",
@@ -1619,7 +1645,13 @@ fi
             "owner_pid": os.getpid(),
             "pids": pids,
         }
-        (SESSION_DIR / f"{session.session_id}.json").write_text(json.dumps(payload), encoding="utf-8")
+        manifest = SESSION_DIR / f"{session.session_id}.json"
+        tmp = manifest.with_name(f".{manifest.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            tmp.write_text(json.dumps(payload), encoding="utf-8")
+            os.replace(tmp, manifest)
+        finally:
+            tmp.unlink(missing_ok=True)
 
     def _remove_manifest(self, session_id: str) -> None:
         (SESSION_DIR / f"{session_id}.json").unlink(missing_ok=True)

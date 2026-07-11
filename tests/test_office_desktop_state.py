@@ -6,6 +6,8 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -324,7 +326,16 @@ def test_virtual_desktop_system_display_normalization_rejects_portrait_viewports
     assert virtual_desktop.normalize_desktop_display_size(1600, 900) == (1600, 900)
 
 
-def test_xwd_fallback_parser_handles_truecolor_pixels(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("byte_order", "pixel_bytes"),
+    (
+        (0, bytes.fromhex("0000ff00") + bytes.fromhex("00ff0000")),
+        (1, bytes.fromhex("00ff0000") + bytes.fromhex("0000ff00")),
+    ),
+)
+def test_xwd_fallback_parser_handles_truecolor_pixels(tmp_path, byte_order, pixel_bytes):
+    from PIL import Image
+
     raw_path = tmp_path / "shot.xwd"
     target = tmp_path / "shot.png"
     header_values = [
@@ -335,7 +346,7 @@ def test_xwd_fallback_parser_handles_truecolor_pixels(tmp_path, monkeypatch):
         2,  # pixmap_width
         1,  # pixmap_height
         0,  # xoffset
-        1,  # byte_order: MSBFirst for pixel bytes
+        byte_order,
         32,  # bitmap_unit
         1,  # bitmap_bit_order
         32,  # bitmap_pad
@@ -354,38 +365,12 @@ def test_xwd_fallback_parser_handles_truecolor_pixels(tmp_path, monkeypatch):
         0,  # window_y
         0,  # window_bdrwidth
     ]
-    raw_path.write_bytes(
-        struct.pack(">25I", *header_values)
-        + bytes.fromhex("00ff0000")
-        + bytes.fromhex("0000ff00")
-    )
-
-    captured: dict[str, object] = {}
-    image_module = types.ModuleType("PIL.Image")
-
-    class FakeOutputImage:
-        def putdata(self, pixels):
-            captured["pixels"] = list(pixels)
-
-        def save(self, path):
-            Path(path).write_bytes(b"fallback-png")
-
-    def fake_new(mode, size):
-        captured["mode"] = mode
-        captured["size"] = size
-        return FakeOutputImage()
-
-    image_module.new = fake_new
-    pil_module = types.ModuleType("PIL")
-    pil_module.Image = image_module
-
-    monkeypatch.setitem(sys.modules, "PIL", pil_module)
-    monkeypatch.setitem(sys.modules, "PIL.Image", image_module)
+    raw_path.write_bytes(struct.pack(">25I", *header_values) + pixel_bytes)
 
     converted = desktop_state.convert_xwd_to_image(raw_path, target)
 
     assert converted == {"width": 2, "height": 1}
-    assert captured["mode"] == "RGB"
-    assert captured["size"] == (2, 1)
-    assert captured["pixels"] == [(255, 0, 0), (0, 255, 0)]
-    assert target.read_bytes() == b"fallback-png"
+    with Image.open(target) as image:
+        assert image.mode == "RGB"
+        assert image.size == (2, 1)
+        assert list(image.getdata()) == [(255, 0, 0), (0, 255, 0)]

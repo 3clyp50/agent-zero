@@ -262,50 +262,43 @@ def convert_xwd_to_image(raw_path: Path, target: Path) -> dict[str, int]:
     from PIL import Image
 
     data = raw_path.read_bytes()
-    header, endian = parse_xwd_header(data)
+    header, _ = parse_xwd_header(data)
     width = header["pixmap_width"]
     height = header["pixmap_height"]
     bytes_per_line = header["bytes_per_line"]
     bits_per_pixel = header["bits_per_pixel"]
-    image_byte_order = "little" if header["byte_order"] == 0 else "big"
     color_table_size = header["ncolors"] * 12
     pixel_offset = header["header_size"] + color_table_size
-    bytes_per_pixel = max((bits_per_pixel + 7) // 8, 1)
-    if width > 0 and bytes_per_line % width == 0:
-        bytes_per_pixel = max(bytes_per_pixel, bytes_per_line // width)
     if width <= 0 or height <= 0 or bytes_per_line <= 0:
         raise ValueError("invalid XWD dimensions")
-    if pixel_offset + (height * bytes_per_line) > len(data):
+    pixel_size = height * bytes_per_line
+    if pixel_offset + pixel_size > len(data):
         raise ValueError("truncated XWD pixel data")
 
-    red_mask = header["red_mask"]
-    green_mask = header["green_mask"]
-    blue_mask = header["blue_mask"]
-    red_shift, red_bits = mask_shift_and_bits(red_mask)
-    green_shift, green_bits = mask_shift_and_bits(green_mask)
-    blue_shift, blue_bits = mask_shift_and_bits(blue_mask)
-    if min(red_bits, green_bits, blue_bits) <= 0:
+    if (header["red_mask"], header["green_mask"], header["blue_mask"]) != (
+        0x00FF0000,
+        0x0000FF00,
+        0x000000FF,
+    ):
         raise ValueError("unsupported XWD visual masks")
+    raw_mode = {
+        (24, 0): "BGR",
+        (24, 1): "RGB",
+        (32, 0): "BGRX",
+        (32, 1): "XRGB",
+    }.get((bits_per_pixel, header["byte_order"]))
+    if not raw_mode:
+        raise ValueError(f"unsupported XWD pixel layout: {bits_per_pixel} bpp")
 
-    pixels: list[tuple[int, int, int]] = []
-    for row in range(height):
-        row_start = pixel_offset + (row * bytes_per_line)
-        for column in range(width):
-            start = row_start + (column * bytes_per_pixel)
-            pixel_bytes = data[start : start + bytes_per_pixel]
-            if len(pixel_bytes) < bytes_per_pixel:
-                raise ValueError("truncated XWD pixel")
-            pixel = int.from_bytes(pixel_bytes, image_byte_order, signed=False)
-            pixels.append(
-                (
-                    scale_channel((pixel & red_mask) >> red_shift, red_bits),
-                    scale_channel((pixel & green_mask) >> green_shift, green_bits),
-                    scale_channel((pixel & blue_mask) >> blue_shift, blue_bits),
-                ),
-            )
-
-    image = Image.new("RGB", (width, height))
-    image.putdata(pixels)
+    image = Image.frombytes(
+        "RGB",
+        (width, height),
+        data[pixel_offset : pixel_offset + pixel_size],
+        "raw",
+        raw_mode,
+        bytes_per_line,
+        1,
+    )
     image.save(target)
     return {"width": width, "height": height}
 
@@ -346,28 +339,6 @@ def parse_xwd_header(data: bytes) -> tuple[dict[str, int], str]:
         if 100 <= header["header_size"] <= len(data) and header["file_version"] == 7:
             return header, endian
     raise ValueError("unsupported XWD header")
-
-
-def mask_shift_and_bits(mask: int) -> tuple[int, int]:
-    if mask <= 0:
-        return 0, 0
-    shift = 0
-    value = mask
-    while value and value & 1 == 0:
-        shift += 1
-        value >>= 1
-    bits = 0
-    while value & 1:
-        bits += 1
-        value >>= 1
-    return shift, bits
-
-
-def scale_channel(value: int, bits: int) -> int:
-    if bits >= 8:
-        return max(0, min(255, value >> (bits - 8)))
-    max_value = (1 << bits) - 1
-    return 0 if max_value <= 0 else round((value / max_value) * 255)
 
 
 def resolve_environment(*, errors: list[str] | None = None, session_id: str = SESSION_ID) -> dict[str, str]:
