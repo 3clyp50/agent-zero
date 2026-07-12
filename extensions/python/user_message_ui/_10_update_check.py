@@ -98,10 +98,22 @@ class UpdateCheck(Extension):
         if not self.agent:
             return
 
+        message = notif.get(
+            "message",
+            "A newer version of Agent Zero is available. Please update to the latest version.",
+        )
+        message = message.replace(
+            '<a href="#" @click.prevent="$store.selfUpdateStore.openModal()">Open updater</a>.',
+            '<div class="toast-action-row">'
+            '<button type="button" class="button confirm" '
+            '@click="$store.selfUpdateStore.openModal(); '
+            '$store.notificationStore.dismissToast(toast.toastId)">'
+            "Open updater</button></div>",
+        )
         notifs = self.agent.context.get_notification_manager()
         notifs.send_notification(
             title=notif.get("title", "Newer version available"),
-            message=notif.get("message", "A newer version of Agent Zero is available. Please update to the latest version."),
+            message=message,
             type=notif.get("type", "info"),
             detail=notif.get("detail", ""),
             display_time=0,
