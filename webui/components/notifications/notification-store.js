@@ -200,6 +200,16 @@ const model = {
     this.removeFromToastStack(toastId, true);
   },
 
+  async dismissToastAndReload(toastId) {
+    const toast = this.toastStack.find((item) => item.toastId === toastId);
+    if (!toast?.id) return;
+
+    const response = await API.callJsonApi("notifications_mark_read", {
+      notification_ids: [toast.id],
+    });
+    if (response?.success) window.location.reload();
+  },
+
   async afterToastRemoved(toast, removedByUser = false) {
     // if the toast is closed by the user OR timed out with normal priority, mark it as read
     if (removedByUser || toast.priority <= NotificationPriority.NORMAL) {

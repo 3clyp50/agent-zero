@@ -840,7 +840,7 @@ def send_frontend_reload_notification(plugin_names: list[str] | None = None):
             type=notification.NotificationType.INFO,
             priority=notification.NotificationPriority.NORMAL,
             title="Plugins with frontend extensions updated, page reload recommended",
-            message="""<button type="button" class="button confirm" onclick="window.location.reload()"><span class="icon material-symbols-outlined">refresh</span>Reload page</button>""",
+            message="""<div class="toast-action-row"><button type="button" class="button confirm" @click.stop="$store.notificationStore.dismissToastAndReload(toast.toastId)"><span class="icon material-symbols-outlined">refresh</span>Reload page</button></div>""",
             detail="",
             display_time=0,
             group="plugins_changed",

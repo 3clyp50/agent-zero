@@ -101,13 +101,20 @@ def test_notification_store_supports_persistent_grouped_toasts():
     assert "if display_time < 0:" in api
     assert "if display_time <= 0:" not in api
     assert 'id="plugins_frontend_reload",' in plugins
+    assert "$store.notificationStore.dismissToastAndReload(toast.toastId)" in plugins
+    assert "onclick=\"window.location.reload()\"" not in plugins
     assert 'id=notif.get("id", "update_check_available"),' in update_check
     assert "display_time=0," in plugins
     assert "display_time=0," in update_check
+    assert 'class="toast-action-row"' in plugins
     assert 'class="toast-action-row"' in update_check
     assert 'class="button confirm"' in update_check
     assert "$store.notificationStore.dismissToast(toast.toastId)" in update_check
     assert ".toast-action-row" in toast_stack
+    assert "margin-top: var(--spacing-sm);" in toast_stack
+    assert "async dismissToastAndReload(toastId)" in store
+    assert 'await API.callJsonApi("notifications_mark_read"' in store
+    assert "if (response?.success) window.location.reload();" in store
 
 
 def test_backup_zip_downloads_emit_grouped_preparing_and_downloading_toasts():
