@@ -842,7 +842,7 @@ def send_frontend_reload_notification(plugin_names: list[str] | None = None):
             title="Plugins with frontend extensions updated, page reload recommended",
             message="""<button type="button" class="button confirm" onclick="window.location.reload()"><span class="icon material-symbols-outlined">refresh</span>Reload page</button>""",
             detail="",
-            display_time=display_time,
+            display_time=0,
             group="plugins_changed",
             id="plugins_frontend_reload",
         )

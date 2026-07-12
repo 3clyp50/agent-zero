@@ -11,6 +11,7 @@
 ## Local Contracts
 
 - Keep proactive UI messages relevant, non-spammy, and safe for display.
+- Keep update-available notifications visible until the user dismisses them.
 - Do not expose local diagnostics or update data that should stay internal.
 
 ## Work Guidance

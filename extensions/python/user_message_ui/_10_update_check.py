@@ -104,7 +104,7 @@ class UpdateCheck(Extension):
             message=notif.get("message", "A newer version of Agent Zero is available. Please update to the latest version."),
             type=notif.get("type", "info"),
             detail=notif.get("detail", ""),
-            display_time=notif.get("display_time", 10),
+            display_time=0,
             group=notif.get("group", "update_check"),
             priority=notif.get("priority", notification.NotificationPriority.NORMAL),
             id=notif.get("id", "update_check_available"),

@@ -40,7 +40,7 @@
 - `find_plugin_asset(plugin_name: str, *subpaths, project_name=..., agent_profile=...)`
 - `find_plugin_assets(*subpaths, plugin_name: str=..., project_name: str=..., agent_profile: str=..., only_first: bool=...) -> list[PluginAssetFile]`
 - `determine_plugin_asset_path(plugin_name: str, project_name: str, agent_profile: str, *subpaths)`
-- `send_frontend_reload_notification(plugin_names: list[str] | None=...)`: If the plugin changed has webui extensions, notify frontend to reload the page
+- `send_frontend_reload_notification(plugin_names: list[str] | None=...)`: If the plugin changed has webui extensions, show a persistent reload notification
 - `call_plugin_hook(plugin_name: str, hook_name: str, default: Any=..., *args, **kwargs)`
 - `_apply_defaults_from_env(plugin_name: str, config: dict[str, Any])`
 - Notable constants/configuration names: `_META_TARGET_RE`, `META_FILE_NAME`, `CONFIG_FILE_NAME`, `CONFIG_DEFAULT_FILE_NAME`, `DISABLED_FILE_NAME`, `ENABLED_FILE_NAME`, `TOGGLE_FILE_PATTERN`, `HOOKS_SCRIPT`, `HOOKS_CACHE_AREA`, `PLUGINS_LIST_CACHE_AREA`, `ENABLED_PLUGINS_LIST_CACHE_AREA`, `ENABLED_PLUGINS_PATHS_CACHE_AREA`.
