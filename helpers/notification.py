@@ -156,21 +156,24 @@ class NotificationManager:
             return [n for n in self.notifications if n.timestamp >= cutoff]
 
     def output(self, start: int | None = None, end: int | None = None) -> list[dict]:
+        return self.output_with_state(start, end)[0]
+
+    def output_with_state(
+        self, start: int | None = None, end: int | None = None
+    ) -> tuple[list[dict], str, int]:
         with self._lock:
             if start is None:
                 start = 0
             if end is None:
                 end = len(self.updates)
             updates = self.updates[start:end]
-            notifications = list(self.notifications)
-
-        out = []
-        seen = set()
-        for update in updates:
-            if update not in seen and update < len(notifications):
-                out.append(notifications[update].output())
-                seen.add(update)
-        return out
+            out = []
+            seen = set()
+            for update in updates:
+                if update not in seen and update < len(self.notifications):
+                    out.append(self.notifications[update].output())
+                    seen.add(update)
+            return out, self.guid, len(self.updates)
 
     def output_all(self) -> list[dict]:
         with self._lock:
