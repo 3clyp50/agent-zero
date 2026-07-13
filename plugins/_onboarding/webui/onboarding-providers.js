@@ -223,7 +223,7 @@ export const ONBOARDING_PROVIDER_OVERRIDES = {
     setup_url: "https://openrouter.ai/",
     api_key_url: "https://openrouter.ai/workspaces/default/keys",
     docs_url: "https://openrouter.ai/workspaces/default/keys",
-    default_chat_model: "anthropic/claude-sonnet-5",
+    default_chat_model: "openai/gpt-5.6-terra",
     default_utility_model: "google/gemini-3.1-flash-lite",
     api_key_mode: "required",
     model_list_autoload: true,

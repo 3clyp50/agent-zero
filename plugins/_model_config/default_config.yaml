@@ -2,7 +2,7 @@ allow_chat_override: true
 
 chat_model:
   provider: "openrouter"
-  name: "anthropic/claude-sonnet-5"
+  name: "openai/gpt-5.6-terra"
   api_base: ""
   ctx_length: 200000
   ctx_history: 0.7
