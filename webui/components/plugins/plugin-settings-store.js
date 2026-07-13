@@ -4,8 +4,6 @@ import { fetchApi } from "/js/api.js";
 import { showConfirmDialog } from "/js/confirmDialog.js";
 import { store as pluginToggleStore } from "/components/plugins/toggle/plugin-toggle-store.js";
 
-const justToast = globalThis.justToast;
-
 const model = {
     // which plugin this modal is showing
     pluginName: null,
@@ -359,7 +357,7 @@ const model = {
     async resetToDefault() {
         if (!this.pluginName) return;
         const confirmed = await showConfirmDialog({
-            title: "Reset to Default",
+            title: "Reset to default",
             message: "This will replace the current settings with the plugin defaults. Any unsaved changes will be lost.",
             confirmText: "Reset",
             type: "warning",
@@ -373,7 +371,7 @@ const model = {
         const result = await response.json().catch(() => ({}));
         if (result.ok) {
             this.settings = result.data || {};
-            justToast("Settings reset to default.", "info");
+            globalThis.justToast?.("Settings reset to default.", "info");
         }
     },
 

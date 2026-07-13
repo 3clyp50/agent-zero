@@ -294,6 +294,17 @@ export const store = createStore("modelConfig", {
         await store.persistAllDirtyApiKeys();
         await store.saveGlobalPresets(this.presets);
       },
+      refreshPresets() {
+        this.presets = clonePlain(store.globalPresets).map(preset => ({
+          ...preset,
+          _key: nextPresetKey++,
+        }));
+      },
+      async resetPresets() {
+        if (!await store.resetGlobalPresets()) return;
+        this.refreshPresets();
+        globalThis.justToast?.('Presets reset to default.', 'info');
+      },
     };
   },
 
@@ -355,8 +366,11 @@ export const store = createStore("modelConfig", {
       this.globalPresets = this._normalizePresets(data.presets);
       this.switcherPresets = this.globalPresets.filter(p => p.name);
       this._presetsLoaded = true;
+      return true;
     } catch (e) {
       console.error('Failed to reset presets:', e);
+      globalThis.justToast?.('Failed to reset presets', 'error');
+      return false;
     }
   },
 

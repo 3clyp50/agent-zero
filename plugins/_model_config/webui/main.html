@@ -68,6 +68,7 @@
           <button class="text-button" @click="(async () => {
             await import('/components/plugins/plugin-settings-store.js');
             await $store.pluginSettingsPrototype.openConfig('_model_config');
+            refreshPresets();
           })()">
             <span class="material-symbols-outlined">settings</span>
             <span>Settings</span>
@@ -79,6 +80,9 @@
         </div>
 
         <div class="presets-footer">
+          <button class="button" @click="$confirmClick($event, () => resetPresets())">
+            <span class="icon material-symbols-outlined">restart_alt</span> Reset to default
+          </button>
           <button class="button" @click="savePresets()">
             <span class="icon material-symbols-outlined">save</span> Save Presets
           </button>
@@ -100,6 +104,7 @@
     margin-top: 12px;
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
   }
   .preset-card {
     border: 1px solid var(--color-border);
