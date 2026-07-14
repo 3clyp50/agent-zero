@@ -43,7 +43,7 @@ class _AsyncEventStream:
         self.closed = True
 
 
-def test_llm_result_round_trips_responses_metadata():
+def test_llm_result_persists_only_durable_responses_metadata():
     result = LLMResult.from_response(
         {
             "id": "resp_123",
@@ -69,7 +69,14 @@ def test_llm_result_round_trips_responses_metadata():
         provider_model_key="openai/gpt-5.4",
     )
 
-    loaded = result_from_metadata(result.metadata())
+    metadata = result.metadata()
+    persisted = metadata["responses"]
+    assert "response" not in persisted
+    assert "reasoning" not in persisted
+    assert "input_items" not in persisted
+    assert "raw" not in persisted
+
+    loaded = result_from_metadata(metadata)
 
     assert loaded is not None
     assert loaded.response_id == "resp_123"
@@ -79,22 +86,42 @@ def test_llm_result_round_trips_responses_metadata():
     assert loaded.builtin_items[0].type == "web_search_call"
 
 
-def test_history_serializes_metadata_and_migrates_old_messages():
+def test_history_migrates_legacy_ai_metadata_and_preserves_tool_inputs():
     class DummyAgent:
         pass
 
     hist = history.History(DummyAgent())
     result = LLMResult.from_response(
         {"id": "resp_1", "output": [{"type": "message", "content": [{"type": "output_text", "text": "ok"}]}]},
+        input_items=[{"role": "user", "content": "question"}],
         provider_model_key="openai/gpt-5.4",
     )
 
     message = hist.add_message(True, "ok", metadata=result.metadata())
+    tool_item = {"type": "function_call_output", "call_id": "call_1", "output": "done"}
+    hist.add_message(
+        False,
+        "done",
+        metadata={"responses": {"input_items": [tool_item]}},
+    )
     restored = history.deserialize_history(hist.serialize(), DummyAgent())
 
     restored_message = restored.all_messages()[0]
     assert restored_message.sequence == message.sequence
     assert result_from_metadata(restored_message.metadata).response_id == "resp_1"
+    assert restored.all_messages()[1].metadata["responses"]["input_items"] == [tool_item]
+
+    migrated = history.Message.from_dict(
+        {
+            "_cls": "Message",
+            "ai": True,
+            "content": "old",
+            "metadata": {"custom": "keep", "responses": result.to_dict()},
+        },
+        restored,
+    )
+    assert "input_items" not in migrated.metadata["responses"]
+    assert migrated.metadata["custom"] == "keep"
 
     old = history.Message.from_dict({"_cls": "Message", "ai": False, "content": "old"}, restored)
     assert old.metadata == {}

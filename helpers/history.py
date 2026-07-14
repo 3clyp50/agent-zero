@@ -150,11 +150,19 @@ class Message(Record):
     @staticmethod
     def from_dict(data: dict, history: "History"):
         content = data.get("content", "Content lost")
+        metadata = data.get("metadata", {})
+        metadata = metadata if isinstance(metadata, dict) else {}
+        if data["ai"]:
+            from helpers.llm_result import result_from_metadata
+
+            result = result_from_metadata(metadata)
+            if result:
+                metadata = {**metadata, **result.metadata()}
         msg = Message(
             ai=data["ai"],
             content=content,
             id=data.get("id", ""),
-            metadata=data.get("metadata", {}) if isinstance(data.get("metadata"), dict) else {},
+            metadata=metadata,
             sequence=int(data.get("sequence", 0) or 0),
         )
         msg.summary = data.get("summary", "")

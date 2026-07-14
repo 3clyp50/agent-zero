@@ -17,7 +17,7 @@
 
 ## Runtime Contracts
 
-- `LLMResult.metadata()` stores data under `RESPONSE_METADATA_KEY` so history can round-trip provider state.
+- `LLMResult.metadata()` stores only durable provider state under `RESPONSE_METADATA_KEY`: response IDs, structured output items, provider/mode/state, usage, and capability data. Runtime prompt inputs, raw responses, and duplicated response/reasoning text are not persisted in history.
 - `from_response(...)` must preserve provider `response_id`, `previous_response_id`, raw output items, usage, and capability metadata.
 - `from_chat(...)` must produce an equivalent chat-completions result with `mode="chat_completions"` and `state="off"`, preserving optional function-call output items when the chat transport supplies them.
 - Function-call output items must preserve `call_id` and optional acknowledged safety checks.

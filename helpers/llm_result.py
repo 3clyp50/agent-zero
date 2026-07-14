@@ -216,7 +216,18 @@ class LLMResult:
         }
 
     def metadata(self) -> dict[str, Any]:
-        return {RESPONSE_METADATA_KEY: self.to_dict()}
+        return {
+            RESPONSE_METADATA_KEY: {
+                "response_id": self.response_id,
+                "previous_response_id": self.previous_response_id,
+                "output_items": [item.to_dict() for item in self.output_items],
+                "provider_model_key": self.provider_model_key,
+                "mode": self.mode,
+                "state": self.state,
+                "usage": self.usage,
+                "capability": self.capability,
+            }
+        }
 
 
 def function_call_output_item(
