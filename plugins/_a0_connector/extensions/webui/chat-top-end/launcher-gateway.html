@@ -15,7 +15,7 @@
   <button
     type="button"
     class="launcher-gateway-trigger"
-    :class="`is-${$store.launcherGateway.state}`"
+    :class="`is-${$store.launcherGateway.state}${$store.launcherGateway.open ? ' is-open' : ''}`"
     :title="`Host access: ${$store.launcherGateway.stateLabel}`"
     :aria-label="`Host access: ${$store.launcherGateway.stateLabel}`"
     aria-haspopup="dialog"
@@ -92,15 +92,27 @@
 </div>
 
 <style>
+  #time-date-container:has(.launcher-gateway-trigger.is-open) { z-index: 3500; }
   .launcher-gateway-root { position: relative; }
   .launcher-gateway-trigger {
-    display: inline-flex; align-items: center; gap: .35rem; min-height: 2rem;
+    display: inline-flex; align-items: center; gap: 0; min-height: 2rem;
     padding: .25rem .55rem; border: 1px solid var(--color-border); border-radius: 999px;
     color: var(--color-text); background: color-mix(in srgb, var(--color-panel) 92%, transparent);
     cursor: pointer; font: inherit; font-size: .75rem;
   }
   .launcher-gateway-trigger .material-symbols-outlined { font-size: 1rem; }
-  .launcher-gateway-dot { width: .45rem; height: .45rem; border-radius: 50%; background: #7b8491; }
+  .launcher-gateway-trigger-label {
+    max-width: 0; margin-left: 0; overflow: hidden; opacity: 0; white-space: nowrap;
+    transition: max-width 180ms cubic-bezier(.4, 0, .2, 1),
+                margin-left 180ms cubic-bezier(.4, 0, .2, 1),
+                opacity 120ms ease-out;
+  }
+  .launcher-gateway-root:hover .launcher-gateway-trigger-label,
+  .launcher-gateway-trigger:focus-visible .launcher-gateway-trigger-label,
+  .launcher-gateway-trigger.is-open .launcher-gateway-trigger-label {
+    max-width: 8rem; margin-left: .35rem; opacity: 1;
+  }
+  .launcher-gateway-dot { width: .45rem; height: .45rem; margin-right: .35rem; border-radius: 50%; background: #7b8491; }
   .launcher-gateway-trigger.is-connected .launcher-gateway-dot { background: #45b86b; }
   .launcher-gateway-trigger.is-connecting .launcher-gateway-dot { background: #5b9cff; }
   .launcher-gateway-trigger.is-paused .launcher-gateway-dot { background: #d6a43d; }
@@ -127,5 +139,7 @@
   .launcher-gateway-empty { margin: .7rem 0 0; color: var(--color-text-secondary); font-size: .78rem; }
   .launcher-gateway-disconnect { width: 100%; margin-top: .75rem; padding: .48rem .65rem; border: 1px solid color-mix(in srgb, #db5b61 55%, var(--color-border)); border-radius: .45rem; background: transparent; color: #db5b61; cursor: pointer; }
   .launcher-gateway-disconnect:disabled { opacity: .55; cursor: default; }
-  @media (max-width: 700px) { .launcher-gateway-trigger-label { display: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .launcher-gateway-trigger-label { transition: none; }
+  }
 </style>

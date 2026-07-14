@@ -39,7 +39,10 @@
 - The `chat-top-end` Launcher gateway extension renders only when the user agent
   includes `A0-Launcher/`. It may show status, master/scope controls,
   preparation errors, and Emergency disconnect; standard browser sessions must
-  not expose it.
+  not expose it. Keep its trigger icon-only at rest and reveal the status label
+  on hover, keyboard focus, or while open. Connected and disconnected states
+  share the computer glyph; the adjacent status dot communicates connectivity.
+  Keep the open popover above the compact right-canvas rail.
 - File operation results may arrive as chunked JSON/base64
   `connector_file_op_result` frames; resolve the pending file operation only
   after all chunks for the `op_id` are assembled.

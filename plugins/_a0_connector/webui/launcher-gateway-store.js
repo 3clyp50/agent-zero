@@ -44,9 +44,9 @@ const model = {
       needs_action: "warning",
       error: "error",
       multiple_hosts: "devices",
-      disconnected: "computer_off",
+      disconnected: "computer",
     };
-    return icons[this.state] || "computer_off";
+    return icons[this.state] || "computer";
   },
 
   get hostLabel() {
