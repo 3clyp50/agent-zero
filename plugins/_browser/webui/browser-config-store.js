@@ -70,19 +70,27 @@ function normalizeRuntimeBackend(value) {
 }
 
 function normalizeHostBrowserSelection(value) {
-  return String(value || "").trim().toLowerCase().replace(/\s+/g, "_").slice(0, 200);
+  const raw = String(value || "").trim();
+  if (raw.includes("://") || /^(?:\[[^\]]+\]|[^/:\s]+):\d+$/.test(raw)) {
+    return raw.replace(/\s+/g, "").slice(0, 2048);
+  }
+  return raw.toLowerCase().replace(/\s+/g, "_").slice(0, 200);
 }
 
 function normalizeCustomHostBrowserEndpoint(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  const candidate = raw.includes("://") ? raw : `ws://${raw}`;
+  const candidate = raw.includes("://") ? raw : `http://${raw}`;
   try {
     const url = new URL(candidate);
-    if (!["ws:", "wss:"].includes(url.protocol) || !url.host || !url.pathname.startsWith("/devtools/browser/")) {
-      return "";
+    if (!url.host) return "";
+    if (["http:", "https:"].includes(url.protocol)) {
+      if (!["/", "/json/version"].includes(url.pathname)) return "";
+      const path = url.pathname === "/" ? "" : url.pathname;
+      return normalizeHostBrowserSelection(`${url.protocol}//${url.host}${path}${url.search || ""}`);
     }
-    return normalizeHostBrowserSelection(`${url.protocol}//${url.host}${url.pathname}${url.search || ""}`);
+    if (!["ws:", "wss:"].includes(url.protocol)) return "";
+    return normalizeHostBrowserSelection(`${url.protocol}//${url.host}${url.pathname === "/" ? "" : url.pathname}${url.search || ""}`);
   } catch (_error) {
     return "";
   }
@@ -90,20 +98,6 @@ function normalizeCustomHostBrowserEndpoint(value) {
 
 function isCustomHostBrowserEndpoint(value) {
   return Boolean(normalizeCustomHostBrowserEndpoint(value));
-}
-
-function debugPortVersionUrl(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  const candidate = raw.includes("://") ? raw : `ws://${raw}`;
-  try {
-    const url = new URL(candidate);
-    if (!["ws:", "wss:"].includes(url.protocol) || !url.host) return "";
-    if (url.pathname && url.pathname !== "/") return "";
-    return `http://${url.host}/json/version`;
-  } catch (_error) {
-    return "";
-  }
 }
 
 function normalizeBoolean(value, fallback = true) {
@@ -314,9 +308,8 @@ export const store = createStore("browserConfig", {
     const safeConfig = ensureConfig(this.config);
     if (!safeConfig) return;
     const endpoint = normalizeCustomHostBrowserEndpoint(this.hostBrowserCustomEndpoint);
-    if (endpoint || !this.hostBrowserCustomEndpoint) {
-      safeConfig.host_browser_selection = endpoint;
-    }
+    safeConfig.host_browser_selection = endpoint
+      || normalizeHostBrowserSelection(this.hostBrowserCustomEndpoint);
   },
 
   customHostBrowserEndpointDiagnostic() {
@@ -325,11 +318,7 @@ export const store = createStore("browserConfig", {
     }
     const endpoint = normalizeCustomHostBrowserEndpoint(this.hostBrowserCustomEndpoint);
     if (endpoint) return `Using ${endpoint}`;
-    const versionUrl = debugPortVersionUrl(this.hostBrowserCustomEndpoint);
-    if (versionUrl) {
-      return `This looks like a debug port. Open ${versionUrl} and copy webSocketDebuggerUrl.`;
-    }
-    return "Endpoint must be a ws:// or wss:// URL ending in /devtools/browser/...";
+    return "Use host:port, an http(s):// discovery address, or a ws(s):// browser endpoint.";
   },
 
   hostBrowserProfileModeLabel() {

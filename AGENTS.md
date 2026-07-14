@@ -27,7 +27,7 @@
 - Never commit secrets, `.env` files, API keys, tokens, or private user data.
 - Preserve authentication and CSRF protections.
 - Use Linux paths and commands in examples.
-- Treat the Docker container exposed at `localhost:32080` as the live plugin/backend runtime when that target is named.
+- When a live Dockerized Agent Zero target is explicitly named, verify that exact runtime instead of assuming a fixed localhost port.
 - Copy live core-plugin changes back into tracked source under `plugins/`.
 - Develop new custom plugins under ignored `usr/plugins/`; tracked bundled plugins live under `plugins/`.
 - Use the framework runtime for backend and plugin-hook verification, not the separate agent execution runtime.

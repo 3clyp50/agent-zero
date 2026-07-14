@@ -173,11 +173,12 @@ explicit remote debugging port and a separate profile:
 opera --remote-debugging-port=9222 --user-data-dir="$HOME/.config/a0-opera-debug"
 ```
 
-Then choose **Custom endpoint** in Browser settings, run `/browser ws://...` in
-A0 CLI, or pass the full DevTools websocket endpoint to A0 CLI:
+Then choose **Custom endpoint** in Browser settings, run
+`/browser localhost:9222` in A0 CLI, or pass the discovery address to A0 CLI. A
+full DevTools WebSocket endpoint also works:
 
 ```bash
-export A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS="ws://127.0.0.1:9222/devtools/browser/..."
+export A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS="http://localhost:9222"
 ```
 
 ### Browser Profiles

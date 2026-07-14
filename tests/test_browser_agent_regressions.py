@@ -197,11 +197,14 @@ def test_browser_config_normalizes_host_browser_selection():
         == "chrome"
     )
     assert (
-        normalize_browser_config({"host_browser_selection": "ws://127.0.0.1:9222/devtools"})[
+        normalize_browser_config({"host_browser_selection": "ws://127.0.0.1:9222/devtools/Browser/AbC?token=XyZ"})[
             "host_browser_selection"
         ]
-        == "ws://127.0.0.1:9222/devtools"
+        == "ws://127.0.0.1:9222/devtools/Browser/AbC?token=XyZ"
     )
+    assert normalize_browser_config({"host_browser_selection": "localhost:9222"})[
+        "host_browser_selection"
+    ] == "localhost:9222"
     assert normalize_browser_config({"host_browser_selection": "bad\x00value"})[
         "host_browser_selection"
     ] == "badvalue"
@@ -1029,7 +1032,9 @@ def test_browser_tool_does_not_auto_open_canvas_policy_is_documented():
     assert "opera://inspect/#remote-debugging" in config_html
     assert "A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS" in config_html
     assert "Custom endpoint" in config_html
+    assert "localhost:9222" in config_html
     assert "customHostBrowserEndpointDiagnostic" in config_store_js
+    assert "http(s):// discovery address" in config_store_js
     assert "HOST_BROWSER_STATUS_REFRESH_MS = 1000" in config_store_js
 
 

@@ -63,8 +63,12 @@ def _normalize_host_browser_selection(value: Any) -> str:
     raw = str(value or "").strip()
     if not raw:
         return ""
+    endpoint_like = "://" in raw or (
+        raw.rpartition(":")[0] and raw.rpartition(":")[2].isdigit()
+    )
+    if endpoint_like:
+        return "".join(ch for ch in raw if ch.isprintable() and not ch.isspace())[:2048]
     normalized = raw.lower().replace(" ", "_")
-    # Keep explicit CLI ids/ports/endpoints usable while avoiding control characters.
     return "".join(ch for ch in normalized if ch.isalnum() or ch in {"_", "-", ":", ".", "/"})[:200]
 
 

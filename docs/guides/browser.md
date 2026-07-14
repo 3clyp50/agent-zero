@@ -169,11 +169,12 @@ directory:
 opera --remote-debugging-port=9222 --user-data-dir="$HOME/.config/a0-opera-debug"
 ```
 
-Then choose **Custom endpoint** in Browser settings, or pass the full DevTools
-websocket endpoint to the CLI:
+Then choose **Custom endpoint** in Browser settings and enter `localhost:9222`
+or `http://localhost:9222`. A full DevTools WebSocket endpoint also works. The
+same forms can be passed to A0 CLI:
 
 ```bash
-export A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS="ws://127.0.0.1:9222/devtools/browser/..."
+export A0_HOST_BROWSER_REMOTE_DEBUGGING_ENDPOINTS="http://localhost:9222"
 ```
 
 ![Host browser remote debugging setting](../res/usage/browser/host-browser-remote-debugging-setting.png)
