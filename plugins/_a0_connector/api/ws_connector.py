@@ -13,6 +13,7 @@ from plugins._a0_connector.helpers.event_bridge import get_context_log_entries
 from plugins._a0_connector.helpers.version import agent_zero_version
 from plugins._a0_connector.helpers.ws_runtime import (
     clear_remote_tree_snapshot,
+    clear_sid_launcher_gateway_metadata,
     clear_sid_host_browser_metadata,
     clear_sid_computer_use_metadata,
     clear_sid_remote_exec_metadata,
@@ -22,15 +23,18 @@ from plugins._a0_connector.helpers.ws_runtime import (
     fail_pending_computer_use_ops_for_sid,
     fail_pending_exec_ops_for_sid,
     fail_pending_file_ops_for_sid,
+    fail_pending_gateway_controls_for_sid,
     host_browser_metadata_for_sid,
     register_sid,
     remote_exec_metadata_for_sid,
     remote_file_metadata_for_sid,
+    resolve_pending_gateway_control,
     resolve_pending_browser_op,
     resolve_pending_computer_use_op,
     resolve_pending_exec_op,
     resolve_pending_file_op,
     store_remote_tree_snapshot,
+    store_sid_launcher_gateway_metadata,
     store_sid_host_browser_metadata,
     store_sid_computer_use_metadata,
     store_sid_remote_exec_metadata,
@@ -60,6 +64,7 @@ WS_FEATURES = [
     "computer_use_remote",
     "browser_host_remote",
     "connector_browser_op",
+    "launcher_gateway_control",
 ]
 
 _SNAPSHOT_REPLAY_PAGE_SIZE = 50
@@ -106,10 +111,15 @@ class WsConnector(WsHandler):
             sid,
             error="CLI disconnected before completing the requested browser operation",
         )
+        fail_pending_gateway_controls_for_sid(
+            sid,
+            error="Launcher gateway disconnected before acknowledging the control request",
+        )
         clear_sid_computer_use_metadata(sid)
         clear_sid_host_browser_metadata(sid)
         clear_sid_remote_file_metadata(sid)
         clear_sid_remote_exec_metadata(sid)
+        clear_sid_launcher_gateway_metadata(sid)
         PrintStyle.debug(f"[a0-connector] /ws disconnected: {sid}")
 
     async def process(
@@ -162,6 +172,9 @@ class WsConnector(WsHandler):
         if event == "connector_browser_op_result":
             return self._handle_browser_op_result(data, sid)
 
+        if event == "connector_gateway_control_result":
+            return self._handle_gateway_control_result(data, sid)
+
         if event.startswith("connector_"):
             return WsResult.error(
                 code="UNKNOWN_EVENT",
@@ -176,6 +189,7 @@ class WsConnector(WsHandler):
         host_browser = data.get("host_browser")
         remote_files = data.get("remote_files")
         remote_exec = data.get("remote_exec")
+        gateway = data.get("gateway")
         if isinstance(computer_use, dict):
             store_sid_computer_use_metadata(sid, computer_use)
         else:
@@ -192,6 +206,10 @@ class WsConnector(WsHandler):
             store_sid_remote_exec_metadata(sid, remote_exec)
         else:
             clear_sid_remote_exec_metadata(sid)
+        if isinstance(gateway, dict):
+            store_sid_launcher_gateway_metadata(sid, gateway)
+        else:
+            clear_sid_launcher_gateway_metadata(sid)
 
     def _associate_declared_context(self, data: dict[str, Any], sid: str) -> str:
         context_id = str(data.get("context_id", "") or "").strip()
@@ -776,6 +794,26 @@ class WsConnector(WsHandler):
             )
 
         return {"op_id": op_id, "accepted": True}
+
+    def _handle_gateway_control_result(
+        self,
+        data: dict[str, Any],
+        sid: str,
+    ) -> dict[str, Any] | WsResult:
+        request_id = str(data.get("request_id", "") or "").strip()
+        if not request_id:
+            return WsResult.error(
+                code="MISSING_REQUEST_ID",
+                message="request_id is required",
+                correlation_id=data.get("correlationId"),
+            )
+        if not resolve_pending_gateway_control(request_id, sid=sid, payload=data):
+            return WsResult.error(
+                code="UNKNOWN_REQUEST_ID",
+                message=f"No pending gateway control for request_id '{request_id}'",
+                correlation_id=data.get("correlationId"),
+            )
+        return {"request_id": request_id, "accepted": True}
 
     async def _resolve_context(
         self,

@@ -45,6 +45,13 @@ class PendingBrowserOperation:
     context_id: str | None = None
 
 
+@dataclass
+class PendingGatewayControl:
+    sid: str
+    loop: asyncio.AbstractEventLoop
+    future: asyncio.Future[dict[str, Any]]
+
+
 @dataclass(frozen=True)
 class RemoteTreeSnapshot:
     sid: str
@@ -103,22 +110,37 @@ class RemoteExecMetadata:
     updated_at: float
 
 
+@dataclass(frozen=True)
+class LauncherGatewayMetadata:
+    gateway_id: str
+    host_label: str
+    state: str
+    master_enabled: bool
+    scopes: dict[str, bool]
+    status: dict[str, Any]
+    updated_at: float
+
+
 _context_subscriptions: dict[str, set[str]] = {}
 _sid_contexts: dict[str, set[str]] = {}
 _pending_file_ops: dict[str, PendingFileOperation] = {}
 _pending_exec_ops: dict[str, PendingExecOperation] = {}
 _pending_computer_use_ops: dict[str, PendingComputerUseOperation] = {}
 _pending_browser_ops: dict[str, PendingBrowserOperation] = {}
+_pending_gateway_controls: dict[str, PendingGatewayControl] = {}
 _remote_tree_snapshots: dict[str, RemoteTreeSnapshot] = {}
 _sid_computer_use_metadata: dict[str, ComputerUseMetadata] = {}
 _sid_host_browser_metadata: dict[str, HostBrowserMetadata] = {}
 _sid_remote_file_metadata: dict[str, RemoteFileMetadata] = {}
 _sid_remote_exec_metadata: dict[str, RemoteExecMetadata] = {}
+_sid_launcher_gateway_metadata: dict[str, LauncherGatewayMetadata] = {}
+_replaced_gateway_sids: set[str] = set()
 _state_lock = threading.RLock()
 
 
 def register_sid(sid: str) -> None:
     with _state_lock:
+        _replaced_gateway_sids.discard(sid)
         _sid_contexts.setdefault(sid, set())
 
 
@@ -130,6 +152,8 @@ def unregister_sid(sid: str) -> set[str]:
         _sid_host_browser_metadata.pop(sid, None)
         _sid_remote_file_metadata.pop(sid, None)
         _sid_remote_exec_metadata.pop(sid, None)
+        _sid_launcher_gateway_metadata.pop(sid, None)
+        _replaced_gateway_sids.discard(sid)
         for context_id in contexts:
             subscribers = _context_subscriptions.get(context_id)
             if not subscribers:
@@ -176,11 +200,195 @@ def connected_sids() -> set[str]:
         return set(_sid_contexts.keys())
 
 
+_GATEWAY_STATES = {
+    "connecting",
+    "connected",
+    "paused",
+    "needs_action",
+    "error",
+    "disconnected",
+}
+_GATEWAY_SCOPE_KEYS = ("files", "code_execution", "browser", "computer_use")
+
+
+def _bounded_gateway_status(value: Any, *, depth: int = 0) -> Any:
+    if isinstance(value, str):
+        return value[:2048]
+    if isinstance(value, (bool, int, float)) or value is None:
+        return value
+    if depth >= 5:
+        return None
+    if isinstance(value, dict):
+        result: dict[str, Any] = {}
+        for key, item in list(value.items())[:64]:
+            result[str(key)[:80]] = _bounded_gateway_status(item, depth=depth + 1)
+        return result
+    if isinstance(value, (list, tuple)):
+        return [
+            _bounded_gateway_status(item, depth=depth + 1)
+            for item in list(value)[:64]
+        ]
+    return str(value)[:2048]
+
+
+def store_sid_launcher_gateway_metadata(
+    sid: str,
+    payload: dict[str, Any],
+) -> LauncherGatewayMetadata | None:
+    """Store a validated Launcher gateway declaration for one connector socket."""
+    if str(payload.get("kind", "") or "").strip().lower() != "launcher":
+        clear_sid_launcher_gateway_metadata(sid)
+        return None
+    try:
+        version = int(payload.get("version") or 0)
+    except (TypeError, ValueError):
+        version = 0
+    gateway_id = str(payload.get("id", "") or "").strip()[:128]
+    if version != 1 or not gateway_id:
+        clear_sid_launcher_gateway_metadata(sid)
+        return None
+
+    raw_scopes = payload.get("scopes")
+    scopes = {
+        key: bool(raw_scopes.get(key)) if isinstance(raw_scopes, dict) else False
+        for key in _GATEWAY_SCOPE_KEYS
+    }
+    if not scopes["files"]:
+        scopes["code_execution"] = False
+    master_enabled = bool(payload.get("master_enabled", True))
+    state = str(payload.get("state", "connected") or "").strip().lower()
+    if state not in _GATEWAY_STATES:
+        state = "connected" if master_enabled else "paused"
+    if not master_enabled and state not in {"error", "needs_action", "disconnected"}:
+        state = "paused"
+    status_value = payload.get("status")
+    status = _bounded_gateway_status(status_value) if isinstance(status_value, dict) else {}
+    metadata = LauncherGatewayMetadata(
+        gateway_id=gateway_id,
+        host_label=str(payload.get("host_label", "") or "").strip()[:128],
+        state=state,
+        master_enabled=master_enabled,
+        scopes=scopes,
+        status=status,
+        updated_at=time.time(),
+    )
+    with _state_lock:
+        if sid in _replaced_gateway_sids:
+            return None
+        for other_sid, other in list(_sid_launcher_gateway_metadata.items()):
+            if other_sid != sid and other.gateway_id == gateway_id:
+                _sid_launcher_gateway_metadata.pop(other_sid, None)
+                _replaced_gateway_sids.add(other_sid)
+        _sid_launcher_gateway_metadata[sid] = metadata
+    return metadata
+
+
+def clear_sid_launcher_gateway_metadata(sid: str) -> None:
+    with _state_lock:
+        _sid_launcher_gateway_metadata.pop(sid, None)
+
+
+def launcher_gateway_metadata_for_sid(sid: str) -> dict[str, Any] | None:
+    with _state_lock:
+        metadata = _sid_launcher_gateway_metadata.get(sid)
+    if metadata is None:
+        return None
+    return _launcher_gateway_metadata_dict(metadata, sid=sid)
+
+
+def _launcher_gateway_metadata_dict(
+    metadata: LauncherGatewayMetadata,
+    *,
+    sid: str | None = None,
+) -> dict[str, Any]:
+    result = {
+        "version": 1,
+        "kind": "launcher",
+        "id": metadata.gateway_id,
+        "host_label": metadata.host_label,
+        "state": metadata.state,
+        "master_enabled": metadata.master_enabled,
+        "scopes": dict(metadata.scopes),
+        "status": copy.deepcopy(metadata.status),
+        "updated_at": metadata.updated_at,
+    }
+    if sid is not None:
+        result["sid"] = sid
+    return result
+
+
+def _active_launcher_gateways_locked() -> list[tuple[str, LauncherGatewayMetadata]]:
+    return sorted(
+        (
+            (sid, metadata)
+            for sid, metadata in _sid_launcher_gateway_metadata.items()
+            if sid in _sid_contexts and sid not in _replaced_gateway_sids
+        ),
+        key=lambda item: item[1].updated_at,
+        reverse=True,
+    )
+
+
+def _active_launcher_gateway_sid_locked() -> str | None:
+    gateways = _active_launcher_gateways_locked()
+    if len({metadata.gateway_id for _sid, metadata in gateways}) != 1:
+        return None
+    return gateways[0][0] if gateways else None
+
+
+def active_launcher_gateway_sid() -> str | None:
+    with _state_lock:
+        return _active_launcher_gateway_sid_locked()
+
+
+def launcher_gateway_status() -> dict[str, Any]:
+    with _state_lock:
+        gateways = _active_launcher_gateways_locked()
+        distinct_ids = {metadata.gateway_id for _sid, metadata in gateways}
+        rows = [
+            _launcher_gateway_metadata_dict(metadata)
+            for _sid, metadata in gateways
+        ]
+    if not rows:
+        return {
+            "state": "disconnected",
+            "connected": False,
+            "multiple_hosts": False,
+            "gateway": None,
+            "gateways": [],
+        }
+    if len(distinct_ids) > 1:
+        return {
+            "state": "multiple_hosts",
+            "connected": False,
+            "multiple_hosts": True,
+            "gateway": None,
+            "gateways": rows,
+            "error": "Multiple Launcher hosts are connected; host tools are disabled.",
+        }
+    gateway = rows[0]
+    return {
+        "state": gateway["state"],
+        "connected": gateway["state"] not in {"disconnected", "error"},
+        "multiple_hosts": False,
+        "gateway": gateway,
+        "gateways": rows,
+    }
+
+
 def _candidate_sids_for_context_locked(context_id: str) -> list[str]:
     context_sids = sorted(_context_subscriptions.get(context_id, set()))
     context_set = set(context_sids)
-    global_sids = sorted(sid for sid in _sid_contexts if sid not in context_set)
-    return context_sids + global_sids
+    gateway_sid = _active_launcher_gateway_sid_locked()
+    gateway_sids = [gateway_sid] if gateway_sid and gateway_sid not in context_set else []
+    global_sids = sorted(
+        sid
+        for sid in _sid_contexts
+        if sid not in context_set
+        and sid not in _sid_launcher_gateway_metadata
+        and sid not in _replaced_gateway_sids
+    )
+    return context_sids + gateway_sids + global_sids
 
 
 def remote_tool_sids_for_context(context_id: str) -> list[str]:
@@ -215,20 +423,11 @@ def latest_remote_tree_for_context(
 ) -> dict[str, Any] | None:
     now = time.time()
     with _state_lock:
-        context_sids = sorted(_context_subscriptions.get(context_id, set()))
-        context_set = set(context_sids)
-        global_sids = sorted(sid for sid in _sid_contexts if sid not in context_set)
+        candidates = _candidate_sids_for_context_locked(context_id)
+        context_sids = set(_context_subscriptions.get(context_id, set()))
         snapshot_groups = [
-            [
-                _remote_tree_snapshots[sid]
-                for sid in context_sids
-                if sid in _remote_tree_snapshots
-            ],
-            [
-                _remote_tree_snapshots[sid]
-                for sid in global_sids
-                if sid in _remote_tree_snapshots
-            ],
+            [_remote_tree_snapshots[sid] for sid in candidates if sid in context_sids and sid in _remote_tree_snapshots],
+            [_remote_tree_snapshots[sid] for sid in candidates if sid not in context_sids and sid in _remote_tree_snapshots],
         ]
 
     for snapshots in snapshot_groups:
@@ -854,8 +1053,51 @@ def fail_pending_browser_ops_for_sid(sid: str, *, error: str) -> None:
     _fail_pending_for_sid(_pending_browser_ops, sid=sid, error=error)
 
 
+def store_pending_gateway_control(
+    request_id: str,
+    *,
+    sid: str,
+    future: asyncio.Future[dict[str, Any]],
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    with _state_lock:
+        _pending_gateway_controls[request_id] = PendingGatewayControl(
+            sid=sid,
+            loop=loop,
+            future=future,
+        )
+
+
+def clear_pending_gateway_control(request_id: str) -> None:
+    with _state_lock:
+        _pending_gateway_controls.pop(request_id, None)
+
+
+def resolve_pending_gateway_control(
+    request_id: str,
+    *,
+    sid: str,
+    payload: dict[str, Any],
+) -> bool:
+    gateway = payload.get("gateway")
+    if isinstance(gateway, dict):
+        store_sid_launcher_gateway_metadata(sid, gateway)
+    return _resolve_pending(_pending_gateway_controls, request_id, sid=sid, payload=payload)
+
+
+def fail_pending_gateway_controls_for_sid(sid: str, *, error: str) -> None:
+    _fail_pending_for_sid(_pending_gateway_controls, sid=sid, error=error)
+
+
 def _resolve_pending(
-    registry: dict[str, PendingFileOperation | PendingExecOperation | PendingComputerUseOperation | PendingBrowserOperation],
+    registry: dict[
+        str,
+        PendingFileOperation
+        | PendingExecOperation
+        | PendingComputerUseOperation
+        | PendingBrowserOperation
+        | PendingGatewayControl,
+    ],
     op_id: str,
     *,
     sid: str,
@@ -872,7 +1114,14 @@ def _resolve_pending(
 
 
 def _fail_pending(
-    registry: dict[str, PendingFileOperation | PendingExecOperation | PendingComputerUseOperation | PendingBrowserOperation],
+    registry: dict[
+        str,
+        PendingFileOperation
+        | PendingExecOperation
+        | PendingComputerUseOperation
+        | PendingBrowserOperation
+        | PendingGatewayControl,
+    ],
     op_id: str,
     *,
     sid: str | None,
@@ -895,7 +1144,14 @@ def _fail_pending(
 
 
 def _fail_pending_for_sid(
-    registry: dict[str, PendingFileOperation | PendingExecOperation | PendingComputerUseOperation | PendingBrowserOperation],
+    registry: dict[
+        str,
+        PendingFileOperation
+        | PendingExecOperation
+        | PendingComputerUseOperation
+        | PendingBrowserOperation
+        | PendingGatewayControl,
+    ],
     *,
     sid: str,
     error: str,

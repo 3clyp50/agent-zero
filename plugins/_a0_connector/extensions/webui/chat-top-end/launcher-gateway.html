@@ -1,0 +1,131 @@
+<script type="module">
+  import { store } from "/plugins/_a0_connector/webui/launcher-gateway-store.js";
+</script>
+
+<div
+  x-data
+  class="launcher-gateway-root"
+  x-show="$store.launcherGateway?.visible"
+  x-create="$store.launcherGateway?.onMount()"
+  x-destroy="$store.launcherGateway?.cleanup()"
+  @click.outside="$store.launcherGateway.open = false"
+  @keydown.escape.window="$store.launcherGateway.open = false"
+  style="display: none;"
+>
+  <button
+    type="button"
+    class="launcher-gateway-trigger"
+    :class="`is-${$store.launcherGateway.state}`"
+    :title="`Host access: ${$store.launcherGateway.stateLabel}`"
+    :aria-label="`Host access: ${$store.launcherGateway.stateLabel}`"
+    aria-haspopup="dialog"
+    :aria-expanded="$store.launcherGateway.open.toString()"
+    @click.stop="$store.launcherGateway.open = !$store.launcherGateway.open"
+  >
+    <span class="launcher-gateway-dot" aria-hidden="true"></span>
+    <span class="material-symbols-outlined" aria-hidden="true" x-text="$store.launcherGateway.stateIcon"></span>
+    <span class="launcher-gateway-trigger-label" x-text="$store.launcherGateway.stateLabel"></span>
+  </button>
+
+  <section
+    class="launcher-gateway-popover"
+    role="dialog"
+    aria-label="Launcher host access"
+    x-show="$store.launcherGateway.open"
+    x-transition.opacity.duration.120ms
+    @click.stop
+    style="display: none;"
+  >
+    <header class="launcher-gateway-header">
+      <div>
+        <strong x-text="$store.launcherGateway.hostLabel"></strong>
+        <span x-text="$store.launcherGateway.stateLabel"></span>
+      </div>
+      <button type="button" class="launcher-gateway-close" aria-label="Close host access" @click="$store.launcherGateway.open = false">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+    </header>
+
+    <template x-if="$store.launcherGateway.gateway">
+      <div class="launcher-gateway-controls">
+        <label class="launcher-gateway-row is-master">
+          <span>Host access</span>
+          <input type="checkbox" :checked="$store.launcherGateway.gateway.master_enabled" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setMaster($event.target.checked)">
+        </label>
+        <label class="launcher-gateway-row">
+          <span>Files read/write</span>
+          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.files" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setScope('files', $event.target.checked)">
+        </label>
+        <label class="launcher-gateway-row">
+          <span>Code execution</span>
+          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.code_execution" :disabled="$store.launcherGateway.saving || !$store.launcherGateway.gateway.scopes.files" @change="$store.launcherGateway.setScope('code_execution', $event.target.checked)">
+        </label>
+        <label class="launcher-gateway-row">
+          <span>Personal browser</span>
+          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.browser" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setScope('browser', $event.target.checked)">
+        </label>
+        <label class="launcher-gateway-row">
+          <span>Computer Use</span>
+          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.computer_use" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setScope('computer_use', $event.target.checked)">
+        </label>
+      </div>
+    </template>
+
+    <div class="launcher-gateway-notices" x-show="$store.launcherGateway.preparationMessages.length">
+      <template x-for="message in $store.launcherGateway.preparationMessages" :key="message">
+        <p><span class="material-symbols-outlined" aria-hidden="true">warning</span><span x-text="message"></span></p>
+      </template>
+    </div>
+
+    <p class="launcher-gateway-empty" x-show="!$store.launcherGateway.gateway">
+      Host access is not connected for this Launcher tab.
+    </p>
+
+    <button
+      type="button"
+      class="launcher-gateway-disconnect"
+      x-show="$store.launcherGateway.gateway"
+      :disabled="$store.launcherGateway.saving"
+      @click="$store.launcherGateway.emergencyDisconnect()"
+    >Emergency disconnect</button>
+  </section>
+</div>
+
+<style>
+  .launcher-gateway-root { position: relative; }
+  .launcher-gateway-trigger {
+    display: inline-flex; align-items: center; gap: .35rem; min-height: 2rem;
+    padding: .25rem .55rem; border: 1px solid var(--color-border); border-radius: 999px;
+    color: var(--color-text); background: color-mix(in srgb, var(--color-panel) 92%, transparent);
+    cursor: pointer; font: inherit; font-size: .75rem;
+  }
+  .launcher-gateway-trigger .material-symbols-outlined { font-size: 1rem; }
+  .launcher-gateway-dot { width: .45rem; height: .45rem; border-radius: 50%; background: #7b8491; }
+  .launcher-gateway-trigger.is-connected .launcher-gateway-dot { background: #45b86b; }
+  .launcher-gateway-trigger.is-connecting .launcher-gateway-dot { background: #5b9cff; }
+  .launcher-gateway-trigger.is-paused .launcher-gateway-dot { background: #d6a43d; }
+  .launcher-gateway-trigger.is-needs_action .launcher-gateway-dot,
+  .launcher-gateway-trigger.is-multiple_hosts .launcher-gateway-dot { background: #e49a35; }
+  .launcher-gateway-trigger.is-error .launcher-gateway-dot { background: #db5b61; }
+  .launcher-gateway-popover {
+    position: absolute; top: calc(100% + .45rem); right: 0; z-index: 1200; width: min(20rem, calc(100vw - 2rem));
+    padding: .8rem; border: 1px solid var(--color-border); border-radius: .7rem;
+    background: var(--color-panel); box-shadow: 0 16px 42px rgba(0, 0, 0, .24);
+  }
+  .launcher-gateway-header { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
+  .launcher-gateway-header div { display: grid; gap: .1rem; }
+  .launcher-gateway-header span { color: var(--color-text-secondary); font-size: .75rem; }
+  .launcher-gateway-close { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0; }
+  .launcher-gateway-close .material-symbols-outlined { font-size: 1.1rem; }
+  .launcher-gateway-controls { display: grid; gap: .15rem; margin-top: .7rem; }
+  .launcher-gateway-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 2rem; font-size: .82rem; }
+  .launcher-gateway-row.is-master { padding-bottom: .35rem; margin-bottom: .2rem; border-bottom: 1px solid var(--color-border); font-weight: 650; }
+  .launcher-gateway-row input { accent-color: var(--color-primary); }
+  .launcher-gateway-notices { display: grid; gap: .35rem; margin-top: .55rem; }
+  .launcher-gateway-notices p { display: flex; gap: .35rem; margin: 0; color: #d79b35; font-size: .75rem; line-height: 1.3; }
+  .launcher-gateway-notices .material-symbols-outlined { font-size: .95rem; }
+  .launcher-gateway-empty { margin: .7rem 0 0; color: var(--color-text-secondary); font-size: .78rem; }
+  .launcher-gateway-disconnect { width: 100%; margin-top: .75rem; padding: .48rem .65rem; border: 1px solid color-mix(in srgb, #db5b61 55%, var(--color-border)); border-radius: .45rem; background: transparent; color: #db5b61; cursor: pointer; }
+  .launcher-gateway-disconnect:disabled { opacity: .55; cursor: default; }
+  @media (max-width: 700px) { .launcher-gateway-trigger-label { display: none; } }
+</style>

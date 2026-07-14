@@ -28,6 +28,7 @@ _BASE_FEATURES = [
     "connector_browser_op",
     "remote_file_tree",
     "token_status",
+    "launcher_gateway",
 ]
 
 _OPTIONAL_FEATURES: dict[str, tuple[str, ...]] = {
