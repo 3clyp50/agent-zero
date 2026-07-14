@@ -1,5 +1,6 @@
 import { createStore } from "/js/AlpineStore.js";
 import { callJsonApi } from "/js/api.js";
+import { toastFrontendError } from "/components/notifications/notification-store.js";
 
 const STATUS_API = "/plugins/_a0_connector/v1/launcher_gateway_status";
 const CONTROL_API = "/plugins/_a0_connector/v1/launcher_gateway_control";
@@ -120,6 +121,10 @@ const model = {
       this.status = response?.status || this.status;
     } catch (error) {
       console.error("Failed to control Launcher host:", error);
+      void toastFrontendError(
+        error?.message || "Host access change failed.",
+        "Host access",
+      );
       await this.refresh();
     } finally {
       this.saving = false;

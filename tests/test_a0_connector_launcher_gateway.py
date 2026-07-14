@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 import uuid
 
 from plugins._a0_connector.api.v1 import launcher_gateway_control
@@ -35,6 +36,18 @@ def test_launcher_gateway_features_are_negotiated_on_http_and_websocket() -> Non
     assert "launcher_gateway" in _feature_list()
     assert "launcher_gateway_control" in WS_FEATURES
     assert LauncherGatewayStatus.requires_auth() is True
+
+
+def test_launcher_gateway_control_errors_use_webui_notifications() -> None:
+    source = (
+        Path(__file__).parents[1]
+        / "plugins"
+        / "_a0_connector"
+        / "webui"
+        / "launcher-gateway-store.js"
+    ).read_text(encoding="utf-8")
+    assert 'import { toastFrontendError }' in source
+    assert 'void toastFrontendError(' in source
 
 
 def test_launcher_gateway_is_fallback_after_context_bound_cli() -> None:
