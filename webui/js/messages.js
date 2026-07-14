@@ -696,7 +696,7 @@ export function _drawMessage({
   const scroller = new Scroller(bodyDiv, { smooth: !isMassRender() });
 
   // Handle KVPs incrementally
-  drawKvpsIncremental(bodyDiv, kvps, false);
+  drawKvpsIncremental(bodyDiv, kvps);
 
   // Handle content
   if (content && content.trim().length > 0) {
@@ -715,6 +715,7 @@ export function _drawMessage({
       // }
 
       let processedContent = content;
+      if (latex) processedContent = convertLatexDelimiters(processedContent);
       processedContent = convertImageTags(processedContent);
       processedContent = convertImgFilePaths(processedContent);
       processedContent = convertFilePaths(processedContent);
@@ -732,11 +733,7 @@ export function _drawMessage({
 
       // KaTeX rendering for markdown
       if (latex) {
-        contentDiv.querySelectorAll("latex").forEach((element) => {
-          globalThis.katex.render(element.innerHTML, element, {
-            throwOnError: false,
-          });
-        });
+        renderLatexElements(contentDiv);
       }
 
       adjustMarkdownRender(contentDiv);
@@ -854,7 +851,7 @@ export function drawMessageAgent({
     );
   }
 
-  return drawProcessStep({
+  const result = drawProcessStep({
     id,
     title,
     code: "GEN",
@@ -863,6 +860,8 @@ export function drawMessageAgent({
     actionButtons,
     log: arguments[0],
   });
+  if (result.kvpsTable) renderLatexText(result.kvpsTable);
+  return result;
 }
 
 /**
@@ -1548,7 +1547,7 @@ export function drawMessageError({
   return { element };
 }
 
-function drawKvpsIncremental(container, kvps, latex) {
+function drawKvpsIncremental(container, kvps) {
   // existing KVPS table
   let table = container.querySelector(".msg-kvps");
   if (kvps) {
@@ -1644,15 +1643,6 @@ function drawKvpsIncremental(container, kvps, latex) {
         const span = document.createElement("p");
         span.innerHTML = convertHTML(value);
         tdiv.appendChild(span);
-
-        // KaTeX rendering for markdown
-        if (latex) {
-          span.querySelectorAll("latex").forEach((element) => {
-            globalThis.katex.render(element.innerHTML, element, {
-              throwOnError: false,
-            });
-          });
-        }
       }
     }
   } else {
@@ -1694,6 +1684,41 @@ function convertHTML(str) {
   result = convertImageTags(result);
   result = convertPathsToLinks(result);
   return result;
+}
+
+function convertLatexDelimiters(content) {
+  return content.replace(
+    /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]*`)|\\\[([\s\S]*?)\\\]|\\\(([\s\S]*?)\\\)|\$\$([\s\S]*?)\$\$/g,
+    (match, code, display, inline, dollars) => {
+      if (code) return code;
+      const tex = display ?? inline ?? dollars;
+      const displayAttribute =
+        display !== undefined || dollars !== undefined
+          ? ' data-display="true"'
+          : "";
+      const encodedTex = Array.from(
+        tex.trim(),
+        (char) => `&#${char.codePointAt(0)};`,
+      ).join("");
+      return `<latex${displayAttribute}>${encodedTex}</latex>`;
+    },
+  );
+}
+
+function renderLatexElements(container) {
+  container.querySelectorAll("latex").forEach((element) => {
+    globalThis.katex.render(element.textContent, element, {
+      displayMode: element.dataset.display === "true",
+      throwOnError: false,
+    });
+  });
+}
+
+function renderLatexText(container) {
+  globalThis.renderMathInElement(container, {
+    throwOnError: false,
+    errorCallback: () => {},
+  });
 }
 
 function convertImgFilePaths(str) {

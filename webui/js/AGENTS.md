@@ -15,6 +15,7 @@
 - `modals.js` owns the stacked modal shell, `openModal`, `closeModal`, `scrollModal`, footer relocation, backdrop, and modal z-index behavior.
 - `surfaces.js` owns shared surface registration, right-canvas/modal mode routing, surface modal action rails, and reusable draggable/focus modal chrome.
 - `initFw.js` owns Alpine bootstrap and custom lifecycle directives such as `x-create`, `x-destroy`, and periodic `x-every-*` hooks.
+- `messages.js` owns native message/process-step rendering, safe Markdown and HTML conversion, and KaTeX delimiter handling.
 - Other modules own focused UI utilities such as modals, messages, safe markdown, shortcuts, TTS/STT, surfaces, and initialization.
 
 ## Local Contracts
@@ -40,6 +41,7 @@
 - Every `<x-component>` instance must await cached module-load promises before markup is appended so Alpine bindings only run after imported stores exist.
 - Frontend extension hooks such as `confirm_dialog_after_render` and `get_tool_message_handler` must preserve their mutable context contracts.
 - Sanitize or safely render user/model-provided HTML and markdown.
+- Convert standard TeX delimiters before Markdown parsing without touching inline or fenced code. Keep thought-card math rendering local to the agent-message handler rather than adding math flags to generic process-step or key/value rendering.
 - Do not expose secrets in localStorage, console logs, URLs, or WebSocket payloads.
 - Full message snapshots that start at backend log `no` 0 must replace the current message DOM before rendering; incremental snapshots should keep patching existing messages.
 
@@ -59,6 +61,7 @@
 ## Verification
 
 - Run targeted frontend/WebUI tests when available.
+- For message math changes, smoke-test both response Markdown and agent thought cards with inline and display TeX.
 - Manually smoke-test startup, API calls, WebSocket state sync, and affected UI flows after infrastructure changes.
 - For modal infrastructure, verify duplicate paths can stack, missing paths stay closable, Escape closes only the top modal, and click-outside requires both mouse down and mouse up on the overlay container.
 
