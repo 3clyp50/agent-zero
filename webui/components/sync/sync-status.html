@@ -10,10 +10,15 @@
         .status-icon {
             display: inline-flex;
             align-items: center;
+            gap: 0.1rem;
         }
 
         .status-icon svg {
             pointer-events: none;
+        }
+
+        .status-icon > x-extension {
+            display: contents;
         }
 
         .pending-ring {
@@ -45,13 +50,6 @@
             <div
                 class="status-icon"
                 x-create="$store.sync.init()"
-                :title="$store.sync.mode === 'HEALTHY'
-                  ? 'Connected (push sync healthy)'
-                  : $store.sync.mode === 'HANDSHAKE_PENDING'
-                    ? 'Connecting (waiting for state handshake)'
-                    : $store.sync.mode === 'DEGRADED'
-                      ? 'Degraded (polling fallback)'
-                      : 'Disconnected (waiting to reconnect)'"
             >
                 <svg viewBox="0 0 30 30" width="20" height="20" aria-label="sync status">
                     <!-- HEALTHY (filled circle) -->
@@ -68,6 +66,7 @@
                     <circle x-show="$store.sync.mode === 'DISCONNECTED'" cx="15" cy="15" r="12"
                         fill="none" stroke="#e40138" stroke-width="3" />
                 </svg>
+                <x-extension id="sync-status-end"></x-extension>
             </div>
         </template>
     </div>

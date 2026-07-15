@@ -57,6 +57,30 @@ def test_launcher_gateway_control_errors_use_webui_notifications() -> None:
     assert 'void toastFrontendError(' in source
 
 
+def test_launcher_gateway_indicator_joins_sync_status_without_visual_noise() -> None:
+    root = Path(__file__).parents[1]
+    source = (
+        root
+        / "plugins"
+        / "_a0_connector"
+        / "extensions"
+        / "webui"
+        / "sync-status-end"
+        / "launcher-gateway.html"
+    ).read_text(encoding="utf-8")
+    sync_status = (root / "webui" / "components" / "sync" / "sync-status.html").read_text(
+        encoding="utf-8"
+    )
+
+    assert '<x-extension id="sync-status-end"></x-extension>' in sync_status
+    assert ":title=" not in sync_status
+    assert 'x-for="(gateway, index)' in source
+    assert "launcher-gateway-trigger-label" not in source
+    assert "launcher-gateway-dot" not in source
+    assert ":title=" not in source
+    assert "border-radius: var(--border-radius);" in source
+
+
 def test_launcher_gateway_is_fallback_after_context_bound_cli() -> None:
     context_id = f"ctx-{uuid.uuid4()}"
     cli_sid = _sid("cli")

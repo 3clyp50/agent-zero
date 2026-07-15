@@ -37,19 +37,6 @@ const model = {
     return labels[this.state] || "Disconnected";
   },
 
-  get stateIcon() {
-    const icons = {
-      connecting: "sync",
-      connected: "computer",
-      paused: "pause_circle",
-      needs_action: "warning",
-      error: "error",
-      multiple_hosts: "devices",
-      disconnected: "computer",
-    };
-    return icons[this.state] || "computer";
-  },
-
   get hostLabel() {
     return this.gateway?.host_label || "Launcher host";
   },

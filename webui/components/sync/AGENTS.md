@@ -7,12 +7,15 @@
 ## Ownership
 
 - `sync-store.js` owns sync status state.
-- `sync-status.html` owns sync indicator markup.
+- `sync-status.html` owns sync indicator markup and the `sync-status-end`
+  extension point for connection-related controls.
 
 ## Local Contracts
 
 - Keep sync state compatible with WebSocket state-sync events.
 - Avoid noisy user-facing alerts for transient sync state unless existing UX expects them.
+- Keep the compact status cluster free of native title tooltips; interactive
+  extensions must provide accessible names directly.
 
 ## Work Guidance
 

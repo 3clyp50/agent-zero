@@ -39,14 +39,16 @@
 - Launcher gateway scopes expose file reading and writing separately. File
   writing depends on reading, and Code execution depends on file writing. Keep
   older gateway declarations without `file_write` read/write compatible.
-- The `chat-top-end` Launcher gateway extension renders only when the user agent
+- The `sync-status-end` Launcher gateway extension renders only when the user agent
   includes `A0-Launcher/`. It may show status, master/scope controls,
   preparation errors, and Emergency disconnect; standard browser sessions must
-  not expose it. Keep its trigger icon-only at rest and reveal the status label
-  on hover, keyboard focus, or while open. Connected and disconnected states
-  share the computer glyph; the adjacent status dot communicates connectivity.
+  not expose it. Keep its trigger inside the existing sync indicator, render one
+  computer glyph per connected Launcher gateway, and retain one muted glyph
+  while disconnected so the control remains reachable. Do not add a native
+  tooltip, visible status label, count badge, or animated expansion.
   Keep the open popover above the compact right-canvas rail and report control
-  failures through the shared notification system.
+  failures through the shared notification system. Use the standard WebUI
+  border-radius tokens for its controls and popover.
 - File operation results may arrive as chunked JSON/base64
   `connector_file_op_result` frames; resolve the pending file operation only
   after all chunks for the `op_id` are assembled.
