@@ -99,12 +99,14 @@ const model = {
     const current = this.gateway?.scopes || {};
     const scopes = {
       files: Boolean(current.files),
+      file_write: Boolean(current.file_write ?? current.files),
       code_execution: Boolean(current.code_execution),
       browser: Boolean(current.browser),
       computer_use: Boolean(current.computer_use),
       [scope]: Boolean(enabled),
     };
-    if (!scopes.files) scopes.code_execution = false;
+    if (!scopes.files) scopes.file_write = false;
+    if (!scopes.file_write) scopes.code_execution = false;
     await this.control({ action: "replace_scopes", scopes });
   },
 

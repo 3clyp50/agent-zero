@@ -29,6 +29,7 @@ _BASE_FEATURES = [
     "remote_file_tree",
     "token_status",
     "launcher_gateway",
+    "launcher_gateway_file_write",
 ]
 
 _OPTIONAL_FEATURES: dict[str, tuple[str, ...]] = {

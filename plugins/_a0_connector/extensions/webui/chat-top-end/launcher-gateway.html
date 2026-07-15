@@ -48,26 +48,48 @@
 
     <template x-if="$store.launcherGateway.gateway">
       <div class="launcher-gateway-controls">
-        <label class="launcher-gateway-row is-master">
+        <div class="launcher-gateway-row is-master">
           <span>Host access</span>
-          <input type="checkbox" :checked="$store.launcherGateway.gateway.master_enabled" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setMaster($event.target.checked)">
-        </label>
-        <label class="launcher-gateway-row">
-          <span>Files read/write</span>
-          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.files" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setScope('files', $event.target.checked)">
-        </label>
-        <label class="launcher-gateway-row">
+          <label class="toggle launcher-gateway-switch">
+            <input type="checkbox" aria-label="Host access" :checked="$store.launcherGateway.gateway.master_enabled" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setMaster($event.target.checked)">
+            <span class="toggler"></span>
+          </label>
+        </div>
+        <div class="launcher-gateway-row" :class="{ 'is-disabled': !$store.launcherGateway.gateway.master_enabled }">
+          <span>Files read</span>
+          <label class="toggle launcher-gateway-switch">
+            <input type="checkbox" aria-label="Files read" :checked="$store.launcherGateway.gateway.scopes.files" :disabled="$store.launcherGateway.saving || !$store.launcherGateway.gateway.master_enabled" @change="$store.launcherGateway.setScope('files', $event.target.checked)">
+            <span class="toggler"></span>
+          </label>
+        </div>
+        <div class="launcher-gateway-row" :class="{ 'is-disabled': !$store.launcherGateway.gateway.master_enabled || !$store.launcherGateway.gateway.scopes.files }">
+          <span>Files write</span>
+          <label class="toggle launcher-gateway-switch">
+            <input type="checkbox" aria-label="Files write" :checked="$store.launcherGateway.gateway.scopes.file_write" :disabled="$store.launcherGateway.saving || !$store.launcherGateway.gateway.master_enabled || !$store.launcherGateway.gateway.scopes.files" @change="$store.launcherGateway.setScope('file_write', $event.target.checked)">
+            <span class="toggler"></span>
+          </label>
+        </div>
+        <div class="launcher-gateway-row" :class="{ 'is-disabled': !$store.launcherGateway.gateway.master_enabled || !$store.launcherGateway.gateway.scopes.file_write }">
           <span>Code execution</span>
-          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.code_execution" :disabled="$store.launcherGateway.saving || !$store.launcherGateway.gateway.scopes.files" @change="$store.launcherGateway.setScope('code_execution', $event.target.checked)">
-        </label>
-        <label class="launcher-gateway-row">
-          <span>Personal browser</span>
-          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.browser" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setScope('browser', $event.target.checked)">
-        </label>
-        <label class="launcher-gateway-row">
+          <label class="toggle launcher-gateway-switch">
+            <input type="checkbox" aria-label="Code execution" :checked="$store.launcherGateway.gateway.scopes.code_execution" :disabled="$store.launcherGateway.saving || !$store.launcherGateway.gateway.master_enabled || !$store.launcherGateway.gateway.scopes.file_write" @change="$store.launcherGateway.setScope('code_execution', $event.target.checked)">
+            <span class="toggler"></span>
+          </label>
+        </div>
+        <div class="launcher-gateway-row" :class="{ 'is-disabled': !$store.launcherGateway.gateway.master_enabled }">
+          <span>Use my Browser</span>
+          <label class="toggle launcher-gateway-switch">
+            <input type="checkbox" aria-label="Use my Browser" :checked="$store.launcherGateway.gateway.scopes.browser" :disabled="$store.launcherGateway.saving || !$store.launcherGateway.gateway.master_enabled" @change="$store.launcherGateway.setScope('browser', $event.target.checked)">
+            <span class="toggler"></span>
+          </label>
+        </div>
+        <div class="launcher-gateway-row" :class="{ 'is-disabled': !$store.launcherGateway.gateway.master_enabled }">
           <span>Computer Use</span>
-          <input type="checkbox" :checked="$store.launcherGateway.gateway.scopes.computer_use" :disabled="$store.launcherGateway.saving" @change="$store.launcherGateway.setScope('computer_use', $event.target.checked)">
-        </label>
+          <label class="toggle launcher-gateway-switch">
+            <input type="checkbox" aria-label="Computer Use" :checked="$store.launcherGateway.gateway.scopes.computer_use" :disabled="$store.launcherGateway.saving || !$store.launcherGateway.gateway.master_enabled" @change="$store.launcherGateway.setScope('computer_use', $event.target.checked)">
+            <span class="toggler"></span>
+          </label>
+        </div>
       </div>
     </template>
 
@@ -132,7 +154,12 @@
   .launcher-gateway-controls { display: grid; gap: .15rem; margin-top: .7rem; }
   .launcher-gateway-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 2rem; font-size: .82rem; }
   .launcher-gateway-row.is-master { padding-bottom: .35rem; margin-bottom: .2rem; border-bottom: 1px solid var(--color-border); font-weight: 650; }
-  .launcher-gateway-row input { accent-color: var(--color-primary); }
+  .launcher-gateway-row.is-disabled { color: var(--color-text-secondary); opacity: .55; }
+  .launcher-gateway-switch { flex: 0 0 auto; width: 2.2rem; height: 1.25rem; }
+  .launcher-gateway-switch .toggler:before { width: .9rem; height: .9rem; left: .18rem; bottom: .18rem; }
+  .launcher-gateway-switch input:checked + .toggler:before { transform: translateX(.94rem); }
+  .launcher-gateway-switch input:focus-visible + .toggler { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .launcher-gateway-switch input:disabled + .toggler { cursor: default; }
   .launcher-gateway-notices { display: grid; gap: .35rem; margin-top: .55rem; }
   .launcher-gateway-notices p { display: flex; gap: .35rem; margin: 0; color: #d79b35; font-size: .75rem; line-height: 1.3; }
   .launcher-gateway-notices .material-symbols-outlined { font-size: .95rem; }

@@ -15,7 +15,12 @@ def _sid(label: str) -> str:
     return f"gateway-{label}-{uuid.uuid4()}"
 
 
-def _gateway(gateway_id: str, *, files: bool = True) -> dict:
+def _gateway(
+    gateway_id: str,
+    *,
+    files: bool = True,
+    file_write: bool | None = None,
+) -> dict:
     return {
         "version": 1,
         "kind": "launcher",
@@ -25,6 +30,7 @@ def _gateway(gateway_id: str, *, files: bool = True) -> dict:
         "master_enabled": True,
         "scopes": {
             "files": files,
+            "file_write": files if file_write is None else file_write,
             "code_execution": True,
             "browser": True,
             "computer_use": True,
@@ -34,6 +40,7 @@ def _gateway(gateway_id: str, *, files: bool = True) -> dict:
 
 def test_launcher_gateway_features_are_negotiated_on_http_and_websocket() -> None:
     assert "launcher_gateway" in _feature_list()
+    assert "launcher_gateway_file_write" in _feature_list()
     assert "launcher_gateway_control" in WS_FEATURES
     assert LauncherGatewayStatus.requires_auth() is True
 
@@ -105,14 +112,41 @@ def test_duplicate_gateway_identity_replaces_stale_socket() -> None:
         ws_runtime.unregister_sid(fresh_sid)
 
 
-def test_gateway_disables_code_execution_when_files_are_off() -> None:
+def test_gateway_scope_dependencies_keep_reads_separate_from_writes() -> None:
     sid = _sid("scope")
     ws_runtime.register_sid(sid)
     ws_runtime.store_sid_launcher_gateway_metadata(sid, _gateway("installation-a", files=False))
     try:
         gateway = ws_runtime.launcher_gateway_status()["gateway"]
         assert gateway["scopes"]["files"] is False
+        assert gateway["scopes"]["file_write"] is False
         assert gateway["scopes"]["code_execution"] is False
+    finally:
+        ws_runtime.unregister_sid(sid)
+
+    sid = _sid("read-only")
+    ws_runtime.register_sid(sid)
+    ws_runtime.store_sid_launcher_gateway_metadata(
+        sid,
+        _gateway("installation-a", file_write=False),
+    )
+    try:
+        gateway = ws_runtime.launcher_gateway_status()["gateway"]
+        assert gateway["scopes"]["files"] is True
+        assert gateway["scopes"]["file_write"] is False
+        assert gateway["scopes"]["code_execution"] is False
+    finally:
+        ws_runtime.unregister_sid(sid)
+
+
+def test_legacy_gateway_files_scope_keeps_read_write_behavior() -> None:
+    sid = _sid("legacy")
+    payload = _gateway("installation-a")
+    payload["scopes"].pop("file_write")
+    ws_runtime.register_sid(sid)
+    ws_runtime.store_sid_launcher_gateway_metadata(sid, payload)
+    try:
+        assert ws_runtime.launcher_gateway_status()["gateway"]["scopes"]["file_write"] is True
     finally:
         ws_runtime.unregister_sid(sid)
 
@@ -176,6 +210,25 @@ def test_gateway_control_requires_csrf_and_waits_for_ack(monkeypatch) -> None:
         assert result["status"]["gateway"]["master_enabled"] is False
     finally:
         ws_runtime.unregister_sid(sid)
+
+
+def test_gateway_scope_control_requires_explicit_file_write() -> None:
+    handler = launcher_gateway_control.LauncherGatewayControl(None, None)
+    result = asyncio.run(
+        handler.process(
+            {
+                "action": "replace_scopes",
+                "scopes": {
+                    "files": True,
+                    "code_execution": True,
+                    "browser": False,
+                    "computer_use": False,
+                },
+            },
+            None,
+        )
+    )
+    assert result.status_code == 400
 
 
 def test_gateway_control_acknowledgement_timeout(monkeypatch) -> None:

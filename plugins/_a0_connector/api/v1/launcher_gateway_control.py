@@ -18,7 +18,7 @@ from plugins._a0_connector.helpers.ws_runtime import (
 
 _CONTROL_EVENT = "connector_gateway_control"
 _CONTROL_TIMEOUT_SECONDS = 8.0
-_SCOPE_KEYS = ("files", "code_execution", "browser", "computer_use")
+_SCOPE_KEYS = ("files", "file_write", "code_execution", "browser", "computer_use")
 
 
 class LauncherGatewayControl(connector_base.ProtectedConnectorApiHandler):
@@ -41,11 +41,13 @@ class LauncherGatewayControl(connector_base.ProtectedConnectorApiHandler):
                 not isinstance(scopes.get(key), bool) for key in _SCOPE_KEYS
             ):
                 return Response(
-                    "scopes must contain boolean files, code_execution, browser, and computer_use values",
+                    "scopes must contain boolean files, file_write, code_execution, browser, and computer_use values",
                     status=400,
                 )
             normalized = {key: scopes[key] for key in _SCOPE_KEYS}
             if not normalized["files"]:
+                normalized["file_write"] = False
+            if not normalized["file_write"]:
                 normalized["code_execution"] = False
             payload["scopes"] = normalized
         elif action != "emergency_disconnect":

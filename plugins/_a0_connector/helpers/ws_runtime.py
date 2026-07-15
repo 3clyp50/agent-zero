@@ -208,7 +208,7 @@ _GATEWAY_STATES = {
     "error",
     "disconnected",
 }
-_GATEWAY_SCOPE_KEYS = ("files", "code_execution", "browser", "computer_use")
+_GATEWAY_SCOPE_KEYS = ("files", "file_write", "code_execution", "browser", "computer_use")
 
 
 def _bounded_gateway_status(value: Any, *, depth: int = 0) -> Any:
@@ -250,10 +250,14 @@ def store_sid_launcher_gateway_metadata(
 
     raw_scopes = payload.get("scopes")
     scopes = {
-        key: bool(raw_scopes.get(key)) if isinstance(raw_scopes, dict) else False
+        key: bool(
+            raw_scopes.get(key, raw_scopes.get("files") if key == "file_write" else False)
+        ) if isinstance(raw_scopes, dict) else False
         for key in _GATEWAY_SCOPE_KEYS
     }
     if not scopes["files"]:
+        scopes["file_write"] = False
+    if not scopes["file_write"]:
         scopes["code_execution"] = False
     master_enabled = bool(payload.get("master_enabled", True))
     state = str(payload.get("state", "connected") or "").strip().lower()

@@ -36,6 +36,9 @@
   WebUI mutations require CSRF, await the matching acknowledgement, and return
   refreshed status. Never let the WebUI select a host folder or personal
   browser profile.
+- Launcher gateway scopes expose file reading and writing separately. File
+  writing depends on reading, and Code execution depends on file writing. Keep
+  older gateway declarations without `file_write` read/write compatible.
 - The `chat-top-end` Launcher gateway extension renders only when the user agent
   includes `A0-Launcher/`. It may show status, master/scope controls,
   preparation errors, and Emergency disconnect; standard browser sessions must
