@@ -113,7 +113,7 @@
       x-show="$store.launcherGateway.gateway"
       :disabled="$store.launcherGateway.saving"
       @click="$store.launcherGateway.emergencyDisconnect()"
-    >Emergency disconnect</button>
+    >Disconnect</button>
   </section>
 </div>
 
@@ -136,7 +136,7 @@
   .launcher-gateway-host-icon.is-placeholder { opacity: .55; }
   .launcher-gateway-popover {
     position: absolute; top: calc(100% + .45rem); right: 0; z-index: 1200; width: min(20rem, calc(100vw - 2rem));
-    padding: .8rem; border: 1px solid var(--color-border); border-radius: var(--border-radius);
+    padding: .8rem; border: 1px solid var(--color-border); border-radius: var(--border-radius-sm);
     background: var(--color-panel); box-shadow: 0 16px 42px rgba(0, 0, 0, .24);
   }
   .launcher-gateway-header { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }

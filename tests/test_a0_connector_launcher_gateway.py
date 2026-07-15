@@ -78,7 +78,10 @@ def test_launcher_gateway_indicator_joins_sync_status_without_visual_noise() -> 
     assert "launcher-gateway-trigger-label" not in source
     assert "launcher-gateway-dot" not in source
     assert ":title=" not in source
-    assert "border-radius: var(--border-radius);" in source
+    assert ">Disconnect</button>" in source
+    assert "Emergency disconnect" not in source
+    popover_css = source.split(".launcher-gateway-popover {", 1)[1].split("}", 1)[0]
+    assert "border-radius: var(--border-radius-sm);" in popover_css
 
 
 def test_launcher_gateway_is_fallback_after_context_bound_cli() -> None:

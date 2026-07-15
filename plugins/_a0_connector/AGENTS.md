@@ -32,7 +32,8 @@
   socket with the same ID replaces stale state; distinct simultaneous IDs fail
   closed as Multiple hosts.
 - `connector_gateway_control` and `connector_gateway_control_result` cover
-  master state, complete scope replacement, and emergency disconnect. Protected
+  master state, complete scope replacement, and Disconnect
+  (`emergency_disconnect` on the wire). Protected
   WebUI mutations require CSRF, await the matching acknowledgement, and return
   refreshed status. Never let the WebUI select a host folder or personal
   browser profile.
@@ -41,7 +42,7 @@
   older gateway declarations without `file_write` read/write compatible.
 - The `sync-status-end` Launcher gateway extension renders only when the user agent
   includes `A0-Launcher/`. It may show status, master/scope controls,
-  preparation errors, and Emergency disconnect; standard browser sessions must
+  preparation errors, and Disconnect; standard browser sessions must
   not expose it. Keep its trigger inside the existing sync indicator, render one
   computer glyph per connected Launcher gateway, and retain one muted glyph
   while disconnected so the control remains reachable. Do not add a native
