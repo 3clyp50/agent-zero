@@ -52,7 +52,9 @@
   border-radius tokens for its controls and popover. After Disconnect is
   acknowledged, keep the popover open and turn that same action into Reconnect;
   use only the narrow Launcher WebContents bridge so this also works in a
-  detached Instance window. Pausing remains the reversible master switch.
+  detached Instance window. `/computer-use on` may use that same bounded bridge
+  to request approval for the current lease, while `/computer-use off` disables
+  only the gateway scope. Pausing remains the reversible master switch.
 - File operation results may arrive as chunked JSON/base64
   `connector_file_op_result` frames; resolve the pending file operation only
   after all chunks for the `op_id` are assembled.

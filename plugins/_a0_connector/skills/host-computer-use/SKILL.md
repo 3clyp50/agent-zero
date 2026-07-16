@@ -17,7 +17,7 @@ triggers:
 
 # Host Computer Use
 
-This skill unlocks the beta `computer_use_remote` tool for connected local desktop control through A0 CLI. Prefer native background-safe computer use when the connected backend advertises window and element-index features.
+This skill unlocks the beta `computer_use_remote` tool for connected local desktop control through A0 CLI or a Launcher host gateway. Prefer native background-safe computer use when the connected backend advertises window and element-index features.
 
 ## When to Use
 
@@ -31,7 +31,7 @@ If the task needs shell execution on the CLI host, load `host-code-execution` se
 
 This skill controls the user's connected host/local computer through A0 CLI. It is not the built-in Linux Desktop/Xpra skill.
 
-Never switch to `linux-desktop`, the Agent Zero Desktop/Xpra surface, `desktopctl.sh`, `code_execution_tool`, or Docker/server shell commands as a fallback for host screen actions such as screenshots, clicking, typing, desktop state changes, or checking visible host UI. Those paths only see the internal Agent Zero runtime. If `computer_use_remote` is unavailable, disabled, or needs re-arming, stop and ask the user to run `/computer-use on` in the A0 CLI and approve the platform permission prompt.
+Never switch to `linux-desktop`, the Agent Zero Desktop/Xpra surface, `desktopctl.sh`, `code_execution_tool`, or Docker/server shell commands as a fallback for host screen actions such as screenshots, clicking, typing, desktop state changes, or checking visible host UI. Those paths only see the internal Agent Zero runtime. If `computer_use_remote` is unavailable, disabled, or needs re-arming, stop and ask the user to run `/computer-use on` in the A0 Launcher chat when using Launcher Host access, or in A0 CLI otherwise, and approve the platform permission prompt.
 
 ## Browser Boundary
 
@@ -68,9 +68,9 @@ Arguments:
 - `key`: `key` or `keys`
 - `type`: `text`, optional `submit` boolean
 
-Availability, backend support, and trust mode are checked when the tool runs. If no CLI is connected or local computer use is disabled, tell the user what to enable instead of using the server environment.
+Availability, backend support, and trust mode are checked when the tool runs. If no A0 CLI or Launcher host gateway is connected, or local computer use is disabled, tell the user what to enable instead of using the server environment.
 
-If any tool result contains `COMPUTER_USE_REARM_REQUIRED` or `status=rearm required`, stop the computer-use sequence immediately. Do not retry `start_session`, do not call `capture`, and do not use shell, vision, or screenshot fallbacks to bypass it. Tell the user that the A0 CLI has Computer Use configured but the installed desktop-control backend is not armed; they should run `/computer-use on` in the A0 CLI and approve the platform permission prompt if shown.
+If any tool result contains `COMPUTER_USE_REARM_REQUIRED` or `status=rearm required`, stop the computer-use sequence immediately. Do not retry `start_session`, do not call `capture`, and do not use shell, vision, or screenshot fallbacks to bypass it. Tell the user that the connected host has Computer Use configured but the installed desktop-control backend is not armed; they should run `/computer-use on` in the A0 Launcher chat when using Launcher Host access, or in A0 CLI otherwise, and approve the platform permission prompt if shown.
 
 ## Core Loop
 

@@ -1,12 +1,12 @@
 ### computer_use_remote
 
-Shown when a connected A0 CLI advertises enabled Computer Use (`/computer-use on`) and does not need re-arming. Runtime-gated beta desktop control through that CLI on the user's host machine. Availability, backend support, and trust mode are checked when the tool runs, together with CLI presence, local enablement, and re-arm state. Computer Use enablement is scoped to the current CLI session, not scoped to a single chat context.
+Shown when a connected A0 CLI or Launcher host gateway advertises enabled Computer Use (`/computer-use on`) and does not need re-arming. Runtime-gated beta desktop control through that host bridge on the user's machine. Availability, backend support, and trust mode are checked when the tool runs, together with host-bridge presence, local enablement, and re-arm state. Computer Use enablement is scoped to the current CLI session or Launcher Host access lease, not scoped to a single chat context.
 
 Use this for native host desktop UI inspection, screenshots, background-safe window/element actions when supported, clicking, scrolling, typing, key presses, and status checks. Do not use it for ordinary web-page navigation or host-browser control; use the browser tool for web pages unless browser automation cannot express the task. For complex desktop workflows, load and follow skill `host-computer-use` before proceeding.
 
 This is the only desktop-control path for the user's connected host/local computer. Do not substitute the `linux-desktop` skill, the Agent Zero Desktop/Xpra surface, `desktopctl.sh`, `code_execution_tool`, or Docker/server shell commands for host screen actions; those target the internal Agent Zero runtime and cannot see or control the user's host screen.
 
-If the tool reports no CLI, disabled computer use, or `COMPUTER_USE_REARM_REQUIRED`, stop and tell the user to run `/computer-use on` in A0 CLI and approve any host permission prompt.
+If the tool reports no CLI/Launcher host bridge, disabled computer use, or `COMPUTER_USE_REARM_REQUIRED`, stop and tell the user to run `/computer-use on` in the A0 Launcher chat when using Launcher Host access, or in A0 CLI otherwise, and approve any host permission prompt.
 
 Call `start_session` before screen-driven tasks. Use `status` for state only, `capture` for screenshots without an action, and `stop_session` when the desktop task is complete. Read `backend_id`, `backend_family`, `features`, and the structured `capabilities` object in status/session results. When capabilities report native windows, window state, element indexes, and background dispatch, prefer `list_windows` -> `get_window_state` -> `element_action` with `dispatch: "background"` before using global coordinates. Interactive coordinate actions should use normalized global-screen coordinates from the most recent capture.
 

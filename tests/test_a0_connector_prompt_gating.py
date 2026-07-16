@@ -268,6 +268,7 @@ def test_computer_use_remote_prompt_keeps_runtime_failures_actionable():
     assert "disabled computer use" in prompt
     assert "COMPUTER_USE_REARM_REQUIRED" in prompt
     assert "/computer-use on" in prompt
+    assert "A0 Launcher chat" in prompt
 
 
 def test_computer_use_remote_prompt_requires_visual_verification_after_actions():

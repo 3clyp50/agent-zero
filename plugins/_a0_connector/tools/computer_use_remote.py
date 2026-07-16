@@ -487,8 +487,9 @@ class ComputerUseRemote(Tool):
             return (
                 "COMPUTER_USE_REARM_REQUIRED: "
                 f"{detail} Stop using computer_use_remote for now; ask the user to re-arm "
-                "Computer Use in the A0 CLI with /computer-use on and approve the platform "
-                "permission prompt if shown. "
+                "Computer Use with /computer-use on in the A0 Launcher chat when using "
+                "Launcher Host access, or in A0 CLI, and approve the platform permission "
+                "prompt if shown. "
                 "Do not retry or use screenshot fallbacks."
             )
         if code:

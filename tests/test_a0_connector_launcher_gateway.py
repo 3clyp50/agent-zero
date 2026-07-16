@@ -100,6 +100,20 @@ def test_launcher_gateway_disconnect_becomes_reconnect_through_the_launcher_brid
     assert 'state: "connecting", connected: false, gateway: null' in source
 
 
+def test_launcher_computer_use_command_uses_the_bounded_approval_bridge() -> None:
+    root = Path(__file__).parents[1]
+    gateway_source = (
+        root / "plugins" / "_a0_connector" / "webui" / "launcher-gateway-store.js"
+    ).read_text(encoding="utf-8")
+    commands_source = (
+        root / "plugins" / "_commands" / "webui" / "commands-slash-store.js"
+    ).read_text(encoding="utf-8")
+
+    assert "async setComputerUse(enabled)" in gateway_source
+    assert "window.a0LauncherHost.rearmComputerUse()" in gateway_source
+    assert 'type === "computer_use"' in commands_source
+
+
 def test_launcher_gateway_is_fallback_after_context_bound_cli() -> None:
     context_id = f"ctx-{uuid.uuid4()}"
     cli_sid = _sid("cli")

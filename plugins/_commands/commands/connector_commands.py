@@ -57,7 +57,7 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
     if command == "attach":
         return _effects({"type": "attach_files"})
     if command == "computer-use":
-        return _show_markdown("Computer Use", _computer_use_status(context_id, raw_args))
+        return _handle_computer_use(context_id, raw_args)
     if command == "copy":
         return _effects({"type": "copy_transcript"})
     if command == "status":
@@ -141,6 +141,30 @@ def _handle_browser(context: AgentContext | None, raw_args: str) -> dict[str, An
         mark_dirty_for_context(context.id, reason="plugins._commands.browser_runtime")
     label = "Host browser through A0 CLI" if settings["runtime_backend"] == "host_required" else "Internal Docker browser"
     return _effects(_toast(f"Browser runtime set to {label}."))
+
+
+def _handle_computer_use(context_id: str, raw_args: str) -> dict[str, Any]:
+    action = (
+        "-".join(
+            part.strip().lower().replace("_", "-") for part in raw_args.split()
+        )
+        or "status"
+    )
+    enabled = action in {"on", "enable", "enabled", "true", "yes", "1"}
+    disabled = action in {"off", "disable", "disabled", "false", "no", "0"}
+    if enabled or disabled:
+        command = "on" if enabled else "off"
+        return _effects(
+            {
+                "type": "computer_use",
+                "enabled": enabled,
+                "fallback": (
+                    "Computer Use permissions are controlled on the connected host. "
+                    f"Run `/computer-use {command}` in the A0 CLI terminal."
+                ),
+            }
+        )
+    return _show_markdown("Computer Use", _computer_use_status(context_id))
 
 
 def _browser_status(context: AgentContext | None) -> str:
@@ -267,25 +291,21 @@ def _status(context: AgentContext | None) -> str:
     )
 
 
-def _computer_use_status(context_id: str, raw_args: str) -> str:
+def _computer_use_status(context_id: str) -> str:
     from plugins._a0_connector.helpers import ws_runtime
 
-    action = "-".join(part.strip().lower().replace("_", "-") for part in raw_args.split()) or "status"
-    sids = ws_runtime.remote_tool_sids_for_context(context_id) if context_id else sorted(ws_runtime.connected_sids())
+    sids = (
+        ws_runtime.remote_tool_sids_for_context(context_id)
+        if context_id
+        else sorted(ws_runtime.connected_sids())
+    )
     if not sids:
         return (
-            "No A0 CLI is connected to this WebUI session.\n\n"
-            "Computer Use requires the CLI because the desktop permission prompt and native backend live on the CLI host. "
-            "Start A0 CLI, connect it to this Agent Zero instance, then run `/computer-use on` in the CLI."
+            "No A0 CLI or Launcher host gateway is connected to this WebUI session.\n\n"
+            "Open this Instance in A0 Launcher with Host access, or connect A0 CLI, then run `/computer-use on`."
         )
 
-    if action in {"on", "off", "enable", "disable", "enabled", "disabled", "true", "false", "yes", "no", "1", "0"}:
-        return (
-            "Computer Use must be armed from the connected A0 CLI because it controls local desktop permissions.\n\n"
-            "Run `/computer-use on` or `/computer-use off` in the CLI terminal."
-        )
-
-    lines = ["Connected A0 CLI sessions:"]
+    lines = ["Connected host-control sessions:"]
     for sid in sids:
         metadata = ws_runtime.computer_use_metadata_for_sid(sid) or {}
         if not metadata:
@@ -297,7 +317,9 @@ def _computer_use_status(context_id: str, raw_args: str) -> str:
         detail = str(metadata.get("last_error") or metadata.get("support_reason") or "").strip()
         suffix = f" ({detail})" if detail else ""
         lines.append(f"- `{sid}`: {state}, {supported}, status: {status}{suffix}")
-    lines.append("\nUse `/computer-use on|off|status` in the CLI to change local Computer Use.")
+    lines.append(
+        "\nUse `/computer-use on|off` in A0 Launcher or A0 CLI to change local Computer Use."
+    )
     return "\n".join(lines)
 
 

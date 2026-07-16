@@ -419,6 +419,35 @@ const model = {
         );
         continue;
       }
+      if (type === "computer_use") {
+        hadToast = true;
+        if (typeof window.a0LauncherHost?.getState !== "function") {
+          notifyInfo(
+            "Computer Use",
+            String(effect.fallback || "Run this command in A0 CLI."),
+          );
+          continue;
+        }
+        try {
+          const { store } = await import(
+            "/plugins/_a0_connector/webui/launcher-gateway-store.js"
+          );
+          const enabled = Boolean(effect.enabled);
+          if (!await store.setComputerUse(enabled)) {
+            hadError = true;
+            continue;
+          }
+          notifySuccess(
+            enabled
+              ? "Computer Use permission requested. Approve the system dialog."
+              : "Computer Use is off for this Launcher host.",
+          );
+        } catch (error) {
+          hadError = true;
+          notifyError(error?.message || "Computer Use could not be changed.");
+        }
+        continue;
+      }
       if (type === "goal_changed") {
         window.dispatchEvent(new CustomEvent("goal:changed", { detail: effect }));
         continue;

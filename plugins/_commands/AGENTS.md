@@ -30,6 +30,9 @@
 - On startup, `_commands` copies legacy `usr/plugins/commands` command and skill files into `usr/plugins/_commands` without overwriting existing files, copies scoped legacy command folders to `_commands`, and disables the legacy `commands` plugin roots to prevent duplicate WebUI popovers.
 - Script commands must expose `run(payload)` and return a string or a dict with `text` and optional `effects`; `show_markdown` effects render as auto-dismissing toast notifications.
 - Script commands may emit `send_message` with `text` to submit the rendered composer text immediately after command resolution.
+- Built-in `/computer-use on|off` emits a bounded `computer_use` effect. A
+  Launcher-owned WebUI applies it to that tab's Host access lease; an ordinary
+  WebUI directs the user to run the same command in A0 CLI.
 
 ## Work Guidance
 

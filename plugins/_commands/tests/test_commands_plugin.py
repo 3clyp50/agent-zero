@@ -233,6 +233,34 @@ def test_models_command_always_opens_modal():
     }
 
 
+@pytest.mark.parametrize(("argument", "enabled"), [("on", True), ("off", False)])
+def test_computer_use_command_dispatches_to_launcher_or_cli(
+    argument: str,
+    enabled: bool,
+):
+    result = connector_commands.run(
+        {
+            "invocation": {
+                "command_name": "computer-use",
+                "raw_arguments": argument,
+            },
+            "context": {"context_id": ""},
+        }
+    )
+
+    assert result["text"] == ""
+    assert result["effects"] == [
+        {
+            "type": "computer_use",
+            "enabled": enabled,
+            "fallback": (
+                "Computer Use permissions are controlled on the connected host. "
+                f"Run `/computer-use {argument}` in the A0 CLI terminal."
+            ),
+        }
+    ]
+
+
 @pytest.mark.asyncio
 async def test_commands_api_crud_and_resolve_text_and_script(
     scope_fixture: ScopeFixture,

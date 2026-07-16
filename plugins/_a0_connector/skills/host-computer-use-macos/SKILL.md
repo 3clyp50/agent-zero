@@ -82,6 +82,6 @@ When a visible close/minimize/full-screen button or menu item is accessible in t
 
 ## Permissions
 
-macOS Screen Recording affects screenshots. Accessibility/Input Monitoring affect structural targeting and input. If `computer_use_remote` returns `COMPUTER_USE_REARM_REQUIRED`, `COMPUTER_USE_APPROVAL_REQUIRED`, or `status=rearm required`, stop immediately and ask the user to run `/computer-use on` in the A0 CLI and approve the macOS prompt if shown.
+macOS Screen Recording affects screenshots. Accessibility/Input Monitoring affect structural targeting and input. If `computer_use_remote` returns `COMPUTER_USE_REARM_REQUIRED`, `COMPUTER_USE_APPROVAL_REQUIRED`, or `status=rearm required`, stop immediately and ask the user to run `/computer-use on` in the A0 Launcher chat when using Launcher Host access, or in A0 CLI otherwise, and approve the macOS prompt if shown.
 
 Do not bypass a permission failure with server screenshots, Docker commands, `linux-desktop`, or browser fallbacks.

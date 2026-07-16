@@ -109,7 +109,34 @@ const model = {
     };
     if (!scopes.files) scopes.file_write = false;
     if (!scopes.file_write) scopes.code_execution = false;
-    await this.control({ action: "replace_scopes", scopes });
+    return this.control({ action: "replace_scopes", scopes });
+  },
+
+  async setComputerUse(enabled) {
+    if (!this.gateway) await this.refresh();
+    if (!this.gateway) throw new Error("Launcher Host access is not connected.");
+    if (!this.gateway.master_enabled) {
+      throw new Error("Launcher Host access is paused. Resume it first.");
+    }
+
+    const requested = Boolean(enabled);
+    if (requested && typeof window.a0LauncherHost?.rearmComputerUse !== "function") {
+      throw new Error(
+        "This A0 Launcher cannot request Computer Use permission. Update it or use A0 CLI.",
+      );
+    }
+    if (Boolean(this.gateway.scopes?.computer_use) !== requested) {
+      if (!await this.setScope("computer_use", requested)) return false;
+    }
+    if (!requested) return true;
+
+    const response = await window.a0LauncherHost.rearmComputerUse();
+    if (!response?.ok) {
+      throw new Error(
+        response?.message || "Computer Use permission could not be requested.",
+      );
+    }
+    return true;
   },
 
   async emergencyDisconnect() {
