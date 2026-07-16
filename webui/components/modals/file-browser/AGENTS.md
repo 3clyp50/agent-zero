@@ -19,6 +19,7 @@
 - Empty mounted startup states must self-heal to the `$WORK_DIR` default instead of rendering a blank path and empty list.
 - Preserve picker modes for Editor Open and Save As: Editor Open selects one or more Markdown or plain text files with a pinned primary action, and Save As selects the current folder plus a `.md` or `.txt` file name.
 - Keep the row-level Open in Editor action visible outside the overflow menu for Editor-owned `.md` and `.txt` files.
+- Keep Extract available for supported archive files; extraction must create a new sibling folder and reject unsafe member paths and links.
 - Keep row action menus visible without disabling file-list scrolling; menus may float outside the scroll container but must still close on outside click, Escape, action click, and list scroll.
 - Keep the file list readable in narrow canvas/modal containers by hiding the Modified date column before sacrificing the Name or Size columns.
 - Keep New file and New folder controls icon-only across canvas and modal modes while preserving accessible labels.

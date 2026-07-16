@@ -1303,6 +1303,14 @@ const model = {
     }
   },
 
+  async downloadActiveFile() {
+    if (!this.session || this.saving || !this.isTextDocument()) return;
+    if (this.dirty) await this.save();
+    if (this.dirty) return;
+    const path = this.session.path || this.session.document?.path;
+    if (path) fileBrowserStore.downloadFile({ path, name: this.tabTitle() });
+  },
+
   async saveAs() {
     if (!this.session || this.saving || !this.isTextDocument()) return;
     this.applyPreviewEdit({ silent: true });

@@ -30,6 +30,7 @@ const BROWSER_EXTENSIONS = new Set([
   "bmp",
   "ico",
 ]);
+const ARCHIVE_SUFFIXES = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar", ".tgz", ".tbz", ".tbz2", ".txz", ".zip", ".rar", ".7z", ".gz", ".bz2", ".xz", ".zst"];
 
 const SURFACE_ACTIONS = {
   editor: {
@@ -324,9 +325,7 @@ const model = {
   },
 
   isArchive(filename) {
-    const archiveExts = ["zip", "tar", "gz", "rar", "7z"];
-    const ext = filename.split(".").pop().toLowerCase();
-    return archiveExts.includes(ext);
+    return ARCHIVE_SUFFIXES.some((suffix) => String(filename || "").toLowerCase().endsWith(suffix));
   },
 
   saveScrollPosition() {
@@ -1118,6 +1117,29 @@ const model = {
   },
 
   // --- File actions --------------------------------------------------------
+  async extractArchive(file = {}) {
+    if (!file?.path || !this.isArchive(file.name) || this.isBulkBusy) return;
+    this.isBulkBusy = true;
+    this.closeDropdown();
+    try {
+      const resp = await fetchApi("/extract_work_dir_archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: file.path, currentPath: this.browser.currentPath }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || data.error) throw new Error(data.error || "Archive extraction failed");
+      this.browser.entries = this.decorateEntries(data.data?.entries || []);
+      this.browser.currentPath = data.data?.current_path || this.browser.currentPath;
+      this.browser.parentPath = data.data?.parent_path || this.browser.parentPath;
+      window.toastFrontendSuccess(`Extracted to ${data.extracted_path || "a new folder"}`, "Archive Extracted");
+    } catch (error) {
+      window.toastFrontendError(error?.message || "Archive extraction failed", "Archive Extract Error");
+    } finally {
+      this.isBulkBusy = false;
+    }
+  },
+
   async deleteFile(file) {
     try {
       const resp = await fetchApi("/delete_work_dir_file", {

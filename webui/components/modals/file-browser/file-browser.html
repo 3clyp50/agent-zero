@@ -303,6 +303,16 @@
                               <button
                                 type="button"
                                 class="dropdown-item"
+                                x-show="!file.is_dir && $store.fileBrowser.isArchive(file.name)"
+                                @click="$store.fileBrowser.extractArchive(file)"
+                              >
+                                <span class="material-symbols-outlined">unarchive</span>
+                                <span>Extract</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                class="dropdown-item"
                                 @click="$store.fileBrowser.openRenameModal(file)"
                               >
                                 <span class="material-symbols-outlined">drive_file_rename_outline</span>

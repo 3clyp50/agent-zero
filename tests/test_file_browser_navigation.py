@@ -128,6 +128,23 @@ def test_file_browser_editor_picker_modes_have_primary_footer_actions() -> None:
     assert 'x-show="$store.fileBrowser.canOpenInActionMenu(file)"' in html
 
 
+def test_file_browser_extract_and_editor_download_actions() -> None:
+    browser_html = read("webui", "components", "modals", "file-browser", "file-browser.html")
+    browser_store = read("webui", "components", "modals", "file-browser", "file-browser-store.js")
+    editor_html = read("plugins", "_editor", "webui", "editor-panel.html")
+    editor_store = read("plugins", "_editor", "webui", "editor-store.js")
+
+    assert 'x-show="!file.is_dir && $store.fileBrowser.isArchive(file.name)"' in browser_html
+    assert '$store.fileBrowser.extractArchive(file)' in browser_html
+    assert "ARCHIVE_SUFFIXES" in browser_store
+    assert 'fetchApi("/extract_work_dir_archive"' in browser_store
+    assert "async extractArchive(file = {})" in browser_store
+    assert "<span>Extract</span>" in browser_html
+    assert "downloadActiveFile()" in editor_store
+    assert "$store.editor.downloadActiveFile()" in editor_html
+    assert "<span>Download</span>" in editor_html
+
+
 def test_file_browser_dropdown_escapes_scroll_container_and_header_is_opaque() -> None:
     html = read("webui", "components", "modals", "file-browser", "file-browser.html")
     store = read("webui", "components", "modals", "file-browser", "file-browser-store.js")
