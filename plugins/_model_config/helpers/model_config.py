@@ -151,7 +151,11 @@ def save_project_llm_settings(project_name: str, llm_data: object) -> None:
 
     config = llm_data.get("config")
     config_scope = str(llm_data.get("config_scope") or "")
-    config_is_inherited = config_scope == "inherited" and not project_config_exists
+    config_is_inherited = not project_config_exists and (
+        config_scope == "inherited"
+        or isinstance(selected_preset, dict)
+        and selected_preset.get("scope") == "current"
+    )
     should_save_config = (
         project_config_exists
         or config_scope == "project"

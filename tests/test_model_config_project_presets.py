@@ -418,6 +418,8 @@ def test_project_save_does_not_freeze_inherited_global_model_config(
     project_data = projects.load_edit_project_data("demo")
     assert project_data["llm"]["config_scope"] == "inherited"
     assert project_data["llm"]["has_project_config"] is False
+    project_data["llm"].pop("config_scope")
+    project_data["llm"].pop("has_project_config")
 
     projects.update_project("demo", project_data)
 
