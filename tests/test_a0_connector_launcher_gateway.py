@@ -73,6 +73,7 @@ def test_launcher_gateway_indicator_joins_sync_status_without_visual_noise() -> 
     )
 
     assert '<x-extension id="sync-status-end"></x-extension>' in sync_status
+    assert sync_status.count("<circle") == 1
     assert ":title=" not in sync_status
     assert 'x-for="(gateway, index)' in source
     assert "launcher-gateway-trigger-label" not in source
