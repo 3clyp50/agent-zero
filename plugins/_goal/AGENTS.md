@@ -13,6 +13,7 @@
 - `commands/` owns the `/goal` slash command contributed to `_commands`.
 - `webui/` and `extensions/webui/` own the composer goal strip and inline controls.
 - `tools/` and `prompts/` own agent-facing goal inspection, creation, and status update behavior.
+- `tools/response.py` overrides the core response tool so an active goal continues the current monologue.
 - `extensions/python/message_loop_prompts_after/` owns injecting the active goal into agent context.
 
 ## Local Contracts
@@ -23,6 +24,7 @@
 - User controls may pause, resume, edit, or delete a goal; destructive delete uses inline confirmation. Model tools may create goals and mark them complete or blocked.
 - `/goal <objective>` creates the goal and sends the objective as the user message so the agent starts working immediately.
 - `/goal auto` fills the composer with a prompt asking the agent to create and manage its own goal instead of silently sending a message.
+- While a goal is active, response-tool calls are intermediate updates; only completing or blocking the goal restores normal loop termination.
 - Goal UI feedback uses toast notifications and inline controls, not modal dialogs.
 
 ## Work Guidance

@@ -12,7 +12,7 @@
 - `api/commands.py` owns the Commands API actions used by the WebUI.
 - `webui/` owns the manager/editor modal stores, HTML surfaces, and thumbnail asset.
 - `commands/` owns bundled read-only slash command definitions shipped by `_commands`.
-- `extensions/` owns the chat composer slash picker.
+- `extensions/` owns the chat composer slash picker and incoming-message command resolution.
 - `extensions/python/startup_migration/` owns one-time migration from the legacy community `commands` plugin namespace.
 - `skills/commands-create-slash-command/` owns the agent-facing authoring workflow for reusable slash commands.
 - `tests/` owns regression coverage for parsing, CRUD, scope precedence, plugin-distributed commands, legacy migration, and skill discovery.
@@ -30,6 +30,8 @@
 - On startup, `_commands` copies legacy `usr/plugins/commands` command and skill files into `usr/plugins/_commands` without overwriting existing files, copies scoped legacy command folders to `_commands`, and disables the legacy `commands` plugin roots to prevent duplicate WebUI popovers.
 - Script commands must expose `run(payload)` and return a string or a dict with `text` and optional `effects`; `show_markdown` effects render as auto-dismissing toast notifications.
 - Script commands may emit `send_message` with `text` to submit the rendered composer text immediately after command resolution.
+- Commands accept prefix syntax (`/goal objective`) and exact postfix syntax (`objective /goal`); ordinary mid-sentence mentions are not invocations.
+- WebUI sends resolve through the picker effect path, while backend-originated messages resolve before reaching the agent.
 - Built-in `/computer-use on|off` emits a bounded `computer_use` effect. A
   Launcher-owned WebUI applies it to that tab's Host access lease; an ordinary
   WebUI directs the user to run the same command in A0 CLI.

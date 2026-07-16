@@ -7,7 +7,7 @@ This plugin lets you define reusable `/commands` as `.command.yaml` files with e
 - a `.txt` template body
 - a `.py` script hook
 
-Commands are managed from the plugin modal and can be inserted directly from the chat composer when the first token starts with `/`.
+Commands are managed from the plugin modal and can be inserted directly from the chat composer with prefix syntax (`/goal objective`) or an exact trailing command (`objective /goal`).
 
 ## Features
 
@@ -15,6 +15,7 @@ Commands are managed from the plugin modal and can be inserted directly from the
 - Text template commands with `{}` placeholders and parsed args
 - Python hook commands with parsed args and optional chat history payload
 - Unified parser for positional args, free-form tail, and flags
+- Prefix and postfix command resolution for WebUI and remote/AI-sent messages
 - Scope-aware command resolution across project and global scopes
 - Built-in A0 CLI connector command pack for common session, queue, model, project, browser, and connector status commands
 - Slash picker in the chat composer with keyboard navigation and create-on-empty flow
@@ -75,6 +76,7 @@ def run(payload):
 The parser supports:
 
 - Positional input: `/scan https://github.com/org/repo`
+- Postfix input: `https://github.com/org/repo /scan`
 - Long flags: `/scan --git-url https://github.com/org/repo`
 - Long flags with equals: `/scan --git-url=https://github.com/org/repo`
 - Short flags and bundles: `/scan -v -q` or `/scan -vq`
@@ -138,7 +140,7 @@ When the built-in `_commands` plugin starts, it migrates files from the older co
 ## UI Surfaces
 
 - Plugin modal: manage project/global commands and create editable same-name overrides of bundled commands
-- Chat composer: type `/` at the start of the inline input to browse commands
+- Chat composer: type `/` at the start or as the final token to browse commands
 
 ## Agent Skill
 

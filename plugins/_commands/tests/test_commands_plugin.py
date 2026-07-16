@@ -5,6 +5,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 import pytest
 from flask import Flask
@@ -18,6 +19,9 @@ from helpers import files, projects, skills as skills_helper
 from initialize import initialize_agent
 from plugins._commands.api.commands import Commands
 from plugins._commands.commands import connector_commands
+from plugins._commands.extensions.python._functions.agent.AgentContext._process_chain.start._10_resolve_slash_command import (
+    ResolveSlashCommand,
+)
 from plugins._commands.helpers import commands as commands_helper
 
 
@@ -147,6 +151,36 @@ def test_parse_arguments_and_render_template_support_flags() -> None:
 
     invalid_invocation = commands_helper.parse_slash_invocation("/?")
     assert invalid_invocation["command_name"] == ""
+
+    postfix_invocation = commands_helper.parse_slash_invocation(
+        "Make goal execution tenacious\n/goal"
+    )
+    assert postfix_invocation["command_name"] == "goal"
+    assert postfix_invocation["raw_arguments"] == "Make goal execution tenacious"
+
+
+@pytest.mark.asyncio
+async def test_incoming_postfix_command_is_resolved_before_the_agent(
+    scope_fixture: ScopeFixture,
+) -> None:
+    command = _save_command(
+        scope_fixture,
+        name=f"Resolve {scope_fixture.prefix}",
+        description="Resolve a postfix command.",
+        body="Resolved: {raw}",
+    )
+    message = SimpleNamespace(message=f"from an AI /{command['name']}")
+    data = {
+        "args": (
+            SimpleNamespace(id=f"missing-{uuid.uuid4().hex}"),
+            None,
+            message,
+        )
+    }
+
+    await ResolveSlashCommand(agent=None).execute(data=data)
+
+    assert message.message == "Resolved: from an AI"
 
 
 def test_list_effective_commands_project_overrides_global(

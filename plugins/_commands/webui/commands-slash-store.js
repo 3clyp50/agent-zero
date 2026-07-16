@@ -24,8 +24,11 @@ function sanitizeCommandName(rawName) {
 
 function parseSlashInput(message) {
   const text = String(message || "");
-  const match = text.match(/^\s*\/([^\s]*)(?:\s+([\s\S]*))?$/);
-  if (!match) {
+  const prefixMatch = text.match(/^\s*\/([^\s]*)(?:\s+([\s\S]*))?$/);
+  const postfixMatch = prefixMatch
+    ? null
+    : text.match(/^([\s\S]*\S)\s+\/([^\s]*)\s*$/);
+  if (!prefixMatch && !postfixMatch) {
     return {
       active: false,
       query: "",
@@ -36,8 +39,8 @@ function parseSlashInput(message) {
 
   return {
     active: true,
-    query: (match[1] || "").trim().toLowerCase(),
-    rawArguments: match[2] || "",
+    query: (prefixMatch?.[1] || postfixMatch?.[2] || "").trim().toLowerCase(),
+    rawArguments: prefixMatch?.[2] || postfixMatch?.[1]?.trim() || "",
     rawMessage: text,
   };
 }
@@ -249,6 +252,23 @@ const model = {
 
     this.ensureSelection();
     void this.loadCommands();
+  },
+
+  async resolveBeforeSend(sendCtx) {
+    if (!sendCtx || this.applying) return;
+
+    const parsed = parseSlashInput(sendCtx.message);
+    const commandName = sanitizeCommandName(parsed.query);
+    if (!parsed.active || !commandName) return;
+
+    await this.loadCommands();
+    const command = this.commands.find((item) => item.name === commandName);
+    if (!command || !this.getInputElement()) return;
+
+    this.rawMessage = parsed.rawMessage;
+    this.rawArguments = parsed.rawArguments;
+    sendCtx.cancel = true;
+    await this.applySelection(command);
   },
 
   handleKeydown(event) {

@@ -11,6 +11,7 @@ from plugins._goal.commands import goal_command
 from plugins._goal.helpers import goals
 from plugins._goal.tools.create_goal import CreateGoal
 from plugins._goal.tools.get_goal import GetGoal
+from plugins._goal.tools.response import ResponseTool
 from plugins._goal.tools.update_goal import UpdateGoal
 
 
@@ -122,3 +123,38 @@ async def test_goal_api_and_agent_tools(context_id: str):
     create_response = await create_tool.execute(objective="Exercise tool path")
     assert "Goal created: Exercise tool path" == create_response.message
     assert goals.get_goal(context_id)["created_by"] == "model"
+
+
+@pytest.mark.asyncio
+async def test_active_goal_keeps_response_tool_running(context_id: str):
+    goals.create_goal(context_id, "Keep going")
+    recorded = []
+    fake_agent = SimpleNamespace(
+        context=SimpleNamespace(id=context_id),
+        hist_add_tool_result=lambda *args, **kwargs: recorded.append((args, kwargs)),
+    )
+    loop_data = SimpleNamespace(params_temporary={})
+    tool = ResponseTool(
+        fake_agent,
+        "response",
+        None,
+        {"text": "Can you decide?"},
+        "",
+        loop_data,
+    )
+
+    response = await tool.execute()
+    assert response.break_loop is False
+    response.additional["_responses_output_item"] = {"type": "function_call_output"}
+    await tool.after_execution(response)
+    assert recorded == [
+        (
+            ("response", response.message),
+            {"_responses_output_item": {"type": "function_call_output"}},
+        )
+    ]
+
+    goals.update_goal(context_id, status="complete")
+    response = await tool.execute()
+    assert response.break_loop is True
+    assert response.message == "Can you decide?"

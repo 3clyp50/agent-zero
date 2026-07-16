@@ -91,12 +91,23 @@ def parse_slash_invocation(raw_message: str, *, fallback_command: str = "") -> d
     """
     text = (raw_message or "").strip()
     slash_match = re.match(r"^/([^\s]+)(?:\s+([\s\S]*))?$", text)
+    postfix_match = (
+        None
+        if slash_match
+        else re.match(r"^([\s\S]*\S)\s+/([^\s]+)\s*$", text)
+    )
     if slash_match:
         try:
             command_name = sanitize_command_name(slash_match.group(1))
         except ValueError:
             command_name = sanitize_command_name(fallback_command) if fallback_command else ""
         raw_arguments = (slash_match.group(2) or "").strip()
+    elif postfix_match:
+        try:
+            command_name = sanitize_command_name(postfix_match.group(2))
+        except ValueError:
+            command_name = sanitize_command_name(fallback_command) if fallback_command else ""
+        raw_arguments = postfix_match.group(1).strip()
     else:
         command_name = sanitize_command_name(fallback_command) if fallback_command else ""
         raw_arguments = text
@@ -564,6 +575,31 @@ async def resolve_command_invocation(
         "invocation": invocation,
         "result": result,
     }
+
+
+async def resolve_message_command(
+    raw_message: str,
+    *,
+    context_id: str = "",
+) -> dict[str, Any] | None:
+    """Resolve a known prefix or postfix slash command from an incoming message."""
+    invocation = parse_slash_invocation(raw_message)
+    command_name = invocation["command_name"]
+    if not command_name:
+        return None
+
+    project_name = get_context_scope(context_id)["project_name"]
+    effective, _ = list_effective_commands(project_name)
+    command = next((item for item in effective if item["name"] == command_name), None)
+    if not command:
+        return None
+
+    return await resolve_command_invocation(
+        path=command["path"],
+        slash_text=raw_message,
+        project_name=project_name,
+        context_id=context_id,
+    )
 
 
 def _build_command_config(

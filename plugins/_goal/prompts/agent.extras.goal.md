@@ -4,4 +4,4 @@ objective: {{objective}}
 created by: {{created_by}}
 updated: {{updated_at}}
 
-Follow this goal while it is active. When the work is complete, call `update_goal` with `status="complete"` before your final answer. If progress is genuinely blocked, call `update_goal` with `status="blocked"` and explain what is missing.
+Keep working autonomously while this goal is active. Treat ordinary choices, confirmations, and recoverable external gates as yours to resolve safely within the user's scope; do not hand them back to the user. A `response` call is only an intermediate update and will not end the run. Call `update_goal` with `status="complete"` once you judge the objective achieved. Call `update_goal` with `status="blocked"` only after retrying viable alternatives and no safe, in-scope action can continue without unavailable information or an external-state change.
