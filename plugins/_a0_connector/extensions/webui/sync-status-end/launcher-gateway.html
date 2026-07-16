@@ -103,18 +103,20 @@
       </template>
     </div>
 
-    <p class="launcher-gateway-empty" x-show="!$store.launcherGateway.gateway">
-      Host access is not connected for this Launcher tab.
-    </p>
+    <p
+      class="launcher-gateway-empty"
+      x-show="!$store.launcherGateway.gateway"
+      x-text="$store.launcherGateway.unavailableMessage"
+    ></p>
 
     <button
       type="button"
       class="launcher-gateway-connection-action"
       :class="{ 'is-reconnect': !$store.launcherGateway.gateway }"
-      x-show="$store.launcherGateway.gateway || $store.launcherGateway.reconnectAvailable"
+      x-show="$store.launcherGateway.gateway || $store.launcherGateway.reconnectAvailable || $store.launcherGateway.canOpenSettings"
       :disabled="$store.launcherGateway.saving"
-      @click="$store.launcherGateway.gateway ? $store.launcherGateway.emergencyDisconnect() : $store.launcherGateway.reconnect()"
-      x-text="$store.launcherGateway.saving ? ($store.launcherGateway.gateway ? 'Disconnecting…' : 'Reconnecting…') : ($store.launcherGateway.gateway ? 'Disconnect' : 'Reconnect')"
+      @click="$store.launcherGateway.gateway ? $store.launcherGateway.emergencyDisconnect() : ($store.launcherGateway.reconnectAvailable ? $store.launcherGateway.reconnect() : $store.launcherGateway.openSettings())"
+      x-text="$store.launcherGateway.saving ? ($store.launcherGateway.gateway ? 'Disconnecting…' : ($store.launcherGateway.reconnectAvailable ? 'Reconnecting…' : 'Opening…')) : ($store.launcherGateway.gateway ? 'Disconnect' : ($store.launcherGateway.reconnectAvailable ? 'Reconnect' : 'Open Host access'))"
     ></button>
   </section>
 </div>

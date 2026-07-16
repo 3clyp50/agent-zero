@@ -51,10 +51,12 @@
   failures through the shared notification system. Use the standard WebUI
   border-radius tokens for its controls and popover. After Disconnect is
   acknowledged, keep the popover open and turn that same action into Reconnect;
-  use only the narrow Launcher WebContents bridge so this also works in a
-  detached Instance window. `/computer-use on` may use that same bounded bridge
-  to request approval for the current lease, while `/computer-use off` disables
-  only the gateway scope. Pausing remains the reversible master switch.
+  when Host access was turned off in Launcher settings, open that Launcher-owned
+  editor instead of silently re-granting access. Use only the narrow Launcher
+  WebContents bridge so both actions also work in a detached Instance window.
+  `/computer-use on` may use that same bounded bridge to request approval for
+  the current lease, while `/computer-use off` disables only the gateway scope.
+  Pausing remains the reversible master switch.
 - File operation results may arrive as chunked JSON/base64
   `connector_file_op_result` frames; resolve the pending file operation only
   after all chunks for the `op_id` are assembled.

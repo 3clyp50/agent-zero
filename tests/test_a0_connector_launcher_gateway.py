@@ -78,8 +78,9 @@ def test_launcher_gateway_indicator_joins_sync_status_without_visual_noise() -> 
     assert "launcher-gateway-trigger-label" not in source
     assert "launcher-gateway-dot" not in source
     assert ":title=" not in source
-    assert "'Disconnect' : 'Reconnect'" in source
-    assert "$store.launcherGateway.gateway ? $store.launcherGateway.emergencyDisconnect() : $store.launcherGateway.reconnect()" in source
+    assert "'Disconnect' : ($store.launcherGateway.reconnectAvailable ? 'Reconnect' : 'Open Host access')" in source
+    assert "$store.launcherGateway.reconnectAvailable ? $store.launcherGateway.reconnect() : $store.launcherGateway.openSettings()" in source
+    assert "'Reconnect' : 'Open Host access'" in source
     assert "Emergency disconnect" not in source
     popover_css = source.split(".launcher-gateway-popover {", 1)[1].split("}", 1)[0]
     assert "border-radius: var(--border-radius-sm);" in popover_css
@@ -95,7 +96,10 @@ def test_launcher_gateway_disconnect_becomes_reconnect_through_the_launcher_brid
     ).read_text(encoding="utf-8")
     assert "window.a0LauncherHost?.getState?.()" in source
     assert "window.a0LauncherHost?.reconnect?.()" in source
+    assert "window.a0LauncherHost?.openSettings?.()" in source
     assert 'typeof window.a0LauncherHost?.reconnect === "function"' in source
+    assert 'typeof window.a0LauncherHost?.openSettings === "function"' in source
+    assert "Host access is off in A0 Launcher." in source
     assert 'state: "disconnected", connected: false, gateway: null' in source
     assert 'state: "connecting", connected: false, gateway: null' in source
 

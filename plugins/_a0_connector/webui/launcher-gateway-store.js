@@ -21,6 +21,10 @@ const model = {
     return typeof window.a0LauncherHost?.reconnect === "function";
   },
 
+  get canOpenSettings() {
+    return typeof window.a0LauncherHost?.openSettings === "function";
+  },
+
   get gateway() {
     return this.state === "disconnected" ? null : this.status?.gateway || null;
   },
@@ -57,6 +61,16 @@ const model = {
     }
     if (this.status?.error) messages.push(this.status.error);
     return [...new Set(messages)];
+  },
+
+  get unavailableMessage() {
+    if (this.reconnectAvailable) return "Host access was disconnected for this Launcher tab.";
+    if (this.state === "disconnected") {
+      return this.canOpenSettings
+        ? "Host access is off in A0 Launcher."
+        : "Host access is off. Use the computer icon beside Reload in the Launcher header to turn it on.";
+    }
+    return "Open Host access in A0 Launcher for connection details.";
   },
 
   onMount() {
@@ -162,6 +176,24 @@ const model = {
         "Host access",
       );
       await this.refreshReconnectState();
+    } finally {
+      this.saving = false;
+    }
+  },
+
+  async openSettings() {
+    if (this.saving) return;
+    this.saving = true;
+    try {
+      const response = await window.a0LauncherHost?.openSettings?.();
+      if (!response?.ok) throw new Error(response?.message || "Host access settings could not open.");
+      this.open = false;
+    } catch (error) {
+      console.error("Failed to open Launcher host settings:", error);
+      void toastFrontendError(
+        error?.message || "Host access settings could not open.",
+        "Host access",
+      );
     } finally {
       this.saving = false;
     }
