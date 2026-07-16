@@ -11,13 +11,18 @@ const model = {
   saving: false,
   open: false,
   intervalId: null,
+  reconnectAvailable: false,
 
   get visible() {
     return /(?:^|\s)A0-Launcher\/[^\s]+/.test(navigator.userAgent);
   },
 
+  get canReconnect() {
+    return typeof window.a0LauncherHost?.reconnect === "function";
+  },
+
   get gateway() {
-    return this.status?.gateway || null;
+    return this.state === "disconnected" ? null : this.status?.gateway || null;
   },
 
   get state() {
@@ -75,6 +80,16 @@ const model = {
       this.status = { state: "error", gateway: null, error: error?.message || "Status unavailable" };
     } finally {
       this.loading = false;
+      await this.refreshReconnectState();
+    }
+  },
+
+  async refreshReconnectState() {
+    try {
+      const state = await window.a0LauncherHost?.getState?.();
+      this.reconnectAvailable = state?.reconnectAvailable === true;
+    } catch {
+      this.reconnectAvailable = false;
     }
   },
 
@@ -98,8 +113,31 @@ const model = {
   },
 
   async emergencyDisconnect() {
-    await this.control({ action: "emergency_disconnect" });
-    this.open = false;
+    if (await this.control({ action: "emergency_disconnect" })) {
+      this.reconnectAvailable = this.canReconnect;
+      this.status = { ...this.status, state: "disconnected", connected: false, gateway: null, gateways: [] };
+      if (!this.canReconnect) this.open = false;
+    }
+  },
+
+  async reconnect() {
+    if (this.saving) return;
+    this.saving = true;
+    try {
+      const response = await window.a0LauncherHost?.reconnect?.();
+      if (!response?.ok) throw new Error(response?.message || "Host access could not reconnect.");
+      this.reconnectAvailable = false;
+      this.status = { ...this.status, state: "connecting", connected: false, gateway: null, gateways: [] };
+    } catch (error) {
+      console.error("Failed to reconnect Launcher host:", error);
+      void toastFrontendError(
+        error?.message || "Host access could not reconnect.",
+        "Host access",
+      );
+      await this.refreshReconnectState();
+    } finally {
+      this.saving = false;
+    }
   },
 
   async control(payload) {
@@ -108,6 +146,7 @@ const model = {
     try {
       const response = await callJsonApi(CONTROL_API, payload);
       this.status = response?.status || this.status;
+      return true;
     } catch (error) {
       console.error("Failed to control Launcher host:", error);
       void toastFrontendError(
@@ -115,6 +154,7 @@ const model = {
         "Host access",
       );
       await this.refresh();
+      return false;
     } finally {
       this.saving = false;
     }

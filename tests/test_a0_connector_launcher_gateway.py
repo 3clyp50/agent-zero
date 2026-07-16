@@ -78,10 +78,26 @@ def test_launcher_gateway_indicator_joins_sync_status_without_visual_noise() -> 
     assert "launcher-gateway-trigger-label" not in source
     assert "launcher-gateway-dot" not in source
     assert ":title=" not in source
-    assert ">Disconnect</button>" in source
+    assert "'Disconnect' : 'Reconnect'" in source
+    assert "$store.launcherGateway.gateway ? $store.launcherGateway.emergencyDisconnect() : $store.launcherGateway.reconnect()" in source
     assert "Emergency disconnect" not in source
     popover_css = source.split(".launcher-gateway-popover {", 1)[1].split("}", 1)[0]
     assert "border-radius: var(--border-radius-sm);" in popover_css
+
+
+def test_launcher_gateway_disconnect_becomes_reconnect_through_the_launcher_bridge() -> None:
+    source = (
+        Path(__file__).parents[1]
+        / "plugins"
+        / "_a0_connector"
+        / "webui"
+        / "launcher-gateway-store.js"
+    ).read_text(encoding="utf-8")
+    assert "window.a0LauncherHost?.getState?.()" in source
+    assert "window.a0LauncherHost?.reconnect?.()" in source
+    assert 'typeof window.a0LauncherHost?.reconnect === "function"' in source
+    assert 'state: "disconnected", connected: false, gateway: null' in source
+    assert 'state: "connecting", connected: false, gateway: null' in source
 
 
 def test_launcher_gateway_is_fallback_after_context_bound_cli() -> None:

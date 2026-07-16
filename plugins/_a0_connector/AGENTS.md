@@ -42,14 +42,17 @@
   older gateway declarations without `file_write` read/write compatible.
 - The `sync-status-end` Launcher gateway extension renders only when the user agent
   includes `A0-Launcher/`. It may show status, master/scope controls,
-  preparation errors, and Disconnect; standard browser sessions must
+  preparation errors, and the connection action; standard browser sessions must
   not expose it. Keep its trigger inside the existing sync indicator, render one
   computer glyph per connected Launcher gateway, and retain one muted glyph
   while disconnected so the control remains reachable. Do not add a native
   tooltip, visible status label, count badge, or animated expansion.
   Keep the open popover above the compact right-canvas rail and report control
   failures through the shared notification system. Use the standard WebUI
-  border-radius tokens for its controls and popover.
+  border-radius tokens for its controls and popover. After Disconnect is
+  acknowledged, keep the popover open and turn that same action into Reconnect;
+  use only the narrow Launcher WebContents bridge so this also works in a
+  detached Instance window. Pausing remains the reversible master switch.
 - File operation results may arrive as chunked JSON/base64
   `connector_file_op_result` frames; resolve the pending file operation only
   after all chunks for the `op_id` are assembled.
