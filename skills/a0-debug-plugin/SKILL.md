@@ -158,11 +158,11 @@ print('Done')
 ## 8. Check Agent Zero logs
 
 ```bash
-# Find recent log files
-ls -lt /a0/logs/*.html | head -5
+# Run from the Docker host; replace the name if needed
+docker logs --tail 200 a0-instance
 ```
 
-Plugin-related errors appear as Python tracebacks mentioning the plugin path.
+Plugin-related errors appear in the container output as Python tracebacks mentioning the plugin path.
 
 ---
 

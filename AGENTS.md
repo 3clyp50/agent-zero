@@ -86,7 +86,6 @@ Intentionally unindexed local or generated roots:
 | `.conda/`, `.venv/` | Local Python environments. |
 | `.pytest_cache/`, `__pycache__/` | Generated test and bytecode caches. |
 | `.vscode/`, `.windsurf/` | Editor-local configuration and assistant metadata. |
-| `logs/` | Runtime output. |
 | `tmp/` | Ignored runtime caches, uploads, and generated work. |
 | `usr/` | Ignored local user data, settings, plugins, chats, and workdirs. |
 | `python/` | Generated or legacy runtime mirror; current source is in root modules and tracked source directories. |

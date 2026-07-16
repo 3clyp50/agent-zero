@@ -24,6 +24,7 @@
 
 - Helper modules own reusable framework APIs and must preserve public callers unless all callers, tests, and docs are updated together.
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
+- Startup cleanup removes obsolete `memory`, `knowledge/default`, and legacy `logs` directories; repeated runs are safe.
 - Observed side-effect areas: filesystem reads, filesystem writes, filesystem deletion, settings/state persistence, secret handling, scheduler state.
 - Imported dependency areas include: `helpers`, `helpers.print_style`, `json`, `os`.
 
@@ -42,6 +43,7 @@
 
 - Run targeted tests for changed helper behavior; run security regressions for auth, filesystem, WebSocket, tunnel, upload, or secret-handling helpers.
 - Related tests observed by source search:
+  - `tests/test_migration_cleanup.py`
   - `tests/test_browser_agent_regressions.py`
   - `tests/test_office_canvas_setup.py`
   - `tests/test_office_document_store.py`

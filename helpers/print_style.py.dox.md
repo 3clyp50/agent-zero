@@ -27,12 +27,13 @@
 
 - Helper modules own reusable framework APIs and must preserve public callers unless all callers, tests, and docs are updated together.
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
-- Observed side-effect areas: filesystem reads, WebSocket state, secret handling.
-- Imported dependency areas include: `atexit`, `collections.abc`, `datetime`, `html`, `os`, `strings`, `sys`, `webcolors`.
+- `PrintStyle` emits sanitized, secret-masked console output and does not create filesystem log files.
+- `get()` preserves its plain-text, ANSI-styled, and HTML-styled return values for existing callers.
+- Imported dependency areas include: `collections.abc`, `files`, `html`, `strings`, `sys`, `webcolors`.
 
 ## Key Concepts
 
-- Important called helpers/classes observed in the source: `atexit.register`, `self._get_rgb_color_code`, `join`, `html.escape.replace`, `sep.join`, `self._format_args`, `sanitize_string`, `self._add_padding_if_needed`, `end.endswith`, `self._log_html`, `sys.stdin.readlines`, `PrintStyle._prefixed_args`, `files.get_abs_path`, `os.makedirs`, `datetime.now.strftime`, `os.path.join`, `f.write`, `self.secrets_mgr.mask_values`, `self._get_styled_text`, `self._get_html_styled_text`.
+- Important called helpers/classes observed in the source: `self._get_rgb_color_code`, `html.escape.replace`, `sep.join`, `self._format_args`, `sanitize_string`, `self._add_padding_if_needed`, `end.endswith`, `sys.stdin.readlines`, `PrintStyle._prefixed_args`, `self.secrets_mgr.mask_values`, `self._get_styled_text`, `self._get_html_styled_text`.
 - Keep request/response, tool, or helper semantics documented here at the same time as source changes.
 
 ## Work Guidance
