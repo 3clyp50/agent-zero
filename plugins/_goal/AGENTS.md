@@ -22,6 +22,7 @@
 - Active goals are injected into agent extras; paused and blocked goals remain visible in the UI, while complete goals are hidden.
 - Goal records track accumulated active time with `elapsed_seconds` and `active_since`; pausing freezes elapsed time until resume.
 - User controls may pause, resume, edit, or delete a goal; destructive delete uses inline confirmation. Model tools may create goals and mark them complete or blocked.
+- Saving an edit that reactivates a complete or blocked goal resends the edited objective so agent processing resumes.
 - `/goal <objective>` creates the goal and sends the objective as the user message so the agent starts working immediately.
 - `/goal auto` fills the composer with a prompt asking the agent to create and manage its own goal instead of silently sending a message.
 - While a goal is active, response-tool calls are intermediate updates; only completing or blocking the goal restores normal loop termination.

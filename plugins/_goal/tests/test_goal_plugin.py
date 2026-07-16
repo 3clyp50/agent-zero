@@ -125,6 +125,30 @@ async def test_goal_api_and_agent_tools(context_id: str):
     assert goals.get_goal(context_id)["created_by"] == "model"
 
 
+@pytest.mark.parametrize("terminal_status", ["blocked", "complete"])
+@pytest.mark.asyncio
+async def test_editing_terminal_goal_requests_agent_reactivation(
+    context_id: str,
+    terminal_status: str,
+):
+    goals.create_goal(context_id, "Initial goal")
+    goals.update_goal(context_id, status=terminal_status)
+
+    response = await object.__new__(Goal).process(
+        {
+            "action": "update",
+            "context_id": context_id,
+            "objective": "Continue with the edited goal",
+            "status": "active",
+        },
+        None,
+    )
+
+    assert response["reactivated"] is True
+    assert response["goal"]["objective"] == "Continue with the edited goal"
+    assert response["goal"]["status"] == "active"
+
+
 @pytest.mark.asyncio
 async def test_active_goal_keeps_response_tool_running(context_id: str):
     goals.create_goal(context_id, "Keep going")

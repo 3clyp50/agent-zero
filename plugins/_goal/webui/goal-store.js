@@ -160,8 +160,17 @@ const model = {
       void toastFrontendError("Goal objective is required.", "Goal");
       return;
     }
-    await this.update({ action: "update", objective, status: "active" }, "Goal updated.");
+    const response = await this.update(
+      { action: "update", objective, status: "active" },
+      "Goal updated.",
+    );
     this.editing = false;
+    if (response?.reactivated) {
+      await globalThis.sendMessage?.({
+        message: response.goal?.objective || objective,
+        context: response.goal?.context_id || this.contextId,
+      });
+    }
   },
 
   async pauseOrResume() {
@@ -194,9 +203,11 @@ const model = {
         detail: { goal: this.goal, context_id: contextId },
       }));
       void toastFrontendSuccess(successMessage, "Goal");
+      return response;
     } catch (error) {
       console.error("Failed to update goal:", error);
       void toastFrontendError(error?.message || "Failed to update goal.", "Goal");
+      return null;
     } finally {
       this.saving = false;
     }

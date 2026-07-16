@@ -41,6 +41,7 @@ class Goal(ApiHandler):
         return {"ok": True, "goal": goals.public_goal(goal)}
 
     def _update(self, context_id: str, input: dict) -> dict:
+        current = goals.get_goal(context_id)
         goal = goals.update_goal(
             context_id,
             objective=input.get("objective") if "objective" in input else None,
@@ -48,7 +49,15 @@ class Goal(ApiHandler):
             note=input.get("note") if "note" in input else None,
             token_budget=input.get("token_budget") if "token_budget" in input else None,
         )
-        return {"ok": True, "goal": goals.public_goal(goal)}
+        return {
+            "ok": True,
+            "goal": goals.public_goal(goal),
+            "reactivated": (
+                current is not None
+                and current.get("status") in goals.FINAL_STATUSES
+                and goal.get("status") == "active"
+            ),
+        }
 
     def _status(self, context_id: str, status: str) -> dict:
         goal = goals.update_goal(context_id, status=status)
