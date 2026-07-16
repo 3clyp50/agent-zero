@@ -212,6 +212,41 @@ def test_mcp_config_preserves_dotted_tool_names(mcp_handler_module):
     assert called == [("alpha.beta", {"value": 7})]
 
 
+def test_mcp_config_resolves_advertised_responses_alias(
+    mcp_handler_module, monkeypatch
+):
+    module, _tmp_path = mcp_handler_module
+    canonical_name = "google_workspace.search_gmail_messages"
+    native_name = "google_workspace_search_gmail_messages_ecb900b9"
+
+    class _FakeServer:
+        name = "google_workspace"
+
+        def has_tool(self, tool_name):
+            return tool_name == "search_gmail_messages"
+
+    config = module.MCPConfig(servers_list=[])
+    config.servers = [_FakeServer()]
+    monkeypatch.setattr(
+        module.MCPConfig,
+        "get_for_agent",
+        classmethod(lambda cls, _agent: config),
+    )
+
+    agent = SimpleNamespace(
+        DATA_NAME_RESPONSES_TOOL_NAME_MAP="responses_tool_name_map",
+        get_data=lambda key: (
+            {native_name: canonical_name}
+            if key == "responses_tool_name_map"
+            else None
+        ),
+    )
+
+    assert config.get_tool(agent, canonical_name).name == canonical_name
+    assert config.get_tool(agent, native_name).name == canonical_name
+    assert config.get_tool(agent, "local_tool") is None
+
+
 def test_mcp_config_call_tool_releases_config_lock_before_await(
     mcp_handler_module, monkeypatch
 ):

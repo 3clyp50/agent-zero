@@ -82,6 +82,7 @@
 - Project-scoped MCP servers overlay global servers by normalized name. The resulting `MCPConfig` cache key is derived from both config strings so project instances refresh when either scope changes.
 - Server status and detail responses include `scope`, and MCP tools resolve through `MCPConfig.get_for_agent(agent)` before execution.
 - MCP tool names are qualified as `server_name.tool_name`; server names are normalized without dots, and the tool portion may contain dots.
+- `MCPConfig.get_tool()` tries the supplied qualified name first, then restores an advertised Responses alias from the calling agent's name map; names that still do not identify an MCP tool return `None` unchanged for downstream local-tool resolution.
 - Servers may define `disabled_tools` as a list of MCP tool names. Disabled tools are omitted from agent-facing prompts, status counts, `has_tool`, and calls, while detail views can still retrieve them through `get_all_tools()` with a `disabled` flag so users can re-enable them.
 - Server-specific `init_timeout` and `tool_timeout` override global MCP client timeout settings for list-tools and call-tool operations.
 - Local stdio server configs accept either strict MCP JSON (`command: "uvx", args: [...]`) or manager-style command lines (`command: "uvx package"`) and normalize them before spawning the process.

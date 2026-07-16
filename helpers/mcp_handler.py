@@ -45,6 +45,7 @@ from helpers import dirty_json, media_artifacts
 from helpers.print_style import PrintStyle
 from helpers.tool import Tool, Response
 from helpers.defer import DeferredTask
+from helpers.responses_tools import original_tool_name
 
 
 MCP_MEDIA_TOKENS_ESTIMATE = 1500
@@ -1211,7 +1212,16 @@ class MCPConfig(BaseModel):
         if effective_config is not self:
             return effective_config.get_tool(agent, tool_name)
         if not self.has_tool(tool_name):
-            return None
+            get_data = getattr(agent, "get_data", None)
+            name_map_key = getattr(agent, "DATA_NAME_RESPONSES_TOOL_NAME_MAP", "")
+            tool_name = original_tool_name(
+                tool_name,
+                get_data(name_map_key)
+                if name_map_key and callable(get_data)
+                else None,
+            )
+            if not self.has_tool(tool_name):
+                return None
         return MCPTool(agent=agent, name=tool_name, method=None, args={}, message="", loop_data=None)
 
     async def call_tool(
