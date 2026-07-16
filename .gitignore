@@ -20,6 +20,7 @@
 /memory/
 /knowledge/custom/
 /instruments/
+/logs/
 
 # Handle tmp and usr directory
 tmp/**
