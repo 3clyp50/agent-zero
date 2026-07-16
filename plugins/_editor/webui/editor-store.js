@@ -911,7 +911,7 @@ const model = {
       const files = selectedFiles.filter((file) => file?.path);
       if (!files.length) return false;
       for (const file of files) {
-        const session = await this.openPath(file.path, { source: "file-browser", refresh: true });
+        const session = await this.openPath(fileBrowserStore.normalizePath(file.path), { source: "file-browser", refresh: true });
         if (!session || session.ok === false) {
           throw new Error(this.error || `Could not open ${file.name || file.path}`);
         }

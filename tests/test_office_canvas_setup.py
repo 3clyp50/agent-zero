@@ -553,6 +553,7 @@ def test_editor_open_file_browser_prefers_context_home_before_workdir_fallback()
     assert "workdirPath = response?.settings?.workdir_path || workdirPath;" in open_file_browser
     assert "fileBrowserStore.openTextPicker" in open_file_browser
     assert "selectedFiles" in open_file_browser
+    assert "fileBrowserStore.normalizePath(file.path)" in open_file_browser
 
 
 def test_editor_toolbar_places_preview_toggle_left_and_save_on_right():
