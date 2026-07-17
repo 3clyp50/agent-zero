@@ -8,7 +8,7 @@
 
 ## Ownership
 
-- Source-owned files are `.gitignore`, `plugin.yaml`, `default_config.yaml`, `LICENSE`, `README.md`, `thumbnail.png`, `api/`, `helpers/`, `skills/`, `tests/`, and `webui/`.
+- Source-owned files are `.gitignore`, `plugin.yaml`, `default_config.yaml`, `LICENSE`, `README.md`, `api/`, `helpers/`, `skills/`, `tests/`, and `webui/` (including `thumbnail.png`).
 - Runtime/user-state files such as `config.json`, `data/`, `__pycache__/`, credential stores, and generated screenshots are not source contracts.
 
 ## Local Contracts
