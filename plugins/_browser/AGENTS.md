@@ -30,6 +30,7 @@
 - Browser URL-intent handling must only claim web URL schemes and leave custom Agent Zero schemes to their owning surfaces.
 - Prefer DOM/CDP browser actions with refs, selectors, frame-chain refs, and screenshots over viewport coordinate input. Coordinates remain a visual fallback.
 - Do not hardcode user-specific browser paths or secrets.
+- Browser model-preset selection resolves omitted preset fields from `_model_config`'s global `Default` preset, not from an unrelated currently scoped model selection.
 
 ## Work Guidance
 

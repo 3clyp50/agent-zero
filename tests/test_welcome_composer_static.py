@@ -121,7 +121,7 @@ def test_welcome_composer_can_create_a_chat_before_sending() -> None:
     assert 'document.addEventListener("model-configured"' in gate_store
     assert 'document.addEventListener("model-setup-changed"' in gate_store
     assert "bypassModelGate: true" in gate_store
-    assert 'openPluginConfig("_model_config", "Advanced model configuration")' in gate_store
+    assert "modelConfigStore.openPresetEditor(" in gate_store
     assert 'openPluginConfig("_oauth"' not in gate_store
     assert "Your message sends automatically once a model is connected." in gate_component
     assert "openOnboarding('cloud')" in gate_component

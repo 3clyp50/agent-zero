@@ -61,6 +61,7 @@
   `connector_file_op_result` frames; resolve the pending file operation only
   after all chunks for the `op_id` are assembled.
 - Host browser status metadata may advertise `available_browsers` entries with browser ids, labels, CDP endpoints, status, and enabled state; keep older CLI payloads without those fields compatible.
+- Model preset definitions exposed through v1 are global; project arguments select scope but never create project-owned definitions. Model switcher state reports the effective main, utility, and embedding models and preserves embedding-change notifications.
 
 ## Work Guidance
 

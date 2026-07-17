@@ -107,7 +107,7 @@ async def test_missing_api_key_banner_exposes_missing_providers(monkeypatch):
     assert "onboarding-banner-btn-container" not in row["html"]
 
 
-def test_model_config_frontend_tracks_inline_api_key_edits():
+def test_model_config_frontend_tracks_provider_api_key_edits():
     store_path = PROJECT_ROOT / "plugins" / "_model_config" / "webui" / "model-config-store.js"
     api_keys_mixin_path = PROJECT_ROOT / "plugins" / "_model_config" / "webui" / "api-keys-mixin.js"
     model_gate_path = PROJECT_ROOT / "webui" / "components" / "chat" / "model-gate-store.js"
@@ -121,10 +121,15 @@ def test_model_config_frontend_tracks_inline_api_key_edits():
         + api_keys_mixin_path.read_text(encoding="utf-8")
     )
     model_gate_content = model_gate_path.read_text(encoding="utf-8")
+    preset_modal_content = (
+        PROJECT_ROOT / "plugins" / "_model_config" / "webui" / "main.html"
+    ).read_text(encoding="utf-8")
     config_content = (
         config_path.read_text(encoding="utf-8")
         + "\n"
         + model_field_path.read_text(encoding="utf-8")
+        + "\n"
+        + preset_modal_content
     )
     modal_content = modal_path.read_text(encoding="utf-8")
 
@@ -135,8 +140,12 @@ def test_model_config_frontend_tracks_inline_api_key_edits():
     assert 'callJsonApi("/plugins/_model_config/model_config_get"' in model_gate_content
     assert "dispatchPendingIfConfigured()" in model_gate_content
     assert "/plugins/_model_config/missing_api_key_status" not in model_gate_content
-    assert "$store.modelConfig.resetApiKeyDrafts();" in config_content
     assert '@input="$store.modelConfig.setApiKeyValue(_prov, $el.value)"' in config_content
+    assert "apiKeyMode: 'none'" not in preset_modal_content
+    assert preset_modal_content.count("apiKeyMode: 'store'") == 3
+    assert "$store.modelConfig.resetApiKeyDrafts();" in preset_modal_content
+    assert "await $store.modelConfig.refreshApiKeyStatus();" in preset_modal_content
+    assert "await store.persistAllDirtyApiKeys();" in store_content
     assert "persistAllDirtyApiKeys()" in modal_content
     assert "$store.modelConfig.resetApiKeyDrafts();" in modal_content
 
@@ -166,14 +175,30 @@ def test_model_switcher_frontend_renders_custom_overrides():
     )
 
     switcher_content = switcher_path.read_text(encoding="utf-8")
+    switcher_html = (
+        PROJECT_ROOT
+        / "plugins"
+        / "_model_config"
+        / "extensions"
+        / "webui"
+        / "chat-input-progress-start"
+        / "model-switcher.html"
+    ).read_text(encoding="utf-8")
     refresh_extension_content = refresh_extension_path.read_text(encoding="utf-8")
 
     assert "function normalizeModelIdentity(value)" in switcher_content
-    assert "formatModelIdentity(models.main)" in switcher_content
-    assert "formatModelIdentity(models.utility)" in switcher_content
+    assert "export function getModelLeafName(value)" in switcher_content
+    assert 'name.lastIndexOf("/") + 1' in switcher_content
+    assert "`${presetName} ${mainModelName}`" in switcher_content
+    assert "formatModelIdentity(models.utility)" not in switcher_content
     assert "normalizeModelIdentity(o.chat || o)" in switcher_content
     assert "normalizeModelIdentity(o.utility)" in switcher_content
+    assert "$store.modelConfig.getSwitcherLabel()" in switcher_html
+    assert "model-switcher-active-pills" not in switcher_html
+    assert "model-pill-role" not in switcher_html
     assert "_model_config_override_revision" in refresh_extension_content
+    assert "activeContext?.agent_profile" in refresh_extension_content
+    assert "activeContext?.project" in refresh_extension_content
     assert "modelConfigStore.refreshSwitcher(contextId)" in refresh_extension_content
 
 
@@ -385,12 +410,15 @@ def test_model_config_migration_repairs_saved_venice_user_slots(monkeypatch, tmp
     config = json.loads(config_path.read_text(encoding="utf-8"))
     presets = yaml.safe_load(presets_path.read_text(encoding="utf-8"))
 
-    assert config["chat_model"]["kwargs"] == expected
-    assert config["embedding_model"]["kwargs"] == expected
-    assert config["utility_model"]["kwargs"] == {"a0_api_mode": "responses"}
+    assert config == {"model_preset": "Default"}
+    assert presets[0]["name"] == "Default"
     assert presets[0]["chat"]["kwargs"] == expected
-    assert presets[0]["utility"]["kwargs"] == {"keep": True}
-    assert presets[1]["kwargs"] == expected
+    assert presets[0]["embedding"]["kwargs"] == expected
+    assert presets[0]["utility"]["kwargs"] == {"a0_api_mode": "responses"}
+    assert presets[1]["chat"]["kwargs"] == expected
+    assert presets[1]["utility"]["kwargs"] == {"keep": True}
+    assert presets[2]["chat"]["kwargs"] == expected
+    assert (plugin_dir / "config.json.pre-unified-presets.bak").exists()
 
 
 def test_local_chat_providers_default_to_chat_completions():

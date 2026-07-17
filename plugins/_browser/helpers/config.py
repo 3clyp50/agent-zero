@@ -249,9 +249,17 @@ def resolve_browser_model_selection(
         preset = model_config.get_preset_by_name(preset_name)
         if isinstance(preset, dict):
             if hasattr(model_config, "build_config_from_preset"):
+                default_preset = model_config.get_preset_by_name(
+                    model_config.DEFAULT_PRESET_NAME
+                ) or {}
+                base_config = (
+                    model_config.preset_to_config(default_preset)
+                    if hasattr(model_config, "preset_to_config")
+                    else {}
+                )
                 preset_config = model_config.build_config_from_preset(
                     preset,
-                    model_config.get_config(agent) if hasattr(model_config, "get_config") else {},
+                    base_config,
                     strip_api_key=False,
                     slots=("chat",),
                 )

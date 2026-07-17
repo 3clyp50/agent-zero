@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 _CLEAR_VALUES = {"", "default", "none", "clear", "off"}
+_MODEL_INHERIT_VALUES = {"", "none", "clear", "off", "inherit"}
 
 
 @dataclass(frozen=True)
@@ -85,7 +86,7 @@ COMMAND_REGISTRY: tuple[IntegrationCommandDef, ...] = (
         "Show or switch the chat model preset.",
         "Configuration",
         aliases=("config", "preset"),
-        args_hint="[preset|default]",
+        args_hint="[preset|inherit]",
     ),
     IntegrationCommandDef(
         "agent",
@@ -270,7 +271,6 @@ def _handle_queue(context: "AgentContext", args: str) -> str:
 
 def _handle_status(context: "AgentContext") -> str:
     project_name = context.get_data("project") or "none"
-    override = context.get_data("chat_model_override")
     agent_profile = getattr(context.agent0.config, "profile", "default")
     running = "running" if context.is_running() else "idle"
     if getattr(context, "paused", False):
@@ -279,7 +279,7 @@ def _handle_status(context: "AgentContext") -> str:
     return (
         f"Status: {running}\n"
         f"Project: {project_name}\n"
-        f"Model: {_describe_override(override)}\n"
+        f"Model: {model_config.get_effective_preset_name(context.agent0)}\n"
         f"Agent: {agent_profile}\n"
         f"Queued messages: {queue_count}"
     )
@@ -394,9 +394,9 @@ def _handle_model(context: "AgentContext", args: str) -> str:
     current_override = context.get_data("chat_model_override")
 
     if not args:
-        current_label = _describe_override(current_override)
+        current_label = model_config.get_effective_preset_name(context.agent0)
         available = ", ".join(preset["name"] for preset in presets) or "none"
-        suffix = "Use /model <name> to switch, or /model default to clear it."
+        suffix = "Use /model <name> to switch, or /model inherit to use the scoped preset."
         if not allowed:
             suffix = "Per-chat config switching is disabled in Model Configuration."
         return (
@@ -409,13 +409,14 @@ def _handle_model(context: "AgentContext", args: str) -> str:
         return "Config switching is disabled in Model Configuration."
 
     desired = _strip_quotes(args)
-    if _normalize_lookup(desired) in _CLEAR_VALUES:
+    if _normalize_lookup(desired) in _MODEL_INHERIT_VALUES:
         if not current_override:
-            return "Already using the default config."
+            return "Already using the scoped model preset."
         context.set_data("chat_model_override", None)
         save_tmp_chat(context)
         mark_dirty_for_context(context.id, reason="integration_commands.config_clear")
-        return "Switched back to the default config."
+        inherited = model_config.get_effective_preset_name(context.agent0)
+        return f"Switched back to the scoped model preset: {inherited}."
 
     match, ambiguous = _match_named_item(presets, desired, keys=("name",))
     if ambiguous:
@@ -501,14 +502,6 @@ def _describe_project(items: list[dict], current_name: str) -> str:
         if item.get("name") == current_name:
             return item.get("title") or current_name
     return current_name
-
-
-def _describe_override(override: dict | None) -> str:
-    if not override:
-        return "Default"
-    if isinstance(override, dict) and override.get("preset_name"):
-        return str(override["preset_name"])
-    return "Custom override"
 
 
 def _strip_quotes(value: str) -> str:

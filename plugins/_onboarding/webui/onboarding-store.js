@@ -860,7 +860,8 @@ export const store = createStore("onboarding", {
 
   async openAdvancedSettings() {
     window.closeModal?.();
-    const { store: pluginSettingsStore } = await import("/components/plugins/plugin-settings-store.js");
-    await pluginSettingsStore.openConfig("_model_config");
+    await modelConfigStore.openPresetEditor(
+      this.config?.model_preset || "Default"
+    );
   },
 });

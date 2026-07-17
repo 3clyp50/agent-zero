@@ -279,13 +279,14 @@ def _model_view(
     ]
     current = context.get_data("chat_model_override")
     current_name = current.get("preset_name") if isinstance(current, dict) else ""
-    status = f"Current model: <b>{_html(current_name or 'Default')}</b>"
+    effective_name = model_config.get_effective_preset_name(context.agent0)
+    status = f"Current model: <b>{_html(effective_name)}</b>"
     if not model_config.is_chat_override_allowed(context.agent0):
         return status + "\nPer-chat model switching is disabled.", None
     if selected:
         status = "Model updated.\n" + status
-    rows = _paged_buttons("model", presets, page, current_name)
-    rows.append([{"text": "Default", "callback_data": "tg:model:clear"}])
+    rows = _paged_buttons("model", presets, page, effective_name)
+    rows.append([{"text": "Use scoped preset", "callback_data": "tg:model:clear"}])
     return status, {"inline_keyboard": rows}
 
 

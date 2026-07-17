@@ -3,27 +3,16 @@
 ## Purpose
 
 - Own the `integration_commands.py` helper module.
-- This module parses external integration slash commands such as project/config/send controls.
+- This module parses external integration slash commands such as project/model/send controls.
 - Keep this file-level DOX profile synchronized with `integration_commands.py` because this directory is intentionally flat.
 
 ## Ownership
 
 - `integration_commands.py` owns the runtime implementation.
 - `integration_commands.py.dox.md` owns durable notes about responsibilities, contracts, side effects, and verification for that implementation.
-- Top-level functions:
-- `extract_command_line(text: str) -> str`
-- `parse_command(text: str) -> tuple[str, str] | None`
-- `try_handle_command(context: 'AgentContext', text: str) -> str | None`
-- `_handle_queue(context: 'AgentContext', args: str) -> str`
-- `_handle_project(context: 'AgentContext', args: str) -> str`
-- `_handle_config(context: 'AgentContext', args: str) -> str`
-- `_format_project_entry(item: dict) -> str`
-- `_describe_project(items: list[dict], current_name: str) -> str`
-- `_describe_override(override: dict | None) -> str`
-- `_strip_quotes(value: str) -> str`
-- `_normalize_lookup(value: str) -> str`
-- `_match_named_item(items: list[dict], desired: str, keys: tuple[str, ...]) -> tuple[dict | None, list[dict]]`
-- Notable constants/configuration names: `_CLEAR_VALUES`, `_SUPPORTED_COMMANDS`.
+- Public command helpers are `extract_command_line`, `parse_command`, `resolve_command`, `telegram_menu_commands`, `command_names`, `help_text`, `unknown_command_text`, and `try_handle_command`.
+- Internal handlers own queue, status, session, lifecycle, toggle, project, model-preset, and agent-profile commands.
+- Notable constants are `COMMAND_REGISTRY`, `_CLEAR_VALUES`, and `_MODEL_INHERIT_VALUES`.
 
 ## Runtime Contracts
 
@@ -32,10 +21,11 @@
 - Observed side-effect areas: filesystem writes, model calls, plugin state, settings/state persistence.
 - Imported dependency areas include: `__future__`, `helpers`, `helpers.persist_chat`, `helpers.state_monitor_integration`, `plugins._model_config.helpers`, `re`, `typing`.
 - `/agent` switches the top-level chat profile and preserves existing subordinate agent profiles.
+- `/model <preset>` stores a per-chat global preset reference, `/model inherit` clears it, and status always reports the effective scoped-or-chat preset. `Default` is a real selectable preset, not an alias for clearing the chat selection.
 
 ## Key Concepts
 
-- Important called helpers/classes observed in the source: `splitlines`, `extract_command_line`, `line.partition`, `command.strip.lower`, `parse_command`, `mq.get_queue`, `args.strip.lower`, `mq.send_all_aggregated`, `mark_dirty_for_context`, `_strip_quotes`, `_match_named_item`, `projects.activate_project`, `initialize_agent`, `model_config.is_chat_override_allowed`, `context.get_data`, `context.set_data`, `save_tmp_chat`, `str.strip`, `value.strip`, `value.lower.strip`, `re.sub`.
+- Important called helpers/classes include `mq.get_queue`, `mq.send_all_aggregated`, `mark_dirty_for_context`, `projects.activate_project`, `initialize_agent`, `model_config.get_effective_preset_name`, `model_config.get_presets`, `context.get_data`, `context.set_data`, and `save_tmp_chat`.
 - Keep request/response, tool, or helper semantics documented here at the same time as source changes.
 
 ## Work Guidance

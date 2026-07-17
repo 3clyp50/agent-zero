@@ -33,7 +33,7 @@ Agent Zero is an open agent framework for work that needs more than chat: a Dock
 | **Browser DOM annotation** | Click page elements and turn them into inspect, change, lift, or review instructions. |
 | **Live document cowork** | Edit Markdown, Writer, Spreadsheet, and Presentation files together instead of losing work in chat. |
 | **Plugin Hub** | Install 100+ community plugins or publish your own extension points. |
-| **Projects and memory** | Keep files, instructions, secrets, memories, repositories, and model presets isolated per project. |
+| **Projects and memory** | Keep files, instructions, secrets, memories, repositories, and model-preset choices isolated per project. |
 | **Host-machine bridge** | Connect with the A0 CLI so the same agent can work in your real local repositories. |
 | **Multi-agent cooperation** | Let agents delegate research, coding, analysis, or review tasks to focused subagents. |
 | **Transparent internals** | Prompts, tools, plugins, skills, and settings are inspectable and editable. |
@@ -223,7 +223,7 @@ For full setup, see the [A0 CLI Connector guide](https://www.agent-zero.ai/p/doc
 
 ## Projects, Skills, Agent Profiles, and Model Presets
 
-**Projects** isolate workspaces, instructions, memory, secrets, knowledge, repositories, and model presets. Clone a public or private Git repo into a project and give the agent context that belongs to that work alone.
+**Projects** isolate workspaces, instructions, memory, secrets, knowledge, repositories, and model-preset choices. Clone a public or private Git repo into a project and give the agent context that belongs to that work alone.
 
 **Skills** can be loaded on demand by Agent Zero, or pinned from the chat input when you want a specific procedure to stay active.
 

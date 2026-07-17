@@ -13,7 +13,7 @@
       modelType   — 'chat' | 'utility' | 'embedding'
       providers   — array of { value, label }
       searchType  — 'chat' | 'embedding'
-      apiKeyMode  — 'store' (config.html: key lives in $store.modelConfig.apiKeyValues) | 'inline' (preset: key lives in model.api_key)
+      apiKeyMode  — 'store' (key lives in $store.modelConfig.apiKeyValues), 'inline' (key lives in model.api_key), or 'none'
     Optional:
       providerFallback — fallback provider string for search/API key status (e.g. preset.chat.provider for utility slot)
       apiBaseFallback  — fallback api_base string for search (e.g. preset.chat.api_base for utility slot)

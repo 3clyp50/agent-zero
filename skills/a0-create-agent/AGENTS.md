@@ -14,6 +14,7 @@
 - Default new user profiles to `usr/agents/`, not bundled `agents/`.
 - Keep `agent.yaml`, prompt inheritance, tools, and extension guidance synchronized with profile loader behavior.
 - Do not encourage storing secrets or provider credentials in profiles.
+- Optional profile `_model_config/config.json` files contain only an existing global `model_preset` selection; never generate copied model dictionaries or profile-local preset definitions.
 
 ## Work Guidance
 

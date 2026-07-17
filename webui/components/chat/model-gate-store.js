@@ -2,7 +2,6 @@ import { createStore } from "/js/AlpineStore.js";
 import { callJsonApi } from "/js/api.js";
 import { store as modelConfigStore } from "/plugins/_model_config/webui/model-config-store.js";
 import { store as onboardingStore } from "/plugins/_onboarding/webui/onboarding-store.js";
-import { store as pluginSettingsStore } from "/components/plugins/plugin-settings-store.js";
 import { toastFrontendError } from "/components/notifications/notification-store.js";
 
 const ONBOARDING_MODAL_PATH = "/plugins/_onboarding/webui/onboarding.html";
@@ -135,16 +134,18 @@ export const store = createStore("modelGate", {
   },
 
   async openAdvancedModelConfiguration() {
-    await this.openPluginConfig("_model_config", "Advanced model configuration");
-  },
-
-  async openPluginConfig(pluginName, title) {
     try {
-      await pluginSettingsStore.openConfig(pluginName);
+      const data = await callJsonApi("/plugins/_model_config/model_config_get", {});
+      await modelConfigStore.openPresetEditor(
+        data?.selected_preset || data?.configured_preset || "Default"
+      );
       await this.dispatchPendingIfConfigured();
     } catch (error) {
-      console.error(`Could not open ${pluginName} configuration:`, error);
-      void toastFrontendError(error?.message || "Could not open configuration.", title);
+      console.error("Could not open model preset editor:", error);
+      void toastFrontendError(
+        error?.message || "Could not open model presets.",
+        "Advanced model configuration"
+      );
     }
   },
 

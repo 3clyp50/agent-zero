@@ -14,6 +14,7 @@
 - Keep onboarding provider choices synchronized with model configuration and provider metadata.
 - Do not ask for or expose API keys outside approved settings/API flows.
 - Avoid blocking already-configured users with unnecessary onboarding prompts.
+- Completion updates the selected global model preset (normally immutable-name `Default`); advanced setup opens that preset in the shared editor.
 
 ## Work Guidance
 
