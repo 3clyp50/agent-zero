@@ -106,10 +106,7 @@ const model = {
   },
 
   get progressPlaceholderHtml() {
-    return (
-      `<span class="chat-input-progress-cue">|&gt;</span> ` +
-      convertIconMarkersToHtml(this.progressText)
-    );
+    return convertIconMarkersToHtml(this.progressText);
   },
 
   // Computed: send button icon type
