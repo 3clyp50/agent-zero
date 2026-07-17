@@ -1085,7 +1085,23 @@ def resolve_pending_gateway_control(
 ) -> bool:
     gateway = payload.get("gateway")
     if isinstance(gateway, dict):
-        store_sid_launcher_gateway_metadata(sid, gateway)
+        stored = store_sid_launcher_gateway_metadata(sid, gateway)
+        if stored is not None:
+            active = stored.master_enabled and stored.state != "disconnected"
+            files_enabled = active and stored.scopes["files"]
+            writes_enabled = files_enabled and stored.scopes["file_write"]
+            store_sid_remote_file_metadata(
+                sid,
+                {
+                    "enabled": files_enabled,
+                    "write_enabled": writes_enabled,
+                    "mode": "read_write" if writes_enabled else "read_only",
+                },
+            )
+            store_sid_remote_exec_metadata(
+                sid,
+                {"enabled": active and stored.scopes["code_execution"]},
+            )
     return _resolve_pending(_pending_gateway_controls, request_id, sid=sid, payload=payload)
 
 

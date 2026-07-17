@@ -274,6 +274,50 @@ def test_gateway_control_requires_csrf_and_waits_for_ack(monkeypatch) -> None:
         ws_runtime.unregister_sid(sid)
 
 
+def test_gateway_scope_ack_updates_file_routing_before_follow_up_hello(monkeypatch) -> None:
+    sid = _sid("scope-transition")
+    ws_runtime.register_sid(sid)
+    ws_runtime.store_sid_launcher_gateway_metadata(sid, _gateway("installation-a"))
+    ws_runtime.store_sid_remote_file_metadata(
+        sid,
+        {"enabled": True, "write_enabled": True, "mode": "read_write"},
+    )
+    ws_runtime.store_sid_remote_exec_metadata(sid, {"enabled": True})
+
+    class FakeManager:
+        async def emit_to(self, _namespace, target_sid, _event, data, **_kwargs):
+            assert target_sid == sid
+            updated = _gateway("installation-a", file_write=False)
+            ws_runtime.resolve_pending_gateway_control(
+                data["request_id"],
+                sid=sid,
+                payload={
+                    "request_id": data["request_id"],
+                    "ok": True,
+                    "gateway": updated,
+                },
+            )
+
+    monkeypatch.setattr(launcher_gateway_control, "get_shared_ws_manager", lambda: FakeManager())
+    handler = launcher_gateway_control.LauncherGatewayControl(None, None)
+    try:
+        result = asyncio.run(
+            handler.process(
+                {
+                    "action": "replace_scopes",
+                    "scopes": _gateway("installation-a", file_write=False)["scopes"],
+                },
+                None,
+            )
+        )
+        assert result["ok"] is True
+        assert ws_runtime.select_remote_file_target_sid("ctx", require_writes=False) == sid
+        assert ws_runtime.select_remote_file_target_sid("ctx", require_writes=True) is None
+        assert ws_runtime.select_remote_exec_target_sid("ctx") is None
+    finally:
+        ws_runtime.unregister_sid(sid)
+
+
 def test_gateway_scope_control_requires_explicit_file_write() -> None:
     handler = launcher_gateway_control.LauncherGatewayControl(None, None)
     result = asyncio.run(

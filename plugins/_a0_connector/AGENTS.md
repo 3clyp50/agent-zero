@@ -35,8 +35,10 @@
   master state, complete scope replacement, and Disconnect
   (`emergency_disconnect` on the wire). Protected
   WebUI mutations require CSRF, await the matching acknowledgement, and return
-  refreshed status. Never let the WebUI select a host folder or personal
-  browser profile.
+  refreshed status. Apply acknowledged master and scope state to remote file
+  and execution routing before resolving the control request; the follow-up
+  `connector_hello` only reconciles metadata. Never let the WebUI select a host
+  folder or personal browser profile.
 - Launcher gateway scopes expose file reading and writing separately. File
   writing depends on reading, and Code execution depends on file writing. Keep
   older gateway declarations without `file_write` read/write compatible.
