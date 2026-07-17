@@ -524,6 +524,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     message=AIMessageChunk(content=output["response_delta"])
                 )
 
+    @extensible
     async def unified_call(
         self,
         system_message="",
@@ -637,6 +638,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 attempt += 1
                 await asyncio.sleep(retry_delay_s)
 
+    @extensible
     async def unified_turn(
         self,
         system_message="",
