@@ -34,13 +34,14 @@
 ## Runtime Contracts
 
 - Helper modules own reusable framework APIs and must preserve public callers unless all callers, tests, and docs are updated together.
+- The agent-facing `get_secrets_manager` masks and unpacks values from `usr/.env`, the global `usr/secrets.env`, and the active project's `secrets.env`; `get_default_secrets_manager` remains scoped to the single writable `usr/secrets.env` file.
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
 - Observed side-effect areas: filesystem reads, filesystem writes, filesystem deletion, WebSocket state, settings/state persistence, secret handling.
 - Imported dependency areas include: `dataclasses`, `dotenv.parser`, `helpers`, `helpers.errors`, `helpers.extension`, `io`, `os`, `re`, `threading`, `time`, `typing`.
 
 ## Key Concepts
 
-- Important called helpers/classes observed in the source: `key.upper`, `placeholder.format`, `SecretsManager.get_instance`, `self._replace_full_values`, `self._longest_suffix_prefix`, `threading.RLock`, `join`, `files.write_file`, `self._invalidate_all_caches`, `self.load_secrets`, `self.read_secrets_raw`, `self.parse_env_lines`, `self._serialize_env_lines`, `StreamingSecretsFilter`, `re.sub`, `self.parse_env_content`, `parse_stream`, `AgentContext.current`, `projects.get_context_project_name`, `files.get_abs_path`.
+- Important called helpers/classes observed in the source: `key.upper`, `placeholder.format`, `SecretsManager.get_instance`, `self._replace_full_values`, `self._longest_suffix_prefix`, `threading.RLock`, `join`, `files.write_file`, `self._invalidate_all_caches`, `self.load_secrets`, `self.read_secrets_raw`, `self.parse_env_lines`, `self._serialize_env_lines`, `StreamingSecretsFilter`, `re.sub`, `self.parse_env_content`, `parse_stream`, `AgentContext.current`, `projects.get_context_project_name`, `files.get_abs_path`, `dotenv.get_dotenv_file_path`.
 - Keep request/response, tool, or helper semantics documented here at the same time as source changes.
 
 ## Work Guidance
