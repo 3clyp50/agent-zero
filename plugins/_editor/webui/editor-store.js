@@ -251,6 +251,7 @@ const model = {
   _inputTimer: null,
   _history: [],
   _historyIndex: -1,
+  _historyPushedAt: 0,
   _pendingFocus: false,
   _pendingFocusEnd: true,
   _focusAttempts: 0,
@@ -336,7 +337,7 @@ const model = {
   },
 
   async setViewMode(mode) {
-    const next = mode === PREVIEW_MODE && this.isMarkdown() ? PREVIEW_MODE : SOURCE_MODE;
+    const next = mode === PREVIEW_MODE && this.isTextDocument() ? PREVIEW_MODE : SOURCE_MODE;
     if (this.viewMode === next) return;
     this.applyPreviewEdit({ silent: true });
     this.syncEditorText();
@@ -354,7 +355,7 @@ const model = {
   },
 
   async toggleViewMode() {
-    if (!this.isMarkdown()) return;
+    if (!this.isTextDocument()) return;
     await this.setViewMode(this.isPreviewMode() ? SOURCE_MODE : PREVIEW_MODE);
   },
 
@@ -367,7 +368,7 @@ const model = {
   },
 
   pages() {
-    if (!this.isMarkdown()) return [];
+    if (!this.isTextDocument()) return [];
     return buildMarkdownPages(this.editorText, this.tabTitle(this.session || {}));
   },
 
@@ -381,35 +382,13 @@ const model = {
     return this.currentPage().title || this.tabTitle(this.session || {});
   },
 
-  pagePositionLabel() {
-    const pages = this.pages();
-    if (!pages.length) return "";
-    return `${Math.min(this.activePageIndex + 1, pages.length)} of ${pages.length}`;
-  },
-
   previewHtml() {
-    if (!this.isMarkdown()) return "";
+    if (!this.isTextDocument()) return "";
     return renderEditorPreviewMarkdown(this.currentPage().markdown || "", this.editorText);
   },
 
-  selectPage(index) {
-    if (this.previewEditing) return;
-    const pages = this.pages();
-    if (!pages.length) return;
-    this.activePageIndex = Math.max(0, Math.min(Number(index) || 0, pages.length - 1));
-    this.schedulePreviewEnhance();
-  },
-
-  nextPage() {
-    this.selectPage(this.activePageIndex + 1);
-  },
-
-  previousPage() {
-    this.selectPage(this.activePageIndex - 1);
-  },
-
   startPreviewEdit() {
-    if (!this.session || !this.isMarkdown() || !this.isPreviewMode()) return;
+    if (!this.session || !this.isTextDocument() || !this.isPreviewMode()) return;
     const page = this.currentPage();
     this.previewEditing = true;
     this.previewEditDirty = false;
@@ -457,7 +436,7 @@ const model = {
     this.previewEditPageIndex = -1;
 
     return this.replacePageMarkdown(page, replacement, {
-      message: "Page updated",
+      message: "Document updated",
       silent: options.silent,
     });
   },
@@ -493,7 +472,7 @@ const model = {
   },
 
   togglePreviewTask(taskIndex, checked) {
-    if (!this.session || !this.isMarkdown() || !this.isPreviewMode() || this.previewEditing) return false;
+    if (!this.session || !this.isTextDocument() || !this.isPreviewMode() || this.previewEditing) return false;
     const page = this.currentPage();
     const lines = String(page.markdown || "").split("\n");
     const indexes = taskLineIndexes(page.markdown || "");
@@ -514,7 +493,7 @@ const model = {
   },
 
   schedulePreviewEnhance() {
-    if (!this.isMarkdown() || !this.isPreviewMode()) return;
+    if (!this.isTextDocument() || !this.isPreviewMode()) return;
     if (this._previewEnhanceTimer) globalThis.clearTimeout(this._previewEnhanceTimer);
     this._previewEnhanceTimer = globalThis.setTimeout(() => {
       this._previewEnhanceTimer = null;
@@ -707,7 +686,7 @@ const model = {
   },
 
   openSearch() {
-    if (!this.isMarkdown()) return;
+    if (!this.isTextDocument()) return;
     if (!this.isPreviewMode()) {
       this.setViewMode(PREVIEW_MODE);
     }
@@ -870,8 +849,19 @@ const model = {
   },
 
   handleEditorKeydown(event) {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
-      if (!this.isMarkdown()) return;
+    if (!(event.metaKey || event.ctrlKey) || !this.isTextDocument()) return;
+    const key = event.key.toLowerCase();
+    const historyAction = key === "y" || (key === "z" && event.shiftKey) ? "redo" : key === "z" ? "undo" : "";
+    const nativeEditing = event.target?.matches?.("input, textarea, [contenteditable='true']")
+      && !event.target.closest?.("[data-editor-ace], [data-editor-source]");
+    if (nativeEditing) return;
+    if (historyAction && !this.previewEditing) {
+      event.preventDefault();
+      event.stopPropagation();
+      this[historyAction]();
+      return;
+    }
+    if (key === "f") {
       event.preventDefault();
       this.openSearch();
     }
@@ -982,11 +972,6 @@ const model = {
     this.activeTabId = tab?.tab_id || "";
     this.editorText = String(tab?.text || "");
     this.dirty = Boolean(tab?.dirty);
-    if (!this.isMarkdown(tab) && this.isPreviewMode()) {
-      this.viewMode = SOURCE_MODE;
-      this.searchOpen = false;
-      this.searchQuery = "";
-    }
     if (this.previewEditing) this.cancelPreviewEdit();
     if (!options.preservePage) {
       this.activePageIndex = 0;
@@ -1500,7 +1485,6 @@ const model = {
     const wasActive = this.activeTabId === (previous?.tab_id || next.tab_id);
     if (wasActive) {
       this.session = next;
-      if (!this.isMarkdown(next) && this.isPreviewMode()) this.viewMode = SOURCE_MODE;
       this.updateSourceEditorMode(next);
     }
     const index = this.tabs.findIndex((tab) => tab.tab_id === (previous?.tab_id || next.tab_id));
@@ -1519,37 +1503,41 @@ const model = {
   resetHistory(text) {
     this._history = [String(text || "")];
     this._historyIndex = 0;
+    this._historyPushedAt = 0;
   },
 
-  pushHistory(text) {
+  pushHistory(text, coalesce = false) {
     const value = String(text || "");
     if (this._history[this._historyIndex] === value) return;
+    const now = Date.now();
+    if (
+      coalesce
+      && this._historyPushedAt
+      && now - this._historyPushedAt <= INPUT_PUSH_DELAY_MS
+      && this._historyIndex === this._history.length - 1
+      && this._historyIndex > 0
+    ) {
+      this._history[this._historyIndex] = value;
+      this._historyPushedAt = now;
+      return;
+    }
     this._history = this._history.slice(0, this._historyIndex + 1);
     this._history.push(value);
     if (this._history.length > MAX_HISTORY) this._history.shift();
     this._historyIndex = this._history.length - 1;
+    this._historyPushedAt = coalesce ? now : 0;
   },
 
   undo() {
-    if (this.sourceEditor && this.isSourceMode()) {
-      this.sourceEditor.undo();
-      this.editorText = this.sourceEditor.getValue();
-      this.syncEditorText();
-      return;
-    }
     if (this._historyIndex <= 0) return;
+    this._historyPushedAt = 0;
     this._historyIndex -= 1;
     this.applyEditorText(this._history[this._historyIndex], true);
   },
 
   redo() {
-    if (this.sourceEditor && this.isSourceMode()) {
-      this.sourceEditor.redo();
-      this.editorText = this.sourceEditor.getValue();
-      this.syncEditorText();
-      return;
-    }
     if (this._historyIndex >= this._history.length - 1) return;
+    this._historyPushedAt = 0;
     this._historyIndex += 1;
     this.applyEditorText(this._history[this._historyIndex], true);
   },
@@ -1580,7 +1568,7 @@ const model = {
 
   onSourceInput() {
     this.markDirty();
-    this.pushHistory(this.editorText);
+    this.pushHistory(this.editorText, true);
     this.scheduleInputPush();
   },
 
@@ -1613,7 +1601,7 @@ const model = {
   },
 
   format(command) {
-    if (!this.session || !this.isMarkdown()) return;
+    if (!this.session || !this.isTextDocument()) return;
     if (this.sourceEditor && this.isSourceMode()) {
       const selected = this.sourceEditor.getSelectedText();
       const replacement = this.formatReplacement(command, selected);

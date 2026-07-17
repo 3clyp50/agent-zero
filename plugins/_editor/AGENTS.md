@@ -20,6 +20,7 @@
 - Keep Editor Open wired through the File Browser text picker so users can open one or more Markdown or plain text files with an obvious confirmation action.
 - Keep Download in the Editor file-actions menu and save dirty text before downloading it.
 - Keep Save As distinct from Rename: Save As writes the current editor text to a chosen `.md` or `.txt` path and retargets the active session without removing the original file.
+- Keep Markdown and plain text on the same toolbar, with full-document source and preview modes plus shared Undo/Redo buttons and keyboard shortcuts.
 - Preserve source chat context ids when opening Markdown files from tool-result canvas handoffs.
 
 ## Work Guidance

@@ -1,6 +1,5 @@
 import { renderSafeMarkdown } from "/js/safe-markdown.js";
 
-const PAGE_HEADING_RE = /^(#{1,2})\s+(.+?)\s*#*\s*$/;
 const FOOTNOTE_DEF_RE = /^\[\^([^\]]+)\]:\s*(.*)$/;
 
 export function renderEditorPreviewMarkdown(markdown = "", fullMarkdown = markdown) {
@@ -13,68 +12,15 @@ export function renderEditorPreviewMarkdown(markdown = "", fullMarkdown = markdo
 
 export function buildMarkdownPages(markdown = "", fallbackTitle = "Markdown") {
   const source = String(markdown || "");
-  const lines = source.split("\n");
-  const pages = [];
-  let current = null;
-  let intro = [];
-  let introStart = 0;
-  let fenced = false;
-  let offset = 0;
-
-  const startPage = (title, level, line, start) => {
-    if (current) {
-      current.end = start;
-      pages.push(finalizePage(current, pages.length, source));
-    }
-    current = {
-      title: cleanHeadingText(title) || fallbackTitle,
-      level,
-      lines: [line],
-      start,
-      end: source.length,
-    };
-  };
-
-  for (const [index, line] of lines.entries()) {
-    const lineStart = offset;
-    const lineEnd = lineStart + line.length + (index < lines.length - 1 ? 1 : 0);
-    if (/^\s*```/.test(line)) fenced = !fenced;
-    const match = !fenced ? line.match(PAGE_HEADING_RE) : null;
-    if (match) {
-      if (!current && intro.join("\n").trim()) {
-        pages.push(finalizePage({
-          title: fallbackTitle,
-          level: 0,
-          lines: intro,
-          start: introStart,
-          end: lineStart,
-        }, pages.length, source));
-        intro = [];
-      }
-      startPage(match[2], match[1].length, line, lineStart);
-      offset = lineEnd;
-      continue;
-    }
-    if (current) current.lines.push(line);
-    else intro.push(line);
-    offset = lineEnd;
-  }
-
-  if (current) {
-    current.end = source.length;
-    pages.push(finalizePage(current, pages.length, source));
-  }
-  else if (intro.join("\n").trim() || !pages.length) {
-    pages.push(finalizePage({
-      title: fallbackTitle,
-      level: 0,
-      lines: intro,
-      start: introStart,
-      end: source.length,
-    }, pages.length, source));
-  }
-
-  return pages;
+  return [{
+    index: 0,
+    title: fallbackTitle,
+    level: 0,
+    anchor: slugifyHeading(fallbackTitle),
+    start: 0,
+    end: source.length,
+    markdown: source,
+  }];
 }
 
 export function slugifyHeading(text = "", used = new Map()) {
@@ -117,28 +63,6 @@ export function isExternalHref(href = "") {
 
 export function isMarkdownPath(path = "") {
   return /\.md(?:own)?$/i.test(String(path || "").split(/[?#]/, 1)[0]);
-}
-
-function finalizePage(page, index, source = "") {
-  const start = Math.max(0, Number(page.start || 0));
-  const end = Math.max(start, Number(page.end ?? String(source || "").length));
-  const markdown = String(source || "").slice(start, end) || page.lines.join("\n");
-  return {
-    index,
-    title: page.title,
-    level: page.level,
-    anchor: slugifyHeading(page.title),
-    start,
-    end,
-    markdown,
-  };
-}
-
-function cleanHeadingText(text = "") {
-  return String(text || "")
-    .replace(/\\([\\`*_[\]{}()#+.!-])/g, "$1")
-    .replace(/[*_`~]/g, "")
-    .trim();
 }
 
 function prepareFootnotes(markdown = "", fullMarkdown = markdown) {
