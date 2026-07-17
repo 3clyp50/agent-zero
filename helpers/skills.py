@@ -431,6 +431,7 @@ def find_skill(
     agent:Agent|None=None,
     include_content: bool = False,
     include_hidden: bool = False,
+    validate: bool = True,
 ) -> Optional[Skill]:
     target = _normalize_name(skill_name)
     if not target:
@@ -440,7 +441,11 @@ def find_skill(
 
     for root in roots:
         for skill_md in discover_skill_md_files(Path(root)):
-            s = skill_from_markdown(skill_md, include_content=include_content)
+            s = skill_from_markdown(
+                skill_md,
+                include_content=include_content,
+                validate=validate,
+            )
             if not s:
                 continue
             if _normalize_name(s.name) == target or _normalize_name(s.path.name) == target:
