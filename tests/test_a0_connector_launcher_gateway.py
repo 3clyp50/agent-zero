@@ -45,21 +45,9 @@ def test_launcher_gateway_features_are_negotiated_on_http_and_websocket() -> Non
     assert LauncherGatewayStatus.requires_auth() is True
 
 
-def test_launcher_gateway_control_errors_use_webui_notifications() -> None:
-    source = (
-        Path(__file__).parents[1]
-        / "plugins"
-        / "_a0_connector"
-        / "webui"
-        / "launcher-gateway-store.js"
-    ).read_text(encoding="utf-8")
-    assert 'import { toastFrontendError }' in source
-    assert 'void toastFrontendError(' in source
-
-
-def test_launcher_gateway_indicator_joins_sync_status_without_visual_noise() -> None:
+def test_launcher_gateway_has_no_agent_zero_webui_controls() -> None:
     root = Path(__file__).parents[1]
-    source = (
+    extension = (
         root
         / "plugins"
         / "_a0_connector"
@@ -67,55 +55,22 @@ def test_launcher_gateway_indicator_joins_sync_status_without_visual_noise() -> 
         / "webui"
         / "sync-status-end"
         / "launcher-gateway.html"
-    ).read_text(encoding="utf-8")
-    sync_status = (root / "webui" / "components" / "sync" / "sync-status.html").read_text(
-        encoding="utf-8"
     )
-
-    assert '<x-extension id="sync-status-end"></x-extension>' in sync_status
-    assert sync_status.count("<circle") == 1
-    assert ":title=" not in sync_status
-    assert 'x-for="(gateway, index)' in source
-    assert "launcher-gateway-trigger-label" not in source
-    assert "launcher-gateway-dot" not in source
-    assert ":title=" not in source
-    assert "'Disconnect' : ($store.launcherGateway.reconnectAvailable ? 'Reconnect' : 'Open Host access')" in source
-    assert "$store.launcherGateway.reconnectAvailable ? $store.launcherGateway.reconnect() : $store.launcherGateway.openSettings()" in source
-    assert "'Reconnect' : 'Open Host access'" in source
-    assert "Emergency disconnect" not in source
-    popover_css = source.split(".launcher-gateway-popover {", 1)[1].split("}", 1)[0]
-    assert "border-radius: var(--border-radius-sm);" in popover_css
-
-
-def test_launcher_gateway_disconnect_becomes_reconnect_through_the_launcher_bridge() -> None:
-    source = (
-        Path(__file__).parents[1]
+    store = (
+        root
         / "plugins"
         / "_a0_connector"
         / "webui"
         / "launcher-gateway-store.js"
-    ).read_text(encoding="utf-8")
-    assert "window.a0LauncherHost?.getState?.()" in source
-    assert "window.a0LauncherHost?.reconnect?.()" in source
-    assert "window.a0LauncherHost?.openSettings?.()" in source
-    assert 'typeof window.a0LauncherHost?.reconnect === "function"' in source
-    assert 'typeof window.a0LauncherHost?.openSettings === "function"' in source
-    assert "Host access is off in A0 Launcher." in source
-    assert 'state: "disconnected", connected: false, gateway: null' in source
-    assert 'state: "connecting", connected: false, gateway: null' in source
-
-
-def test_launcher_computer_use_command_uses_the_bounded_approval_bridge() -> None:
-    root = Path(__file__).parents[1]
-    gateway_source = (
-        root / "plugins" / "_a0_connector" / "webui" / "launcher-gateway-store.js"
-    ).read_text(encoding="utf-8")
+    )
     commands_source = (
         root / "plugins" / "_commands" / "webui" / "commands-slash-store.js"
     ).read_text(encoding="utf-8")
 
-    assert "async setComputerUse(enabled)" in gateway_source
-    assert "window.a0LauncherHost.rearmComputerUse()" in gateway_source
+    assert not extension.exists()
+    assert not store.exists()
+    assert "a0LauncherHost" not in commands_source
+    assert "launcher-gateway-store.js" not in commands_source
     assert 'type === "computer_use"' in commands_source
 
 

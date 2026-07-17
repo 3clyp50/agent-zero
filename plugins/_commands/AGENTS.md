@@ -32,9 +32,9 @@
 - Script commands may emit `send_message` with `text` to submit the rendered composer text immediately after command resolution.
 - Commands accept prefix syntax (`/goal objective`) and exact postfix syntax (`objective /goal`); ordinary mid-sentence mentions are not invocations.
 - WebUI sends resolve through the picker effect path, while backend-originated messages resolve before reaching the agent.
-- Built-in `/computer-use on|off` emits a bounded `computer_use` effect. A
-  Launcher-owned WebUI applies it to that tab's Host access lease; an ordinary
-  WebUI directs the user to run the same command in A0 CLI.
+- Built-in `/computer-use on|off` emits a bounded `computer_use` effect. WebUI
+  only directs the user to Host access in A0 Launcher or the same command in A0
+  CLI; it never changes a Launcher gateway lease from Agent Zero page content.
 
 ## Work Guidance
 

@@ -160,7 +160,8 @@ def _handle_computer_use(context_id: str, raw_args: str) -> dict[str, Any]:
                 "enabled": enabled,
                 "fallback": (
                     "Computer Use permissions are controlled on the connected host. "
-                    f"Run `/computer-use {command}` in the A0 CLI terminal."
+                    "Use Host access in A0 Launcher, or run "
+                    f"`/computer-use {command}` in the A0 CLI terminal."
                 ),
             }
         )

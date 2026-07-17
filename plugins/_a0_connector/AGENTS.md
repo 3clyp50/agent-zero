@@ -42,23 +42,11 @@
 - Launcher gateway scopes expose file reading and writing separately. File
   writing depends on reading, and Code execution depends on file writing. Keep
   older gateway declarations without `file_write` read/write compatible.
-- The `sync-status-end` Launcher gateway extension renders only when the user agent
-  includes `A0-Launcher/`. It may show status, master/scope controls,
-  preparation errors, and the connection action; standard browser sessions must
-  not expose it. Keep its trigger inside the existing sync indicator, render one
-  computer glyph per connected Launcher gateway, and retain one muted glyph
-  while disconnected so the control remains reachable. Do not add a native
-  tooltip, visible status label, count badge, or animated expansion.
-  Keep the open popover above the compact right-canvas rail and report control
-  failures through the shared notification system. Use the standard WebUI
-  border-radius tokens for its controls and popover. After Disconnect is
-  acknowledged, keep the popover open and turn that same action into Reconnect;
-  when Host access was turned off in Launcher settings, open that Launcher-owned
-  editor instead of silently re-granting access. Use only the narrow Launcher
-  WebContents bridge so both actions also work in a detached Instance window.
-  `/computer-use on` may use that same bounded bridge to request approval for
-  the current lease, while `/computer-use off` disables only the gateway scope.
-  Pausing remains the reversible master switch.
+- Agent Zero WebUI exposes no Launcher gateway icon, menu, status, or control
+  bridge. Host access settings, Disconnect/Reconnect, scope changes, and
+  Computer Use approval belong only to attached or detached A0 Launcher chrome.
+  Keep the authenticated gateway HTTP/WebSocket protocol available for the
+  Launcher and connector runtime without adding a Core WebUI surface.
 - File operation results may arrive as chunked JSON/base64
   `connector_file_op_result` frames; resolve the pending file operation only
   after all chunks for the `op_id` are assembled.

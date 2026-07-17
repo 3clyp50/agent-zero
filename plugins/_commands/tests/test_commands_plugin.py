@@ -268,7 +268,7 @@ def test_models_command_always_opens_modal():
 
 
 @pytest.mark.parametrize(("argument", "enabled"), [("on", True), ("off", False)])
-def test_computer_use_command_dispatches_to_launcher_or_cli(
+def test_computer_use_command_guides_launcher_or_cli(
     argument: str,
     enabled: bool,
 ):
@@ -289,7 +289,8 @@ def test_computer_use_command_dispatches_to_launcher_or_cli(
             "enabled": enabled,
             "fallback": (
                 "Computer Use permissions are controlled on the connected host. "
-                f"Run `/computer-use {argument}` in the A0 CLI terminal."
+                "Use Host access in A0 Launcher, or run "
+                f"`/computer-use {argument}` in the A0 CLI terminal."
             ),
         }
     ]
