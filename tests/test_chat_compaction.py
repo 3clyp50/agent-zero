@@ -72,6 +72,10 @@ class _CompactionAgent:
     def __init__(self):
         self.history = _CompactionHistory()
         self.data = {
+            "ctx_window": {
+                "text": "pre-compaction transcript with secret values",
+                "tokens": 42,
+            },
             "responses_state": {
                 "response_id": "resp_current",
                 "previous_response_id": "resp_previous",
@@ -84,6 +88,31 @@ class _CompactionAgent:
 
     def set_data(self, key, value):
         self.data[key] = value
+
+
+def test_compaction_prompt_is_resumable_task_state_without_secret_values():
+    prompt = (
+        PROJECT_ROOT / "plugins" / "_chat_compaction" / "prompts" / "compact.sys.md"
+    ).read_text(encoding="utf-8")
+    headings = [
+        "## Current objective and latest user request",
+        "## Authorized scope and prohibited actions",
+        "## Decisions and assumptions",
+        "## Completed work with evidence",
+        "## Modified files and artifacts",
+        "## Pending jobs and next executable step",
+        "## Blockers and checks not run",
+        "## Loaded skill names",
+        "## Secret references",
+    ]
+
+    positions = [prompt.index(heading) for heading in headings]
+    assert positions == sorted(positions)
+    assert "Never include passwords, API keys, tokens, credentials" in prompt
+    assert "Preserve only a secret's name, purpose, storage location" in prompt
+    assert "Keep exact values: file paths, config values, code identifiers, credentials" not in prompt
+    assert "next executable step" in prompt
+    assert "job IDs" in prompt
 
 
 def test_pre_compaction_backup_sanitizes_surrogate_text(tmp_path, monkeypatch):
@@ -193,3 +222,4 @@ async def test_manual_compaction_clears_active_responses_state(monkeypatch):
     assert "response_id" not in state
     assert "previous_response_id" not in state
     assert state["response_ids"] == ["resp_previous", "resp_current"]
+    assert "ctx_window" not in agent.data

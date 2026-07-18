@@ -18,7 +18,10 @@
 - Preserve chat history integrity and persistence after compaction.
 - Backup JSON and transcript artifacts must remain UTF-8 writable when chat content contains malformed Unicode such as lone surrogates.
 - Keep generated summaries bounded by configured model and token limits.
+- Compacted summaries must be resumable task state: preserve the latest request, authorization boundaries, decisions, evidence, modified artifacts, pending jobs and their IDs, the next executable step, blockers, and checks not run.
 - Preserve loaded skill names from `skill_instructions` metadata without copying full skill bodies into compacted summaries.
+- Preserve only secret references such as names, aliases, purposes, or storage locations; never preserve secret values.
+- Clear the cached context window after replacing history so stale transcript content is not persisted as active resumable state; the cache rebuilds on the next model turn.
 - After replacing local history, clear the active Responses provider continuation while preserving stored response IDs for cleanup.
 - Do not discard original context data unless the compaction flow explicitly owns that behavior.
 

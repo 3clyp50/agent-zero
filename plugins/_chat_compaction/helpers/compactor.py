@@ -146,6 +146,7 @@ async def run_compaction(
         agent.history = History(agent=agent)
         agent.history.add_message(ai=True, content=compacted_content)
         clear_responses_provider_state(agent)
+        agent.data.pop(Agent.DATA_NAME_CTX_WINDOW, None)
         
         # Clear subordinate chain
         agent.data.pop(Agent.DATA_NAME_SUBORDINATE, None)
