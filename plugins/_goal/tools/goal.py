@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from helpers import files
+from helpers.tool import Response, Tool
 
 
 PLUGIN_NAME = "_goal"
@@ -14,6 +15,55 @@ GOALS_DIR = "goals"
 ACTIVE_STATUSES = {"active", "paused"}
 FINAL_STATUSES = {"complete", "blocked"}
 VALID_STATUSES = ACTIVE_STATUSES | FINAL_STATUSES
+
+
+class GoalTool(Tool):
+    async def execute(
+        self,
+        action: str = "",
+        objective: str = "",
+        status: str = "",
+        note: str = "",
+        token_budget: int | None = None,
+        **kwargs,
+    ) -> Response:
+        action = str(action or self.args.get("action") or "get").strip().lower()
+        context_id = self.agent.context.id
+
+        try:
+            if action in {"get", "show", "status"}:
+                return Response(message=summarize_goal(get_goal(context_id)), break_loop=False)
+            if action in {"create", "set"}:
+                goal = create_goal(
+                    context_id,
+                    objective,
+                    created_by="model",
+                    token_budget=token_budget,
+                )
+                return Response(message=f"Goal created: {goal['objective']}", break_loop=False)
+            if action in {"complete", "blocked"}:
+                status = action
+            if action in {"update", "complete", "blocked"}:
+                status = str(status).strip().lower()
+                if status not in FINAL_STATUSES:
+                    return Response(
+                        message="Model-managed goal updates may only mark goals complete or blocked.",
+                        break_loop=False,
+                    )
+                goal = update_goal(
+                    context_id,
+                    status=status,
+                    objective=objective or None,
+                    note=note or None,
+                )
+                return Response(message=summarize_goal(goal), break_loop=False)
+        except (FileNotFoundError, ValueError) as error:
+            return Response(message=str(error), break_loop=False)
+
+        return Response(
+            message="Unknown goal action. Supported actions: get, create, update.",
+            break_loop=False,
+        )
 
 
 def get_goal(context_id: str) -> dict[str, Any] | None:
@@ -30,31 +80,7 @@ def get_goal(context_id: str) -> dict[str, Any] | None:
         return None
 
     goal = _normalize_goal(raw, context_id=context_id)
-    if not goal.get("objective"):
-        return None
-    return goal
-
-
-def list_goals() -> list[dict[str, Any]]:
-    directory = _goals_dir()
-    if not Path(directory).is_dir():
-        return []
-
-    goals: list[dict[str, Any]] = []
-    for goal_file in sorted(Path(directory).glob("*.json")):
-        try:
-            raw = json.loads(files.read_file(str(goal_file)))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(raw, dict):
-            continue
-        context_id = str(raw.get("context_id") or "").strip()
-        if not context_id:
-            continue
-        goal = _normalize_goal(raw, context_id=context_id)
-        if goal.get("objective"):
-            goals.append(goal)
-    return goals
+    return goal if goal.get("objective") else None
 
 
 def create_goal(
@@ -101,17 +127,11 @@ def update_goal(
         raise FileNotFoundError("Goal not found")
 
     if objective is not None:
-        cleaned_objective = _clean_objective(objective)
-        if not cleaned_objective:
-            raise ValueError("Goal objective is required")
-        goal["objective"] = cleaned_objective
-
+        goal["objective"] = _required_objective(objective)
     if status is not None:
         _apply_status(goal, _normalize_status(status))
-
     if note is not None:
         goal["note"] = str(note or "").strip()
-
     if token_budget is not None:
         goal["token_budget"] = _clean_token_budget(token_budget)
 
@@ -121,8 +141,7 @@ def update_goal(
 
 
 def delete_goal(context_id: str) -> None:
-    context_id = _require_context_id(context_id)
-    files.delete_file(_goal_path(context_id))
+    files.delete_file(_goal_path(_require_context_id(context_id)))
 
 
 def public_goal(goal: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -146,15 +165,14 @@ def summarize_goal(goal: dict[str, Any] | None) -> str:
     if not goal:
         return "No goal is set for this chat."
 
-    status = str(goal.get("status") or "active")
-    objective = str(goal.get("objective") or "").strip()
-    elapsed = _format_elapsed(_elapsed_seconds(goal))
-    updated = str(goal.get("updated_at") or "").strip()
-    lines = [f"Status: {status}", f"Goal: {objective}", f"Active time: {elapsed}"]
-    if updated:
+    lines = [
+        f"Status: {goal.get('status') or 'active'}",
+        f"Goal: {str(goal.get('objective') or '').strip()}",
+        f"Active time: {_format_elapsed(_elapsed_seconds(goal))}",
+    ]
+    if updated := str(goal.get("updated_at") or "").strip():
         lines.append(f"Updated: {updated}")
-    note = str(goal.get("note") or "").strip()
-    if note:
+    if note := str(goal.get("note") or "").strip():
         lines.append(f"Note: {note}")
     return "\n".join(lines)
 
@@ -168,9 +186,7 @@ def _write_goal(goal: dict[str, Any]) -> None:
 
 def _normalize_goal(raw: dict[str, Any], *, context_id: str) -> dict[str, Any]:
     status = str(raw.get("status") or "active").strip().lower()
-    if status not in VALID_STATUSES:
-        status = "active"
-
+    status = status if status in VALID_STATUSES else "active"
     created_at = str(raw.get("created_at") or "")
     updated_at = str(raw.get("updated_at") or "")
     active_since = str(raw.get("active_since") or "")
@@ -194,12 +210,12 @@ def _normalize_goal(raw: dict[str, Any], *, context_id: str) -> dict[str, Any]:
     }
 
 
-def _goals_dir() -> str:
-    return files.get_abs_path(files.USER_DIR, files.PLUGINS_DIR, PLUGIN_NAME, GOALS_DIR)
-
-
 def _goal_path(context_id: str) -> str:
-    return files.get_abs_path(_goals_dir(), f"{_safe_context_id(context_id)}.json")
+    directory = files.get_abs_path(files.USER_DIR, files.PLUGINS_DIR, PLUGIN_NAME, GOALS_DIR)
+    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", context_id).strip("._")[:180]
+    if not safe:
+        raise ValueError("A chat context is required")
+    return files.get_abs_path(directory, f"{safe}.json")
 
 
 def _require_context_id(context_id: str) -> str:
@@ -209,37 +225,35 @@ def _require_context_id(context_id: str) -> str:
     return context_id
 
 
-def _safe_context_id(context_id: str) -> str:
-    safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", context_id).strip("._")
-    if not safe:
-        raise ValueError("A chat context is required")
-    return safe[:180]
+def _required_objective(value: str) -> str:
+    objective = _clean_objective(value)
+    if not objective:
+        raise ValueError("Goal objective is required")
+    return objective
 
 
-def _clean_objective(objective: str) -> str:
-    return re.sub(r"\s+", " ", str(objective or "")).strip()
+def _clean_objective(value: str) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
 def _normalize_status(status: str) -> str:
-    cleaned = str(status or "").strip().lower()
-    if cleaned not in VALID_STATUSES:
+    status = str(status or "").strip().lower()
+    if status not in VALID_STATUSES:
         raise ValueError("Goal status must be active, paused, complete, or blocked")
-    return cleaned
+    return status
 
 
 def _clean_created_by(created_by: str) -> str:
-    cleaned = str(created_by or "").strip().lower()
-    return cleaned if cleaned in {"user", "model"} else "user"
+    created_by = str(created_by or "").strip().lower()
+    return created_by if created_by in {"user", "model"} else "user"
 
 
 def _clean_token_budget(token_budget: Any) -> int | None:
-    if token_budget in (None, ""):
-        return None
     try:
-        value = int(token_budget)
+        token_budget = int(token_budget)
     except (TypeError, ValueError):
         return None
-    return value if value > 0 else None
+    return token_budget if token_budget > 0 else None
 
 
 def _apply_status(goal: dict[str, Any], status: str) -> None:
@@ -253,51 +267,41 @@ def _apply_status(goal: dict[str, Any], status: str) -> None:
 
 
 def _elapsed_seconds(goal: dict[str, Any]) -> int:
-    seconds = _clean_elapsed_seconds(goal.get("elapsed_seconds"))
+    elapsed = _clean_elapsed_seconds(goal.get("elapsed_seconds"))
     if str(goal.get("status") or "active") == "active":
-        seconds += _seconds_between(str(goal.get("active_since") or ""), _now())
-    return seconds
+        elapsed += _seconds_between(str(goal.get("active_since") or ""), _now())
+    return elapsed
 
 
 def _clean_elapsed_seconds(value: Any) -> int:
     try:
-        seconds = int(value)
+        return max(0, int(value))
     except (TypeError, ValueError):
         return 0
-    return max(0, seconds)
 
 
 def _seconds_between(start: str, end: str) -> int:
-    start_dt = _parse_time(start)
-    end_dt = _parse_time(end)
-    if not start_dt or not end_dt:
-        return 0
-    return max(0, int((end_dt - start_dt).total_seconds()))
+    start_dt, end_dt = _parse_time(start), _parse_time(end)
+    return max(0, int((end_dt - start_dt).total_seconds())) if start_dt and end_dt else 0
 
 
 def _parse_time(value: str) -> datetime | None:
-    text = str(value or "").strip()
-    if not text:
+    value = str(value or "").strip()
+    if not value:
         return None
-    if text.endswith("Z"):
-        text = f"{text[:-1]}+00:00"
+    if value.endswith("Z"):
+        value = f"{value[:-1]}+00:00"
     try:
-        parsed = datetime.fromisoformat(text)
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
 
 
 def _format_elapsed(seconds: int) -> str:
     hours, remainder = divmod(max(0, int(seconds)), 3600)
     minutes, seconds = divmod(remainder, 60)
-    if hours:
-        return f"{hours}h {minutes}m"
-    if minutes:
-        return f"{minutes}m {seconds}s"
-    return f"{seconds}s"
+    return f"{hours}h {minutes}m" if hours else f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
 
 
 def _now() -> str:

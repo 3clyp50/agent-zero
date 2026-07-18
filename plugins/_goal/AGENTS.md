@@ -8,11 +8,11 @@
 ## Ownership
 
 - `plugin.yaml` owns the always-enabled `_goal` plugin metadata.
-- `helpers/goals.py` owns file-backed goal storage under `usr/plugins/_goal/goals/` and goal status normalization.
+- `tools/goal.py` owns the single agent-facing goal tool, file-backed state under `usr/plugins/_goal/goals/`, and goal status normalization.
 - `api/goal.py` owns the WebUI JSON API for reading, editing, pausing, resuming, and deleting goals.
 - `commands/` owns the `/goal` slash command contributed to `_commands`.
 - `webui/` and `extensions/webui/` own the composer goal strip and inline controls.
-- `tools/` and `prompts/` own agent-facing goal inspection, creation, and status update behavior.
+- `tools/goal.py` and `prompts/agent.system.tool.goal.md` own agent-facing goal inspection, creation, and status updates.
 - `tools/response.py` overrides the core response tool so an active goal continues the current monologue.
 - `extensions/python/message_loop_prompts_after/` owns injecting the active goal into agent context.
 

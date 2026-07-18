@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from agent import LoopData
 from helpers.extension import Extension
-from plugins._goal.helpers import goals
+from plugins._goal.tools import goal
 
 
 class IncludeGoal(Extension):
@@ -11,18 +11,18 @@ class IncludeGoal(Extension):
             return
 
         try:
-            goal = goals.get_goal(self.agent.context.id)
+            current_goal = goal.get_goal(self.agent.context.id)
         except ValueError:
-            goal = None
+            current_goal = None
 
-        if not goal or goal.get("status") != "active":
+        if not current_goal or current_goal.get("status") != "active":
             loop_data.extras_temporary.pop("current_goal", None)
             return
 
         loop_data.extras_temporary["current_goal"] = self.agent.read_prompt(
             "agent.extras.goal.md",
-            status=goal.get("status", ""),
-            objective=goal.get("objective", ""),
-            created_by=goal.get("created_by", ""),
-            updated_at=goal.get("updated_at", ""),
+            status=current_goal.get("status", ""),
+            objective=current_goal.get("objective", ""),
+            created_by=current_goal.get("created_by", ""),
+            updated_at=current_goal.get("updated_at", ""),
         )

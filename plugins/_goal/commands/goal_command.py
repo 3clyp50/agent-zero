@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from plugins._goal.helpers import goals
+from plugins._goal.tools import goal
 
 
 def run(payload: dict[str, Any]) -> dict[str, Any]:
@@ -18,33 +18,33 @@ def run(payload: dict[str, Any]) -> dict[str, Any]:
 
     try:
         if action in {"", "status", "show"}:
-            return _show_markdown("Goal", goals.summarize_goal(goals.get_goal(context_id)))
+            return _show_markdown("Goal", goal.summarize_goal(goal.get_goal(context_id)))
         if action in {"pause", "paused"}:
-            goal = goals.update_goal(context_id, status="paused")
-            return _changed("Goal paused.", goal)
+            current_goal = goal.update_goal(context_id, status="paused")
+            return _changed("Goal paused.", current_goal)
         if action in {"resume", "start", "active"}:
-            goal = goals.update_goal(context_id, status="active")
-            return _changed("Goal resumed.", goal)
+            current_goal = goal.update_goal(context_id, status="active")
+            return _changed("Goal resumed.", current_goal)
         if action in {"delete", "clear", "remove"}:
-            goals.delete_goal(context_id)
+            goal.delete_goal(context_id)
             return _changed("Goal deleted.", None)
         if action in {"complete", "done"}:
-            goal = goals.update_goal(context_id, status="complete")
-            return _changed("Goal marked complete.", goal)
+            current_goal = goal.update_goal(context_id, status="complete")
+            return _changed("Goal marked complete.", current_goal)
         if action == "blocked":
             note = raw_args.split(None, 1)[1].strip() if len(tokens) > 1 else ""
-            goal = goals.update_goal(context_id, status="blocked", note=note)
-            return _changed("Goal marked blocked.", goal)
+            current_goal = goal.update_goal(context_id, status="blocked", note=note)
+            return _changed("Goal marked blocked.", current_goal)
         if action == "edit":
             objective = raw_args.split(None, 1)[1].strip() if len(tokens) > 1 else ""
-            goal = goals.update_goal(context_id, objective=objective, status="active")
-            return _changed("Goal updated.", goal)
+            current_goal = goal.update_goal(context_id, objective=objective, status="active")
+            return _changed("Goal updated.", current_goal)
         if action in {"auto", "ask", "model"}:
             hint = raw_args.split(None, 1)[1].strip() if len(tokens) > 1 else ""
             return _auto_prompt(hint)
 
-        goal = goals.create_goal(context_id, raw_args, created_by="user")
-        return _changed("Goal set.", goal, send_text=raw_args)
+        current_goal = goal.create_goal(context_id, raw_args, created_by="user")
+        return _changed("Goal set.", current_goal, send_text=raw_args)
     except FileNotFoundError:
         return _effects(_toast("No goal is set for this chat.", level="error"))
     except ValueError as error:
@@ -62,10 +62,10 @@ def _auto_prompt(hint: str) -> dict[str, Any]:
     return {"text": prompt, "effects": []}
 
 
-def _changed(message: str, goal: dict[str, Any] | None, *, send_text: str = "") -> dict[str, Any]:
+def _changed(message: str, current_goal: dict[str, Any] | None, *, send_text: str = "") -> dict[str, Any]:
     return _effects(
         _toast(message),
-        {"type": "goal_changed", "goal": goals.public_goal(goal)},
+        {"type": "goal_changed", "goal": goal.public_goal(current_goal)},
         {"type": "send_message", "text": send_text} if send_text else {},
     )
 

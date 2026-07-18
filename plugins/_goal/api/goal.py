@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from helpers.api import ApiHandler, Request, Response
 
-from plugins._goal.helpers import goals
+from plugins._goal.tools import goal
 
 
 class Goal(ApiHandler):
@@ -12,7 +12,7 @@ class Goal(ApiHandler):
 
         try:
             if action == "get":
-                return {"ok": True, "goal": goals.public_goal(goals.get_goal(context_id))}
+                return {"ok": True, "goal": goal.public_goal(goal.get_goal(context_id))}
             if action in {"set", "create"}:
                 return self._set(context_id, input)
             if action == "update":
@@ -22,7 +22,7 @@ class Goal(ApiHandler):
             if action == "resume":
                 return self._status(context_id, "active")
             if action == "delete":
-                goals.delete_goal(context_id)
+                goal.delete_goal(context_id)
                 return {"ok": True, "goal": None}
         except FileNotFoundError:
             return Response(status=404, response="Goal not found")
@@ -32,17 +32,17 @@ class Goal(ApiHandler):
         return Response(status=400, response=f"Unknown action: {action}")
 
     def _set(self, context_id: str, input: dict) -> dict:
-        goal = goals.create_goal(
+        current_goal = goal.create_goal(
             context_id,
             str(input.get("objective") or ""),
             created_by=str(input.get("created_by") or "user"),
             token_budget=input.get("token_budget"),
         )
-        return {"ok": True, "goal": goals.public_goal(goal)}
+        return {"ok": True, "goal": goal.public_goal(current_goal)}
 
     def _update(self, context_id: str, input: dict) -> dict:
-        current = goals.get_goal(context_id)
-        goal = goals.update_goal(
+        current = goal.get_goal(context_id)
+        updated_goal = goal.update_goal(
             context_id,
             objective=input.get("objective") if "objective" in input else None,
             status=input.get("status") if "status" in input else None,
@@ -51,14 +51,14 @@ class Goal(ApiHandler):
         )
         return {
             "ok": True,
-            "goal": goals.public_goal(goal),
+            "goal": goal.public_goal(updated_goal),
             "reactivated": (
                 current is not None
-                and current.get("status") in goals.FINAL_STATUSES
-                and goal.get("status") == "active"
+                and current.get("status") in goal.FINAL_STATUSES
+                and updated_goal.get("status") == "active"
             ),
         }
 
     def _status(self, context_id: str, status: str) -> dict:
-        goal = goals.update_goal(context_id, status=status)
-        return {"ok": True, "goal": goals.public_goal(goal)}
+        current_goal = goal.update_goal(context_id, status=status)
+        return {"ok": True, "goal": goal.public_goal(current_goal)}
