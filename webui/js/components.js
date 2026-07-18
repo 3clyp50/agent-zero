@@ -170,6 +170,12 @@ export async function importComponent(path, targetElement) {
       targetElement.appendChild(deferred);
     }
 
+    // Remove loading indicator
+    const loadingEl = targetElement.querySelector(':scope > .loading');
+    if (loadingEl) {
+      targetElement.removeChild(loadingEl);
+    }
+
     // // Load any nested components
     // await loadComponents([targetElement]);
 
@@ -179,7 +185,6 @@ export async function importComponent(path, targetElement) {
     console.error("Error importing component:", error);
     throw error;
   } finally {
-    targetElement.querySelector(':scope > .loading')?.remove();
     // Release the lock when done, regardless of success or failure
     importLocks.delete(lockKey);
   }
