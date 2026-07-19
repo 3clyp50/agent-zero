@@ -29,12 +29,12 @@
 - `get_secrets_manager(context: 'AgentContext|None'=...) -> SecretsManager`
 - `get_project_secrets_manager(project_name: str, merge_with_global: bool=...) -> SecretsManager`
 - `get_default_secrets_manager() -> SecretsManager`
-- Notable constants/configuration names: `ALIAS_PATTERN`, `DEFAULT_SECRETS_FILE`.
+- Notable constants/configuration names: `ALIAS_PATTERN`, `DEFAULT_SECRETS_FILE`, `_RUNTIME_CREDENTIAL_KEYS`.
 
 ## Runtime Contracts
 
 - Helper modules own reusable framework APIs and must preserve public callers unless all callers, tests, and docs are updated together.
-- The agent-facing `get_secrets_manager` masks and unpacks values from `usr/.env`, the global `usr/secrets.env`, and the active project's `secrets.env`; `get_default_secrets_manager` remains scoped to the single writable `usr/secrets.env` file.
+- The agent-facing `get_secrets_manager` masks and unpacks `API_KEY_*` and login/password credentials from `usr/.env`, every value from the global `usr/secrets.env`, and every value from the active project's `secrets.env`; ordinary runtime settings are not treated as secrets. `get_default_secrets_manager` remains scoped to the single writable `usr/secrets.env` file.
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
 - Observed side-effect areas: filesystem reads, filesystem writes, filesystem deletion, WebSocket state, settings/state persistence, secret handling.
 - Imported dependency areas include: `dataclasses`, `dotenv.parser`, `helpers`, `helpers.errors`, `helpers.extension`, `io`, `os`, `re`, `threading`, `time`, `typing`.
@@ -54,6 +54,7 @@
 
 - Run targeted tests for changed helper behavior; run security regressions for auth, filesystem, WebSocket, tunnel, upload, or secret-handling helpers.
 - Related tests observed by source search:
+  - `tests/test_secrets.py`
   - `tests/test_plugin_scan_prompt.py`
   - `tests/test_print_style.py`
   - `tests/test_time_travel.py`
