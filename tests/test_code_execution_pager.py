@@ -5,6 +5,7 @@ code execution tool: without user input they block forever and spin at 100% CPU.
 """
 
 import asyncio
+import importlib
 from types import SimpleNamespace
 
 from plugins._code_execution.helpers import shell_local, shell_ssh
@@ -41,6 +42,19 @@ def test_local_env_does_not_mutate_input():
 def test_ssh_command_disables_pagers():
     assert "GIT_PAGER=cat" in shell_ssh.PAGER_DISABLE_COMMAND
     assert "PAGER=cat" in shell_ssh.PAGER_DISABLE_COMMAND
+
+
+def test_paramiko_import_error_does_not_retain_tool_loading_stack(monkeypatch):
+    try:
+        raise ImportError("invoke")
+    except ImportError as error:
+        saved_error = error
+        monkeypatch.setattr(shell_ssh.paramiko.config, "invoke_import_error", error)
+
+    importlib.reload(shell_ssh)
+
+    assert shell_ssh.paramiko.config.invoke_import_error is saved_error
+    assert saved_error.__traceback__ is None
 
 
 def test_multiline_terminal_commands_are_one_current_shell_compound():

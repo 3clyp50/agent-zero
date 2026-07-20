@@ -7,6 +7,10 @@ from helpers.log import Log
 from helpers.print_style import PrintStyle
 # from helpers.strings import calculate_valid_match_lengths
 
+# Paramiko caches this optional import error; its traceback retains our tool-loading stack.
+if paramiko.config.invoke_import_error:
+    paramiko.config.invoke_import_error.__traceback__ = None
+
 
 # Injected into every new SSH shell to keep it safe for non-interactive use.
 # Pagers (more/less) would otherwise block forever waiting for input that
