@@ -29,6 +29,8 @@
 ## Runtime Contracts
 
 - Helper modules own reusable framework APIs and must preserve public callers unless all callers, tests, and docs are updated together.
+- `DeferredTask` retains its callable and arguments only while an invocation is active; completion and `kill()` clear those references after the running coroutine has taken its own snapshot.
+- Task results remain available after completion. `restart()` can restart an active invocation, but a completed invocation has no retained call recipe and must be started again explicitly.
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
 - Observed side-effect areas: scheduler state.
 - Imported dependency areas include: `asyncio`, `concurrent.futures`, `dataclasses`, `threading`, `typing`.

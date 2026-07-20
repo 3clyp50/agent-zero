@@ -88,6 +88,9 @@ class DeferredTask:
         self.event_loop_thread = EventLoopThread(thread_name)
         self._future: Optional[Future] = None
         self.children: list[ChildTask] = []
+        self.func: Optional[Callable[..., Coroutine[Any, Any, Any]]] = None
+        self.args: tuple[Any, ...] = ()
+        self.kwargs: dict[str, Any] = {}
 
     def start_task(
         self, func: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
@@ -102,16 +105,29 @@ class DeferredTask:
         self.kill()
 
     def _start_task(self):
-        self._future = self.event_loop_thread.run_coroutine(self._run())
+        if self.func is None:
+            raise RuntimeError("Task callable is no longer available")
+
+        self._future = self.event_loop_thread.run_coroutine(
+            self._run(self.func, self.args, self.kwargs)
+        )
         if self._future:
             self._future.add_done_callback(self._on_task_done)
 
-    def _on_task_done(self, _future: Future):
+    def _on_task_done(self, future: Future):
         # Ensure child background tasks are always cleaned up once the parent finishes
-        self.kill_children()
+        if future is self._future:
+            self.kill_children()
+            self._clear_call()
 
-    async def _run(self):
-        return await self.func(*self.args, **self.kwargs)
+    def _clear_call(self) -> None:
+        self.func = None
+        self.args = ()
+        self.kwargs = {}
+
+    @staticmethod
+    async def _run(func, args, kwargs):
+        return await func(*args, **kwargs)
 
     def is_ready(self) -> bool:
         return self._future.done() if self._future else False
@@ -149,6 +165,7 @@ class DeferredTask:
         self.kill_children()
         if self._future and not self._future.done():
             self._future.cancel()
+        self._clear_call()
 
         if terminate_thread and self.event_loop_thread.loop:
             if self.event_loop_thread.loop.is_running():
@@ -171,8 +188,11 @@ class DeferredTask:
         return self._future and not self._future.done()  # type: ignore
 
     def restart(self, terminate_thread: bool = False) -> None:
+        if self.func is None:
+            raise RuntimeError("Completed task cannot be restarted")
+        func, args, kwargs = self.func, self.args, self.kwargs
         self.kill(terminate_thread=terminate_thread)
-        self._start_task()
+        self.start_task(func, *args, **kwargs)
 
     def add_child_task(
         self, task: "DeferredTask", terminate_thread: bool = False

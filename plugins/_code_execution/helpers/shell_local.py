@@ -31,6 +31,13 @@ class LocalInteractiveSession:
         self.full_output = ''
         self.cwd = cwd
 
+    def __del__(self):
+        try:
+            if self.session:
+                self.session.kill()
+        except Exception:
+            pass
+
     async def connect(self):
         self.session = tty_session.TTYSession(
             runtime.get_terminal_executable(),

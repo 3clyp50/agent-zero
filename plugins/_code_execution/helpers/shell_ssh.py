@@ -36,6 +36,14 @@ class SSHInteractiveSession:
         self.cwd = cwd
         self._exit_code: int | None = None
 
+    def __del__(self):
+        for resource in (getattr(self, "shell", None), getattr(self, "client", None)):
+            try:
+                if resource:
+                    resource.close()
+            except Exception:
+                pass
+
     async def connect(self, keepalive_interval: int = 5):
         """
         Establish the SSH connection and start an interactive shell.
