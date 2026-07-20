@@ -24,6 +24,7 @@ This plugin provides the code execution tool used by agents for development task
   - Can open SSH interactive sessions instead of local shells when configured.
 - **Streaming output**
   - Continuously reads shell output, updates the current log item, and detects progress while commands are running.
+  - Detects local shell exit and SSH channel termination when strict mode, `exit`, or a lost connection prevents a final prompt from appearing.
 - **Long-running work**
   - Keeps normal command execution responsive while giving the `output` runtime longer polling windows for builds, installs, servers, tests, and training jobs.
 - **Safety around running sessions**

@@ -17,8 +17,10 @@ from plugins._code_execution.helpers.shell_ssh import SSHInteractiveSession
 
 
 def _is_closed_pty_error(exc: BaseException) -> bool:
-    if isinstance(exc, RuntimeError) and "TTYSpawn PTY is closed" in str(exc):
-        return True
+    if isinstance(exc, RuntimeError):
+        message = str(exc)
+        if "TTYSpawn PTY is closed" in message or "TTYSpawn process has exited" in message:
+            return True
     if isinstance(exc, OSError) and exc.errno in (errno.EBADF, errno.EIO, errno.EINVAL):
         return True
     cause = getattr(exc, "__cause__", None)
@@ -190,6 +192,11 @@ class CodeExecution(Tool):
             if response := await self.handle_running_session(cfg, session):
                 return response
 
+        # A strict-mode command can terminate the persistent shell itself.
+        # Recreate such a session lazily before accepting the next command.
+        if self.state.shells[session].session.is_terminated():
+            await self.prepare_state(cfg, reset=True, session=session)
+
         # try again on lost connection
         for i in range(2):
             try:
@@ -295,6 +302,26 @@ class CodeExecution(Tool):
                 last_output_time = now
                 got_output = True
 
+            # ``set -e``, ``exit``, or a lost SSH channel can end the managed
+            # shell without ever producing another prompt. Treat that process
+            # or channel termination as a definitive command end.
+            shell = self.state.shells[session].session
+            if shell.is_terminated():
+                exit_code = shell.get_exit_code()
+                status = f" with exit code {exit_code}" if exit_code is not None else ""
+                sysinfo = self.agent.read_prompt(
+                    "fw.code.shell_exit.md", status=status
+                )
+                response = self.agent.read_prompt("fw.code.info.md", info=sysinfo)
+                if truncated_output:
+                    response = truncated_output + "\n\n" + response
+                PrintStyle.warning(sysinfo)
+                heading = self.get_heading_from_output(truncated_output, 0, True)
+                self.log.update(content=prefix + response, heading=heading)
+                self.mark_session_idle(session)
+                return response
+
+            if partial_output:
                 # Check for shell prompt at the end of output
                 last_lines = (
                     truncated_output.splitlines()[-3:] if truncated_output else []
@@ -410,6 +437,10 @@ class CodeExecution(Tool):
         truncated_output = self.fix_full_output(full_output)
         await self.set_progress(truncated_output)
         heading = self.get_heading_from_output(truncated_output, 0)
+
+        if self.state.shells[session].session.is_terminated():
+            self.mark_session_idle(session)
+            return None
 
         last_lines = (
             truncated_output.splitlines()[-3:] if truncated_output else []

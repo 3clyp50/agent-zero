@@ -176,6 +176,16 @@ class TTYSession:
             raise RuntimeError("TTYSpawn is not started")
         return await self._proc.wait()
 
+    def is_terminated(self) -> bool:
+        """Return whether the managed shell process has exited."""
+        return self._proc is None or getattr(self._proc, "returncode", None) is not None
+
+    def get_exit_code(self) -> int | None:
+        """Return the managed shell exit code when it is already available."""
+        if self._proc is None:
+            return None
+        return getattr(self._proc, "returncode", None)
+
     def kill(self):
         """Force-kill the running child process.
 

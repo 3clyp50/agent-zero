@@ -57,6 +57,14 @@ class LocalInteractiveSession:
             raise Exception("Shell not connected")
         self.full_output = ""
         await self.session.sendline(command)
+
+    def is_terminated(self) -> bool:
+        return self.session is None or self.session.is_terminated()
+
+    def get_exit_code(self) -> int | None:
+        if not self.session:
+            return None
+        return self.session.get_exit_code()
  
     async def read_output(self, timeout: float = 0, reset_full_output: bool = False) -> Tuple[str, Optional[str]]:
         if not self.session:
