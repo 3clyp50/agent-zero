@@ -19,6 +19,7 @@ websocket.addHandlers(["ws_webui"]);
 const EXTENSIONS_ROOT = "/a0/usr/_browser/extensions";
 const BROWSER_SUBSCRIBE_TIMEOUT_MS = 60000;
 const BROWSER_FIRST_INSTALL_TIMEOUT_MS = 300000;
+const BROWSER_COMMAND_TIMEOUT_MS = 45000;
 const BROWSER_CONFIG_REFRESH_MS = 15000;
 const BROWSER_VIEWER_TRANSPORT_SNAPSHOT = "snapshot";
 const BROWSER_VIEWER_TRANSPORT_SCREENCAST = "screencast";
@@ -211,9 +212,6 @@ const model = {
   _surfaceHandoffTimer: null,
   _surfaceOpenedAt: 0,
   _surfaceOpenSequence: 0,
-  _canvasSurfaceReadySequence: 0,
-  _canvasFirstFrameAcceptedSequence: 0,
-  _canvasFirstFrameNudgeSequence: 0,
   _openPromise: null,
   _openSignature: "",
   _connectSequence: 0,
@@ -751,10 +749,6 @@ const model = {
     } finally {
       if (this.isCurrentSurfaceOpen(surfaceSequence)) {
         this.loading = false;
-        if (this._mode === "canvas") {
-          this._canvasSurfaceReadySequence = surfaceSequence;
-          this.scheduleCanvasWidthNudgeAfterFirstFrame();
-        }
       }
     }
   },
@@ -1298,11 +1292,9 @@ const model = {
     const viewport = this.currentViewportSize() || this._lastViewport;
     if (!this.frameMatchesViewport(dimensions, viewport)) {
       this.requestViewportSyncAfterRejectedFrame();
-      if (!this.shouldAcceptMismatchedFrame(dimensions)) {
-        bitmap?.close?.();
-        options?.cleanup?.();
-        return;
-      }
+      bitmap?.close?.();
+      options?.cleanup?.();
+      return;
     }
     if (bitmap && this.paintFrameBitmap(bitmap)) {
       this.clearFrameSrc();
@@ -1317,64 +1309,6 @@ const model = {
     this._lastFrameDimensions = dimensions;
     this._lastFrameAt = Date.now();
     options?.onAccepted?.();
-    this._canvasFirstFrameAcceptedSequence = surfaceSequence;
-    this.scheduleCanvasWidthNudgeAfterFirstFrame();
-  },
-
-  shouldAcceptMismatchedFrame(dimensions = null) {
-    return Boolean(
-      dimensions?.width
-      && dimensions?.height
-      && (!this.hasFrame() || this._surfaceSwitching || this.isSwitchingBrowser())
-    );
-  },
-
-  scheduleCanvasWidthNudgeAfterFirstFrame() {
-    const surfaceSequence = this._surfaceOpenSequence;
-    if (this._mode !== "canvas" || !this.isCurrentSurfaceOpen(surfaceSequence) || !this.activeBrowserId) {
-      return;
-    }
-    if (this._canvasFirstFrameNudgeSequence === surfaceSequence) {
-      return;
-    }
-    if (
-      this._canvasSurfaceReadySequence !== surfaceSequence
-      || this._canvasFirstFrameAcceptedSequence !== surfaceSequence
-    ) {
-      return;
-    }
-    this._canvasFirstFrameNudgeSequence = surfaceSequence;
-
-    void (async () => {
-      await nextAnimationFrame();
-      await nextAnimationFrame();
-      if (!this.isCurrentSurfaceOpen(surfaceSequence) || this._mode !== "canvas") {
-        return;
-      }
-      this.forceRightCanvasWidthNudge();
-    })();
-  },
-
-  forceRightCanvasWidthNudge() {
-    const canvas = rightCanvasStore;
-    if (!canvas || canvas.isMobileMode || !canvas.isOpen || canvas.activeSurfaceId !== "browser") {
-      return;
-    }
-
-    const currentWidth = Number(canvas.width || 0);
-    if (!Number.isFinite(currentWidth) || currentWidth <= 0) {
-      return;
-    }
-    const maxWidth = Number(canvas.maxWidth?.() || currentWidth);
-    const minWidth = Number(canvas.minWidth || 420);
-    const direction = currentWidth < maxWidth ? 1 : -1;
-    const nudgedWidth = currentWidth + direction;
-    if (nudgedWidth < minWidth || nudgedWidth > maxWidth || nudgedWidth === currentWidth) {
-      return;
-    }
-
-    canvas.setWidth?.(nudgedWidth, { persist: false });
-    this.queueViewportSync(true);
   },
 
   frameMatchesViewport(dimensions = null, viewport = null) {
@@ -1525,7 +1459,7 @@ const model = {
           viewer_transport: this.requestedViewerTransport(),
           command,
         },
-        { timeoutMs: 20000 },
+        { timeoutMs: BROWSER_COMMAND_TIMEOUT_MS },
       );
       const data = firstOk(response);
       this.applyTabScope(data);

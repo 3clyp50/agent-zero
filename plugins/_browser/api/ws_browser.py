@@ -230,13 +230,18 @@ class WsBrowser(WsHandler):
             if command == "open":
                 result = await runtime.call("open", data.get("url") or "")
             elif command == "navigate":
-                result = await runtime.call("navigate", browser_id, data.get("url") or "")
+                result = await runtime.call(
+                    "navigate",
+                    browser_id,
+                    data.get("url") or "",
+                    wait_until="commit",
+                )
             elif command == "back":
-                result = await runtime.call("back", browser_id)
+                result = await runtime.call("back", browser_id, wait_until="commit")
             elif command == "forward":
-                result = await runtime.call("forward", browser_id)
+                result = await runtime.call("forward", browser_id, wait_until="commit")
             elif command == "reload":
-                result = await runtime.call("reload", browser_id)
+                result = await runtime.call("reload", browser_id, wait_until="commit")
             elif command == "close":
                 result = await runtime.call("close_browser", browser_id)
             elif command == "list":
@@ -717,18 +722,29 @@ class WsBrowser(WsHandler):
     def _frame_dimensions(metadata: Any) -> dict[str, int]:
         if not isinstance(metadata, dict):
             return {}
-        for width_key, height_key in (
-            ("expectedWidth", "expectedHeight"),
-            ("deviceWidth", "deviceHeight"),
-            ("jpegWidth", "jpegHeight"),
-        ):
+
+        def dimensions(width_key: str, height_key: str) -> tuple[int, int] | None:
             try:
                 width = int(metadata.get(width_key) or 0)
                 height = int(metadata.get(height_key) or 0)
             except (TypeError, ValueError):
-                continue
+                return None
             if width > 0 and height > 0:
-                return {"width": width, "height": height}
+                return width, height
+            return None
+
+        expected = dimensions("expectedWidth", "expectedHeight")
+        jpeg = dimensions("jpegWidth", "jpegHeight")
+        if expected and jpeg:
+            width_scale = jpeg[0] / expected[0]
+            height_scale = jpeg[1] / expected[1]
+            if abs(width_scale - height_scale) <= 0.01:
+                return {"width": expected[0], "height": expected[1]}
+            return {"width": jpeg[0], "height": jpeg[1]}
+
+        for fallback in (jpeg, dimensions("deviceWidth", "deviceHeight"), expected):
+            if fallback:
+                return {"width": fallback[0], "height": fallback[1]}
         return {}
 
     async def _emit_viewer_state(

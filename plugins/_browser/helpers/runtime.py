@@ -40,7 +40,6 @@ CHROME_SINGLETON_FILES = ("SingletonLock", "SingletonCookie", "SingletonSocket")
 SCREENCAST_MAX_WIDTH = 4096
 SCREENCAST_MAX_HEIGHT = 4096
 VIEWPORT_SIZE_TOLERANCE = 4
-VIEWPORT_REMOUNT_PAUSE_SECONDS = 0.05
 CLIPBOARD_BRIDGE_SCRIPT = r"""
 (payload) => {
   const action = String(payload?.action || "").trim().toLowerCase();
@@ -282,18 +281,6 @@ CLIPBOARD_BRIDGE_SCRIPT = r"""
 _SAFE_CONTEXT_RE = re.compile(r"[^a-zA-Z0-9_.-]+")
 
 
-def _nudged_viewport(viewport: dict[str, int]) -> dict[str, int]:
-    width = int(viewport["width"])
-    height = int(viewport["height"])
-    if width < 4096:
-        return {"width": width + 1, "height": height}
-    if width > 320:
-        return {"width": width - 1, "height": height}
-    if height < 4096:
-        return {"width": width, "height": height + 1}
-    return {"width": width, "height": height - 1}
-
-
 def _safe_context_id(context_id: str) -> str:
     return _SAFE_CONTEXT_RE.sub("_", str(context_id or "default")).strip("._") or "default"
 
@@ -344,7 +331,7 @@ class _BrowserScreencast:
         self._expected_height = height
         with contextlib.suppress(Exception):
             await self.session.send("Page.enable")
-        await self._apply_cdp_viewport_with_remount({"width": width, "height": height})
+        await self._apply_cdp_viewport({"width": width, "height": height})
         await self.session.send(
             "Page.startScreencast",
             {
@@ -355,14 +342,6 @@ class _BrowserScreencast:
                 "everyNthFrame": max(1, int(every_nth_frame)),
             },
         )
-
-    async def _apply_cdp_viewport_with_remount(self, viewport: dict[str, int]) -> None:
-        await self._apply_cdp_viewport(viewport)
-        await asyncio.sleep(VIEWPORT_REMOUNT_PAUSE_SECONDS)
-        await self._apply_cdp_viewport(_nudged_viewport(viewport))
-        await asyncio.sleep(VIEWPORT_REMOUNT_PAUSE_SECONDS)
-        await self._apply_cdp_viewport(viewport)
-        await asyncio.sleep(VIEWPORT_REMOUNT_PAUSE_SECONDS)
 
     async def _apply_cdp_viewport(self, viewport: dict[str, int]) -> None:
         width = max(320, min(4096, int(viewport.get("width") or DEFAULT_VIEWPORT["width"])))
@@ -1247,38 +1226,59 @@ class _BrowserRuntimeCore:
         await self.ensure_started()
         return await self._state(self._resolve_browser_id(browser_id))
 
-    async def navigate(self, browser_id: int | str | None, url: str) -> dict[str, Any]:
+    async def navigate(
+        self,
+        browser_id: int | str | None,
+        url: str,
+        *,
+        wait_until: str = "domcontentloaded",
+    ) -> dict[str, Any]:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
-        await self._goto(page, normalize_url(url))
+        await self._goto(page, normalize_url(url), wait_until=wait_until)
         self._maybe_promote(resolved_id)
         return await self._state(resolved_id)
 
-    async def back(self, browser_id: int | str | None = None) -> dict[str, Any]:
+    async def back(
+        self,
+        browser_id: int | str | None = None,
+        *,
+        wait_until: str = "domcontentloaded",
+    ) -> dict[str, Any]:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
-        await page.go_back(wait_until="domcontentloaded", timeout=10000)
-        await self._settle(page)
+        await page.go_back(wait_until=wait_until, timeout=10000)
+        await self._settle(page, short=wait_until == "commit")
         self._maybe_promote(resolved_id)
         return await self._state(resolved_id)
 
-    async def forward(self, browser_id: int | str | None = None) -> dict[str, Any]:
+    async def forward(
+        self,
+        browser_id: int | str | None = None,
+        *,
+        wait_until: str = "domcontentloaded",
+    ) -> dict[str, Any]:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
-        await page.go_forward(wait_until="domcontentloaded", timeout=10000)
-        await self._settle(page)
+        await page.go_forward(wait_until=wait_until, timeout=10000)
+        await self._settle(page, short=wait_until == "commit")
         self._maybe_promote(resolved_id)
         return await self._state(resolved_id)
 
-    async def reload(self, browser_id: int | str | None = None) -> dict[str, Any]:
+    async def reload(
+        self,
+        browser_id: int | str | None = None,
+        *,
+        wait_until: str = "domcontentloaded",
+    ) -> dict[str, Any]:
         await self.ensure_started()
         resolved_id = self._resolve_browser_id(browser_id)
         page = self._page(resolved_id)
-        await page.reload(wait_until="domcontentloaded", timeout=15000)
-        await self._settle(page)
+        await page.reload(wait_until=wait_until, timeout=15000)
+        await self._settle(page, short=wait_until == "commit")
         self._maybe_promote(resolved_id)
         return await self._state(resolved_id)
 
@@ -1748,32 +1748,15 @@ class _BrowserRuntimeCore:
             or abs(int(current_viewport.get("height") or 0) - viewport["height"])
             > VIEWPORT_SIZE_TOLERANCE
         )
-        should_remount_viewport = changed or restart_screencast
-        if should_remount_viewport:
+        should_restart_screencast = changed or restart_screencast
+        if should_restart_screencast:
             await self._stop_screencasts_for_browser(resolved_id)
         if changed:
-            await self._apply_viewport_with_remount(page, viewport)
-        elif restart_screencast:
-            await self._remount_viewport(page, viewport)
-        if should_remount_viewport:
+            await page.set_viewport_size(viewport)
+        if should_restart_screencast:
             await self._settle(page, short=True)
         self._maybe_promote(resolved_id)
         return {"state": await self._state(resolved_id), "viewport": viewport}
-
-    async def _apply_viewport_with_remount(self, page: Any, viewport: dict[str, int]) -> None:
-        await page.set_viewport_size(viewport)
-        await asyncio.sleep(VIEWPORT_REMOUNT_PAUSE_SECONDS)
-        await self._remount_viewport(page, viewport)
-
-    async def _remount_viewport(self, page: Any, viewport: dict[str, int]) -> None:
-        nudged_viewport = self._nudged_viewport(viewport)
-        await page.set_viewport_size(nudged_viewport)
-        await asyncio.sleep(VIEWPORT_REMOUNT_PAUSE_SECONDS)
-        await page.set_viewport_size(viewport)
-
-    @staticmethod
-    def _nudged_viewport(viewport: dict[str, int]) -> dict[str, int]:
-        return _nudged_viewport(viewport)
 
     async def _point_for(
         self,
@@ -2223,17 +2206,23 @@ class _BrowserRuntimeCore:
         self._maybe_promote(resolved_id)
         return {"action": action or {}, "state": await self._state(resolved_id)}
 
-    async def _goto(self, page: Any, url: str) -> None:
+    async def _goto(
+        self,
+        page: Any,
+        url: str,
+        *,
+        wait_until: str = "domcontentloaded",
+    ) -> None:
         from playwright.async_api import Error as PlaywrightError
         from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await page.goto(url, wait_until=wait_until, timeout=30000)
         except PlaywrightTimeoutError:
-            PrintStyle.warning(f"Browser navigation timed out after DOM handoff: {url}")
+            PrintStyle.warning(f"Browser navigation timed out waiting for {wait_until}: {url}")
         except PlaywrightError as exc:
             PrintStyle.warning(f"Browser navigation showed a native error page for {url}: {exc}")
-        await self._settle(page)
+        await self._settle(page, short=wait_until == "commit")
 
     async def _settle(self, page: Any, short: bool = False) -> None:
         from playwright.async_api import Error as PlaywrightError
