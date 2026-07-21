@@ -1238,6 +1238,10 @@ def test_browser_extension_settings_stay_user_facing():
     assert "extensionDeleteTitle(extension)" in config_html
     assert "deleteExtension(extension)" in config_html
     assert "Delete extension" in config_store
+    assert 'import { showConfirmDialog } from "/js/confirmDialog.js";' in config_store
+    assert "const safeName = name.replace" in config_store
+    assert "const confirmed = await showConfirmDialog({" in config_store
+    assert "globalThis.confirm" not in config_store
     assert "<textarea" not in config_html
     assert "Enabled extension directories" not in config_html
     assert "Chrome Web Store URL installs" not in config_html

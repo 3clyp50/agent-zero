@@ -1,5 +1,6 @@
 import { createStore } from "/js/AlpineStore.js";
 import { callJsonApi } from "/js/api.js";
+import { showConfirmDialog } from "/js/confirmDialog.js";
 
 const BROWSER_EXTENSIONS_API = "/plugins/_browser/extensions";
 const BROWSER_STATUS_API = "/plugins/_browser/status";
@@ -449,9 +450,14 @@ export const store = createStore("browserConfig", {
       return;
     }
     const name = String(extension?.name || "this extension").trim();
-    if (globalThis.confirm && !globalThis.confirm(`Delete ${name}? This removes the extension folder from Browser.`)) {
-      return;
-    }
+    const safeName = name.replace(/[&<>"']/g, (character) => `&#${character.charCodeAt(0)};`);
+    const confirmed = await showConfirmDialog({
+      title: "Delete extension",
+      message: `Delete ${safeName}? This removes the extension folder from Browser.`,
+      confirmText: "Delete",
+      type: "danger",
+    });
+    if (!confirmed) return;
 
     this.extensionDeleteLoadingPath = path;
     try {
