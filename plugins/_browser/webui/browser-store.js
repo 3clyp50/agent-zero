@@ -535,6 +535,7 @@ const model = {
     }
 
     this.extensionActionLoading = true;
+    this.extensionActionMessage = "Installing extension… Large packages may take a few minutes.";
     try {
       const response = await callJsonApi("/plugins/_browser/extensions", {
         action: "install_web_store",
@@ -549,6 +550,7 @@ const model = {
       this.extensionActionMessage = `Installed ${response.name || response.id}.`;
       await this.refreshAfterSettingsClose();
     } catch (error) {
+      this.extensionActionMessage = "";
       this.extensionActionError = error instanceof Error ? error.message : String(error);
     } finally {
       this.extensionActionLoading = false;

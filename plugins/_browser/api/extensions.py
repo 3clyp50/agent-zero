@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 
 from helpers import plugins
@@ -30,7 +31,10 @@ class Extensions(ApiHandler):
 
         if action == "install_web_store":
             try:
-                result = install_chrome_web_store_extension(str(input.get("url", "")))
+                result = await asyncio.to_thread(
+                    install_chrome_web_store_extension,
+                    str(input.get("url", "")),
+                )
             except ValueError as exc:
                 return {"ok": False, "error": str(exc)}
             return {

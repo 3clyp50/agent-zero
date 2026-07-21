@@ -106,11 +106,12 @@
                     placeholder="https://chromewebstore.google.com/detail/..." />
                   <div class="browser-extension-url-actions">
                     <button type="button" class="btn btn-ok" @click="$store.browserPage.installExtensionFromUrl()"
-                      :disabled="$store.browserPage.extensionActionLoading">
+                      :disabled="$store.browserPage.extensionActionLoading"
+                      :aria-busy="$store.browserPage.extensionActionLoading.toString()">
                       <span class="material-symbols-outlined"
                         :class="{ spinning: $store.browserPage.extensionActionLoading }"
                         x-text="$store.browserPage.extensionActionLoading ? 'progress_activity' : 'download'"></span>
-                      <span>Install URL</span>
+                      <span x-text="$store.browserPage.extensionActionLoading ? 'Installing…' : 'Install URL'">Install URL</span>
                     </button>
                     <button type="button" class="btn btn-field"
                       @click="$store.browserPage.askAgentInstallExtension()">

@@ -4,6 +4,7 @@ import json
 import re
 import sys
 import threading
+import zipfile
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
@@ -545,6 +546,108 @@ def test_browser_extension_manager_extracts_crx3_zip_payload():
     assert _crx_zip_payload(crx) == payload
 
 
+def test_browser_extension_manager_skips_same_version_reinstall(monkeypatch, tmp_path):
+    extension_id = "a" * 32
+    monkeypatch.setattr(
+        browser_extension_manager_module.files,
+        "get_abs_path",
+        lambda *parts: str(tmp_path.joinpath(*parts)),
+    )
+    target = get_extensions_root() / "chrome-web-store" / extension_id
+    target.mkdir(parents=True)
+    (target / "manifest.json").write_text(
+        json.dumps({"name": "Current", "version": "1.0.0"}),
+        encoding="utf-8",
+    )
+    (target / "keep.txt").write_text("current", encoding="utf-8")
+
+    def download(_extension_id, archive_path):
+        with zipfile.ZipFile(archive_path, "w") as archive:
+            archive.writestr("manifest.json", json.dumps({"name": "Current", "version": "1.0.0"}))
+            archive.writestr("replacement.txt", "should not be extracted")
+
+    monkeypatch.setattr(browser_extension_manager_module, "_download_crx", download)
+    monkeypatch.setattr(
+        browser_extension_manager_module,
+        "get_browser_config",
+        lambda: {"extension_paths": [str(target)]},
+    )
+    monkeypatch.setattr(
+        browser_extension_manager_module.plugins,
+        "save_plugin_config",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        browser_extension_manager_module,
+        "close_all_runtimes_sync",
+        lambda: pytest.fail("same-version reinstall restarted Browser runtimes"),
+    )
+    monkeypatch.setattr(
+        browser_extension_manager_module,
+        "_safe_extract_zip",
+        lambda *_args: pytest.fail("same-version reinstall extracted the package"),
+    )
+
+    result = browser_extension_manager_module.install_chrome_web_store_extension(extension_id)
+
+    assert result["version"] == "1.0.0"
+    assert (target / "keep.txt").read_text(encoding="utf-8") == "current"
+    assert not (target / "replacement.txt").exists()
+
+
+def test_browser_extension_manager_stages_updates_and_restarts_runtime(monkeypatch, tmp_path):
+    extension_id = "a" * 32
+    monkeypatch.setattr(
+        browser_extension_manager_module.files,
+        "get_abs_path",
+        lambda *parts: str(tmp_path.joinpath(*parts)),
+    )
+    target = get_extensions_root() / "chrome-web-store" / extension_id
+    target.mkdir(parents=True)
+    (target / "manifest.json").write_text(
+        json.dumps({"name": "Old", "version": "1.0.0"}),
+        encoding="utf-8",
+    )
+    (target / "old.txt").write_text("old", encoding="utf-8")
+
+    def download(_extension_id, archive_path):
+        with zipfile.ZipFile(archive_path, "w") as archive:
+            archive.writestr("manifest.json", json.dumps({"name": "Updated", "version": "2.0.0"}))
+            archive.writestr("new.txt", "new")
+
+    saved_configs = []
+    restarts = []
+    monkeypatch.setattr(browser_extension_manager_module, "_download_crx", download)
+    monkeypatch.setattr(
+        browser_extension_manager_module,
+        "get_browser_config",
+        lambda: {"extension_paths": [str(target)]},
+    )
+    monkeypatch.setattr(
+        browser_extension_manager_module.plugins,
+        "save_plugin_config",
+        lambda _plugin, _project, _agent, config: saved_configs.append(config.copy()),
+    )
+    def restart():
+        listed_paths = [
+            extension["path"]
+            for extension in browser_extension_manager_module.list_browser_extensions()
+        ]
+        restarts.append(((target / "old.txt").exists(), listed_paths))
+
+    monkeypatch.setattr(browser_extension_manager_module, "close_all_runtimes_sync", restart)
+
+    result = browser_extension_manager_module.install_chrome_web_store_extension(extension_id)
+
+    assert result["name"] == "Updated"
+    assert result["version"] == "2.0.0"
+    assert restarts == [(True, [str(target)])]
+    assert saved_configs[-1]["extension_paths"] == [str(target)]
+    assert (target / "new.txt").read_text(encoding="utf-8") == "new"
+    assert not (target / "old.txt").exists()
+    assert list(target.parent.iterdir()) == [target]
+
+
 def test_browser_extension_manager_uses_modern_chrome_prodversion(monkeypatch):
     extension_id = "a" * 32
 
@@ -589,6 +692,11 @@ def test_browser_extension_menu_exposes_agent_and_url_paths():
     assert "<span>Open</span>" in html
     assert "hasExtensionInstallUrl()" in html
     assert "malicious or buggy extensions" in html
+    assert "'Installing…' : 'Install URL'" in html
+    assert ':aria-busy="$store.browserPage.extensionActionLoading.toString()"' in html
+    assert "Large packages may take a few minutes." in (
+        PROJECT_ROOT / "plugins" / "_browser" / "webui" / "browser-store.js"
+    ).read_text(encoding="utf-8")
     assert skill.exists()
 
 

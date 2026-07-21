@@ -16,6 +16,7 @@ from typing import Any
 
 from helpers import files, plugins
 from plugins._browser.helpers.config import PLUGIN_NAME, get_browser_config
+from plugins._browser.helpers.runtime import close_all_runtimes_sync
 
 
 EXTENSIONS_ROOT_DIR = ("usr", "_browser", "extensions")
@@ -65,6 +66,8 @@ def list_browser_extensions() -> list[dict[str, Any]]:
     root = get_extensions_root()
     if root.exists():
         for manifest_path in sorted(root.glob("**/manifest.json")):
+            if any(part.startswith(".") for part in manifest_path.relative_to(root).parts):
+                continue
             entry = _extension_entry(manifest_path.parent, enabled_paths)
             seen.add(entry["path"])
             entries.append(entry)
@@ -89,16 +92,33 @@ def install_chrome_web_store_extension(source: str) -> dict[str, Any]:
         _download_crx(extension_id, archive_path)
         payload_path = Path(tmp) / f"{extension_id}.zip"
         payload_path.write_bytes(_crx_zip_payload(archive_path.read_bytes()))
-        extracted_path = Path(tmp) / "extracted"
-        _safe_extract_zip(payload_path, extracted_path)
-
-        if not (extracted_path / "manifest.json").is_file():
-            raise ValueError("Downloaded extension did not contain a manifest.json file.")
-
-        if target.exists():
-            shutil.rmtree(target)
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(extracted_path, target)
+        try:
+            with zipfile.ZipFile(payload_path) as archive:
+                manifest = json.loads(archive.read("manifest.json"))
+        except KeyError as exc:
+            raise ValueError("Downloaded extension did not contain a manifest.json file.") from exc
+        except (json.JSONDecodeError, UnicodeDecodeError, zipfile.BadZipFile) as exc:
+            raise ValueError("Downloaded extension contained an invalid manifest.json file.") from exc
+        if not isinstance(manifest, dict):
+            raise ValueError("Downloaded extension contained an invalid manifest.json file.")
+
+        current_manifest = _read_manifest(target)
+        if not (
+            target.is_dir()
+            and manifest.get("version")
+            and manifest.get("version") == current_manifest.get("version")
+        ):
+            with tempfile.TemporaryDirectory(
+                prefix=f".{extension_id}-install-",
+                dir=target.parent,
+            ) as extracted:
+                extracted_path = Path(extracted)
+                _safe_extract_zip(payload_path, extracted_path)
+                config = get_browser_config()
+                if target.exists() and str(target) in config["extension_paths"]:
+                    close_all_runtimes_sync()
+                _replace_extension_dir(extracted_path, target)
 
     config = _enable_extension_path(target)
     manifest = _read_manifest(target)
@@ -110,6 +130,24 @@ def install_chrome_web_store_extension(source: str) -> dict[str, Any]:
         "path": str(target),
         "extension_paths": config["extension_paths"],
     }
+
+
+def _replace_extension_dir(source: Path, target: Path) -> None:
+    if not target.exists():
+        source.rename(target)
+        return
+
+    with tempfile.TemporaryDirectory(
+        prefix=f".{target.name}-previous-",
+        dir=target.parent,
+    ) as backup_dir:
+        backup = Path(backup_dir) / target.name
+        target.rename(backup)
+        try:
+            source.rename(target)
+        except BaseException:
+            backup.rename(target)
+            raise
 
 
 def set_browser_extension_enabled(extension_path: str, enabled: bool) -> dict[str, Any]:
