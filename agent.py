@@ -1123,13 +1123,22 @@ class Agent:
             return None
         if llm_result.builtin_items and not llm_result.response:
             return None
+        message = llm_result.response
+        if not message and llm_result.reasoning:
+            reasoning_request = extract_tools.json_parse_dirty(llm_result.reasoning)
+            try:
+                extract_tools.normalize_tool_request(reasoning_request)
+            except ValueError:
+                pass
+            else:
+                message = llm_result.reasoning
         if (
             llm_result.mode == "responses"
-            and llm_result.response
-            and extract_tools.json_parse_dirty(llm_result.response) is None
+            and message
+            and extract_tools.json_parse_dirty(message) is None
         ):
-            return llm_result.response
-        return await self.process_tools(llm_result.response)
+            return message
+        return await self.process_tools(message)
 
     async def _execute_tool_request(
         self,

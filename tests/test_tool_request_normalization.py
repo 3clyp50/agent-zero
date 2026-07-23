@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from helpers.extract_tools import normalize_tool_request
+from helpers.extract_tools import json_parse_dirty, normalize_tool_request
 from helpers import parallel_tools
 
 
@@ -66,6 +66,50 @@ def test_normalize_tool_request_preserves_explicit_action_over_method() -> None:
 def test_normalize_tool_request_rejects_missing_args() -> None:
     with pytest.raises(ValueError, match="tool_args"):
         normalize_tool_request({"tool_name": "response"})
+
+
+def test_normalize_tool_request_accepts_native_function_format() -> None:
+    request = {
+        "type": "function",
+        "name": "search_engine",
+        "parameters": {"query": "latest Agent Zero release"},
+    }
+
+    assert json_parse_dirty(str(request)) == request
+    assert normalize_tool_request(request) == (
+        "search_engine",
+        {"query": "latest Agent Zero release"},
+    )
+
+
+def test_normalize_tool_request_accepts_single_action_wrapper() -> None:
+    request = {
+        "thoughts": ["Read the requested file."],
+        "actions": [
+            {
+                "tool_name": "text_editor",
+                "tool_args": {"action": "read", "path": "README.md"},
+            }
+        ],
+    }
+
+    assert json_parse_dirty(str(request)) == request
+    assert normalize_tool_request(request) == (
+        "text_editor",
+        {"action": "read", "path": "README.md"},
+    )
+
+
+def test_normalize_tool_request_rejects_multiple_wrapped_actions() -> None:
+    with pytest.raises(ValueError, match="exactly one"):
+        normalize_tool_request(
+            {
+                "actions": [
+                    {"tool_name": "response", "tool_args": {"text": "first"}},
+                    {"tool_name": "response", "tool_args": {"text": "second"}},
+                ]
+            }
+        )
 
 
 def test_normalize_parallel_tool_calls_accepts_full_agent_reply_shape() -> None:

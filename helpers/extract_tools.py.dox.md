@@ -25,6 +25,7 @@
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
 - Observed side-effect areas: settings/state persistence.
 - Dirty parsing scans complete JSON object roots in prose and prefers the first object that normalizes as a valid tool request, so a leading text preamble or incidental non-tool object does not force a misformat warning when a valid tool call follows.
+  Normalization accepts canonical `tool_name`/`tool_args`, legacy `tool`/`args`, native `type="function"` `name`/`parameters`, and a single-item `actions` wrapper; malformed or multi-action wrappers are rejected.
 - Streaming tool snapshots use the same valid-tool preference through `extract_json_root_string`, while preserving the first complete object fallback when no valid tool-call object is present.
 - Root extraction ignores objects nested inside an open parent object, so streamed wrapper tools such as `parallel` cannot stop early on the first nested `tool_calls` item.
 - Imported dependency areas include: `dirty_json`, `helpers.modules`, `re`, `regex`, `typing`.

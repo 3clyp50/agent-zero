@@ -411,3 +411,31 @@ async def test_agent_executes_native_responses_function_call_and_records_output(
             "output": "done:a0",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_agent_uses_only_valid_tool_request_from_reasoning() -> None:
+    agent = object.__new__(Agent)
+    processed: list[str] = []
+
+    async def log_builtin_items(result):
+        return None
+
+    async def process_tools(message):
+        processed.append(message)
+        return message
+
+    agent._log_response_builtin_items = log_builtin_items
+    agent.process_tools = process_tools
+
+    tool_request = '{"type":"function","name":"response","parameters":{"text":"ok"}}'
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult(response="", reasoning=tool_request)
+    ) == tool_request
+    assert processed == [tool_request]
+
+    processed.clear()
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult(response="", reasoning='{"status":"planning"}')
+    ) == ""
+    assert processed == [""]
