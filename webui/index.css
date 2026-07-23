@@ -311,6 +311,23 @@ img {
   overflow: hidden;
 }
 
+.sidebar-slot {
+  flex: 0 0 250px;
+  min-width: 250px;
+  height: 100%;
+}
+
+.sidebar-slot:has(#left-panel) {
+  display: contents;
+}
+
+@media (max-width: 768px) {
+  .sidebar-slot {
+    flex-basis: 0;
+    min-width: 0;
+  }
+}
+
 .panel {
   display: -webkit-flex;
   display: flex;
