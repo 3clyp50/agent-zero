@@ -9,7 +9,10 @@ from helpers.ws import WsHandler
 from helpers.ws_manager import WsResult
 
 from plugins._a0_connector.helpers.exec_config import build_exec_config
-from plugins._a0_connector.helpers.event_bridge import get_context_log_entries
+from plugins._a0_connector.helpers.event_bridge import (
+    get_context_log_entries,
+    get_context_log_entry_count,
+)
 from plugins._a0_connector.helpers.version import agent_zero_version
 from plugins._a0_connector.helpers.ws_runtime import (
     clear_remote_tree_snapshot,
@@ -68,6 +71,7 @@ WS_FEATURES = [
 ]
 
 _SNAPSHOT_REPLAY_PAGE_SIZE = 50
+_TAIL_HISTORY_PAGE_SIZE = 100
 _LIVE_STREAM_PAGE_SIZE = 100
 
 
@@ -257,6 +261,8 @@ class WsConnector(WsHandler):
 
         context_id = str(data.get("context_id", "")).strip()
         from_sequence = int(data.get("from", 0) or 0)
+        history_mode = str(data.get("history", "")).strip().lower()
+        history_before = data.get("history_before")
 
         if not context_id:
             return WsResult.error(
@@ -274,6 +280,67 @@ class WsConnector(WsHandler):
             )
 
         subscribe_sid_to_context(sid, context_id)
+
+        if history_before is not None:
+            before = min(
+                max(int(history_before or 0), 0),
+                get_context_log_entry_count(context_id),
+            )
+            start = max(before - _TAIL_HISTORY_PAGE_SIZE, 0)
+            events, last_sequence = get_context_log_entries(
+                context_id,
+                after=start,
+                limit=before - start,
+            )
+            await self._emit_context_snapshot(
+                sid,
+                context_id=context_id,
+                events=events,
+                last_sequence=last_sequence,
+                context=context,
+                correlation_id=data.get("correlationId"),
+                history_before=start,
+                has_more_history=bool(start),
+            )
+            return {
+                "context_id": context_id,
+                "subscribed": True,
+                "last_sequence": last_sequence,
+                "history_before": start,
+                "has_more_history": bool(start),
+            }
+
+        if history_mode == "tail":
+            total = get_context_log_entry_count(context_id)
+            start = max(total - _TAIL_HISTORY_PAGE_SIZE, 0)
+            events, last_sequence = get_context_log_entries(
+                context_id,
+                after=start,
+                limit=_TAIL_HISTORY_PAGE_SIZE,
+            )
+            await self._emit_context_snapshot(
+                sid,
+                context_id=context_id,
+                events=events,
+                last_sequence=last_sequence,
+                context=context,
+                correlation_id=data.get("correlationId"),
+                history_before=start,
+                has_more_history=bool(start),
+            )
+            self._start_streaming(
+                sid,
+                context_id,
+                from_sequence=last_sequence,
+            )
+            return {
+                "context_id": context_id,
+                "subscribed": True,
+                "last_sequence": last_sequence,
+                "history_before": start,
+                "has_more_history": bool(start),
+            }
+
         events, last_sequence = get_context_log_entries(
             context_id,
             after=from_sequence,
@@ -927,16 +994,23 @@ class WsConnector(WsHandler):
         last_sequence: int,
         context: AgentContext | None = None,
         correlation_id: str | None = None,
+        history_before: int | None = None,
+        has_more_history: bool | None = None,
     ) -> None:
+        payload: dict[str, Any] = {
+            "context_id": context_id,
+            "events": events,
+            "last_sequence": last_sequence,
+            "message_queue": self._queue_items_for_context(context),
+        }
+        if history_before is not None:
+            payload["history_before"] = history_before
+        if has_more_history is not None:
+            payload["has_more_history"] = has_more_history
         await self.emit_to(
             sid,
             "connector_context_snapshot",
-            {
-                "context_id": context_id,
-                "events": events,
-                "last_sequence": last_sequence,
-                "message_queue": self._queue_items_for_context(context),
-            },
+            payload,
             correlation_id=correlation_id,
         )
 
