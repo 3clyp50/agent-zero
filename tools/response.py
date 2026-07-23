@@ -1,10 +1,17 @@
+from helpers.errors import RepairableException
 from helpers.tool import Tool, Response
 
 
 class ResponseTool(Tool):
 
     async def execute(self, **kwargs):
-        return Response(message=self.args["text"] if "text" in self.args else self.args["message"], break_loop=True)
+        for key in ("text", "message"):
+            message = self.args.get(key)
+            if isinstance(message, str):
+                return Response(message=message, break_loop=True)
+        raise RepairableException(
+            "response tool requires a top-level text or message string argument"
+        )
 
     async def before_execution(self, **kwargs):
         # self.log = self.agent.context.log.log(type="response", heading=f"{self.agent.agent_name}: Responding", content=self.args.get("text", ""))
