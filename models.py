@@ -738,14 +738,9 @@ class LiteLLMChatWrapper(SimpleChatModel):
                                         output["response_delta"]
                                     )
                                 )
-                            if (
-                                stop_response is not None
-                                and not transport.policy.using_responses
-                            ):
-                                result.response = stop_response
-                                break
                             if stop_response is not None:
                                 result.response = stop_response
+                                break
                 else:
                     parsed = await transport.acomplete()
                     output = result.add_chunk(parsed)

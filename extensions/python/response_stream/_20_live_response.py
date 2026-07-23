@@ -1,4 +1,5 @@
 from helpers import persist_chat, tokens
+from helpers import extract_tools
 from helpers.extension import Extension
 from agent import LoopData
 import asyncio
@@ -19,13 +20,8 @@ class LiveResponse(Extension):
             return
             
         try:
-            if (
-                not "tool_name" in parsed
-                or parsed["tool_name"] != "response"
-                or "tool_args" not in parsed
-                or "text" not in parsed["tool_args"]
-                or not parsed["tool_args"]["text"]
-            ):
+            tool_name, tool_args = extract_tools.normalize_tool_request(parsed)
+            if tool_name != "response" or not tool_args.get("text"):
                 return  # not a response
 
             # create log message and store it in loop data temporary params
@@ -43,6 +39,6 @@ class LiveResponse(Extension):
 
             # update log message
             log_item = loop_data.params_temporary["log_item_response"]
-            log_item.update(content=parsed["tool_args"]["text"])
+            log_item.update(content=tool_args["text"])
         except Exception as e:
             pass

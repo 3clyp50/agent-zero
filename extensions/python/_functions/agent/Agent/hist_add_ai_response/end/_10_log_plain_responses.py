@@ -23,7 +23,7 @@ class LogPlainResponses(Extension):
             message = call_args[1]
         if not isinstance(message, str) or not message:
             return
-        if extract_tools.json_parse_dirty(message) is not None:
+        if extract_tools.extract_tool_request(message) is not None:
             return
 
         params = getattr(getattr(self.agent, "loop_data", None), "params_temporary", None)

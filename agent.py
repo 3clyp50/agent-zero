@@ -447,24 +447,15 @@ class Agent:
                                 printer.print("Response: ")  # start of response
                             # Pass chunk and full data to extensions for processing
                             stream_data = {"chunk": chunk, "full": full}
-                            stop_response: str | None = None
-
-                            snapshot = extract_tools.extract_json_root_string(full)
-                            if snapshot:
-                                parsed_snapshot = extract_tools.json_parse_dirty(snapshot)
-                                if parsed_snapshot is not None:
-                                    try:
-                                        await self.validate_tool_request(parsed_snapshot)
-                                    except Exception:
-                                        pass
-                                    else:
-                                        previous_full = last_response_stream_full
-                                        stream_data["full"] = snapshot
-                                        if snapshot.startswith(previous_full):
-                                            stream_data["chunk"] = snapshot[len(previous_full) :]
-                                        else:
-                                            stream_data["chunk"] = snapshot
-                                        stop_response = snapshot
+                            tool_request = extract_tools.extract_tool_request(full)
+                            if tool_request is not None:
+                                try:
+                                    await self.validate_tool_request(tool_request)
+                                except Exception:
+                                    pass
+                                else:
+                                    await self.handle_response_stream(full)
+                                    return full.strip()
 
                             await extension.call_extensions_async(
                                 "response_stream_chunk",
@@ -478,8 +469,6 @@ class Agent:
                             # Use the potentially modified full text for downstream processing
                             await self.handle_response_stream(stream_data["full"])
                             last_response_stream_full = stream_data["full"]
-                            if stop_response is not None:
-                                return stop_response
 
                         # call main LLM
                         llm_result = await self.call_chat_model_turn(
@@ -1123,13 +1112,18 @@ class Agent:
             return None
         if llm_result.builtin_items and not llm_result.response:
             return None
-        if (
-            llm_result.mode == "responses"
-            and llm_result.response
-            and extract_tools.json_parse_dirty(llm_result.response) is None
-        ):
-            return llm_result.response
-        return await self.process_tools(llm_result.response)
+        message = llm_result.response
+        if not message and llm_result.reasoning:
+            if (
+                extract_tools.extract_tool_request(llm_result.reasoning) is not None
+                or extract_tools.is_misformatted_tool_request(llm_result.reasoning)
+            ):
+                message = llm_result.reasoning
+        if extract_tools.extract_tool_request(message) is None:
+            if extract_tools.is_misformatted_tool_request(message):
+                return await self.process_tools(message)
+            return message
+        return await self.process_tools(message)
 
     async def _execute_tool_request(
         self,
@@ -1408,7 +1402,7 @@ class Agent:
     @extension.extensible
     async def process_tools(self, msg: str):
         # search for tool usage requests in agent message
-        tool_request = extract_tools.json_parse_dirty(msg)
+        tool_request = extract_tools.extract_tool_request(msg)
 
         raw_tool_name = ""
         tool_args = {}
@@ -1417,6 +1411,7 @@ class Agent:
         # block was found - the misformat warning path below handles that.
         if tool_request is not None:
             try:
+                await self.validate_tool_request(tool_request)
                 raw_tool_name, tool_args = extract_tools.normalize_tool_request(
                     tool_request
                 )
@@ -1458,6 +1453,7 @@ class Agent:
                 )
 
             if tool:
+                tool.args = tool_args
                 self.loop_data.current_tool = tool  # type: ignore
                 try:
                     await self.handle_intervention()

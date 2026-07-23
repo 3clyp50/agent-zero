@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from pathlib import Path
 
@@ -11,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import models
 from agent import Agent, AgentConfig, AgentContextType, LoopData
-from helpers import history, litellm_transport
+from helpers import extract_tools, history, litellm_transport
 from helpers.log import Log
 from helpers.llm_result import LLMResult, result_from_metadata
 from helpers.persist_chat import _collect_response_ids
@@ -41,6 +42,28 @@ class _AsyncEventStream:
 
     async def aclose(self):
         self.closed = True
+
+
+class _StallingAsyncEventStream:
+    def __init__(self, event: dict):
+        self.event = event
+        self.sent = False
+        self.closed = False
+        self._stalled = asyncio.Event()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if not self.sent:
+            self.sent = True
+            return self.event
+        await self._stalled.wait()
+        raise StopAsyncIteration
+
+    async def aclose(self):
+        self.closed = True
+        self._stalled.set()
 
 
 def test_llm_result_persists_only_durable_responses_metadata():
@@ -248,7 +271,7 @@ async def test_transport_downgrades_unsupported_builtin_tools(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_unified_turn_keeps_stream_open_to_capture_response_id(monkeypatch):
+async def test_unified_turn_captures_response_id_without_stop_request(monkeypatch):
     stream = _AsyncEventStream(
         [
             {
@@ -303,7 +326,7 @@ async def test_unified_turn_keeps_stream_open_to_capture_response_id(monkeypatch
     )
 
     async def response_callback(chunk: str, full: str):
-        return full
+        return None
 
     result = await wrapper.unified_turn(
         messages=[HumanMessage(content="hi")],
@@ -314,6 +337,46 @@ async def test_unified_turn_keeps_stream_open_to_capture_response_id(monkeypatch
     assert stream.closed is False
     assert result.response_id == "resp_1"
     assert result.function_calls[0].call_id == "call_1"
+
+
+@pytest.mark.asyncio
+async def test_unified_turn_stops_responses_stream_after_callback_stop(monkeypatch):
+    message = (
+        '{"thoughts":["test"],"actions":['
+        '{"tool_name":"response","tool_args":{"text":"ok"}}]}'
+    )
+    stream = _StallingAsyncEventStream(
+        {"type": "response.output_text.delta", "delta": message}
+    )
+
+    async def fake_aresponses(*args, **kwargs):
+        return stream
+
+    async def fake_rate_limiter(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(litellm_transport, "aresponses", fake_aresponses)
+    monkeypatch.setattr(models, "apply_rate_limiter", fake_rate_limiter)
+
+    wrapper = models.LiteLLMChatWrapper(
+        model="test-model",
+        provider="openai",
+        model_config=None,
+    )
+
+    async def response_callback(chunk: str, full: str):
+        return full if extract_tools.extract_tool_request(full) else None
+
+    result = await asyncio.wait_for(
+        wrapper.unified_turn(
+            messages=[HumanMessage(content="hi")],
+            response_callback=response_callback,
+        ),
+        timeout=1,
+    )
+
+    assert result.response == message
+    assert stream.closed is True
 
 
 def test_collect_response_ids_from_agent_state_and_history_metadata():
@@ -411,3 +474,137 @@ async def test_agent_executes_native_responses_function_call_and_records_output(
             "output": "done:a0",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_agent_routes_only_complete_text_tool_requests() -> None:
+    agent = object.__new__(Agent)
+    processed: list[str] = []
+
+    async def log_builtin_items(result):
+        return None
+
+    async def process_tools(message):
+        processed.append(message)
+        return message
+
+    agent._log_response_builtin_items = log_builtin_items
+    agent.process_tools = process_tools
+
+    tool_request = '{"type":"function","name":"response","parameters":{"text":"ok"}}'
+    for message in (
+        "Plain final answer.",
+        '{"status":"planning"}',
+        f"Example tool JSON: {tool_request}",
+    ):
+        assert await Agent.process_llm_result_tools(
+            agent, LLMResult.from_chat(response=message)
+        ) == message
+    assert processed == []
+
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult.from_chat(response=tool_request)
+    ) == tool_request
+    assert processed == [tool_request]
+
+    processed.clear()
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult(response="", reasoning=tool_request)
+    ) == tool_request
+    assert processed == [tool_request]
+
+    processed.clear()
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult(response="", reasoning='{"status":"planning"}')
+    ) == ""
+    assert processed == []
+
+
+@pytest.mark.asyncio
+async def test_agent_routes_misformatted_tool_intent_to_repair() -> None:
+    agent = object.__new__(Agent)
+    processed: list[str] = []
+
+    async def log_builtin_items(result):
+        return None
+
+    async def process_tools(message):
+        processed.append(message)
+        return None
+
+    agent._log_response_builtin_items = log_builtin_items
+    agent.process_tools = process_tools
+
+    malformed = (
+        '{"thoughts":["Plan the work", "Run the tools", '
+        '"headline":"Save results", "tool_name":"parallel", '
+        '"tool_args":{"tool_calls":[{"tool_name":"memory_save",'
+        '"tool_args":{"text":"ok"}}],"wait":true}}'
+    )
+
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult.from_chat(response=malformed)
+    ) is None
+    assert processed == [malformed]
+
+    processed.clear()
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult(response="", reasoning=malformed)
+    ) is None
+    assert processed == [malformed]
+
+    fenced = (
+        "I will call the tool.\n\n```json\n"
+        '{"tool_name":"response","tool_args":{"text":"ok"}}\n```'
+    )
+    processed.clear()
+    assert await Agent.process_llm_result_tools(
+        agent, LLMResult.from_chat(response=fenced)
+    ) is None
+    assert processed == [fenced]
+
+
+@pytest.mark.asyncio
+async def test_text_tool_execution_uses_normalized_tool_args(monkeypatch) -> None:
+    class DummyMCPConfig:
+        def get_tool(self, agent, tool_name):
+            return None
+
+    class DummyTool:
+        def __init__(self):
+            self.args = {}
+
+        async def before_execution(self, **kwargs):
+            assert self.args == {"text": "ok"}
+
+        async def execute(self, **kwargs):
+            assert kwargs == {"text": "ok"}
+            return Response(message=self.args["text"], break_loop=True)
+
+        async def after_execution(self, response):
+            return None
+
+    async def no_extension(*args, **kwargs):
+        return None
+
+    async def no_intervention(*args, **kwargs):
+        return None
+
+    import agent as agent_module
+    from helpers import mcp_handler
+
+    monkeypatch.setattr(
+        mcp_handler.MCPConfig, "get_instance", lambda: DummyMCPConfig()
+    )
+    monkeypatch.setattr(agent_module.extension, "call_extensions_async", no_extension)
+
+    tool = DummyTool()
+    agent = object.__new__(Agent)
+    agent.data = {}
+    agent.loop_data = LoopData()
+    agent.handle_intervention = no_intervention
+    agent.get_tool = lambda **kwargs: tool
+
+    assert await Agent.process_tools(
+        agent, '{"actions":[{"tool_name":"response","tool_args":{"text":"ok"}}]}'
+    ) == "ok"

@@ -12,6 +12,8 @@
 - `extract_tools.py.dox.md` owns durable notes about responsibilities, contracts, side effects, and verification for that implementation.
 - Top-level functions:
 - `json_parse_dirty(json: str) -> dict[str, Any] | None`
+- `extract_tool_request(content: str) -> dict[str, Any] | None`
+- `is_misformatted_tool_request(content: str) -> bool`
 - `normalize_tool_request(tool_request: Any) -> tuple[str, dict]`
 - `extract_json_root_string(content: str) -> str | None`
 - `extract_json_root_strings(content: str) -> list[str]`
@@ -24,8 +26,11 @@
 - Helper modules own reusable framework APIs and must preserve public callers unless all callers, tests, and docs are updated together.
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
 - Observed side-effect areas: settings/state persistence.
-- Dirty parsing scans complete JSON object roots in prose and prefers the first object that normalizes as a valid tool request, so a leading text preamble or incidental non-tool object does not force a misformat warning when a valid tool call follows.
-- Streaming tool snapshots use the same valid-tool preference through `extract_json_root_string`, while preserving the first complete object fallback when no valid tool-call object is present.
+- Dirty parsing scans complete JSON object roots in prose and prefers the first object that normalizes as a valid tool request for permissive repair and legacy callers.
+  Normalization accepts canonical `tool_name`/`tool_args`, legacy `tool`/`args`, native `type="function"` `name`/`parameters`, and a single-item `actions` wrapper; malformed or multi-action wrappers are rejected.
+- `extract_tool_request` is the execution boundary: it accepts a request only when the complete trimmed content is one valid tool object. Plain text, ordinary JSON, and tool-shaped JSON embedded in prose remain final text.
+- `is_misformatted_tool_request` identifies either a tool request wrapped in a JSON code fence or a complete Agent Zero envelope that starts with `thoughts` and whose dirty parser has absorbed `headline`, `tool_name`, and `tool_args` into that list. It routes that output to the existing repair prompt without executing it.
+- Streaming tool snapshots use `extract_tool_request`; the permissive root helpers remain available for repair and legacy callers, not tool execution.
 - Root extraction ignores objects nested inside an open parent object, so streamed wrapper tools such as `parallel` cannot stop early on the first nested `tool_calls` item.
 - Imported dependency areas include: `dirty_json`, `helpers.modules`, `re`, `regex`, `typing`.
 

@@ -239,9 +239,7 @@ async def test_unified_call_stops_after_canonical_root_snapshot(monkeypatch):
     stream = _AsyncChunkStream(
         [
             {"type": "response.created"},
-            _response_event(
-                '{"tool_name":"response","tool_args":{"text":"hello"}} trailing text'
-            ),
+            _response_event('{"tool_name":"response","tool_args":{"text":"hello"}}'),
             _response_event(" unreachable"),
         ]
     )
@@ -273,10 +271,7 @@ async def test_unified_call_stops_after_canonical_root_snapshot(monkeypatch):
 
     async def response_callback(chunk: str, full: str):
         seen.append((chunk, full))
-        snapshot = extract_tools.extract_json_root_string(full)
-        if snapshot:
-            return snapshot
-        return None
+        return full.strip() if extract_tools.extract_tool_request(full) else None
 
     response, reasoning = await wrapper.unified_call(
         messages=[],
@@ -288,11 +283,11 @@ async def test_unified_call_stops_after_canonical_root_snapshot(monkeypatch):
     assert stream.index == 2
     assert stream.closed is True
     assert len(seen) == 1
-    assert seen[0][1] == '{"tool_name":"response","tool_args":{"text":"hello"}} trailing text'
+    assert seen[0][1] == '{"tool_name":"response","tool_args":{"text":"hello"}}'
 
 
 @pytest.mark.asyncio
-async def test_unified_call_stops_after_tool_root_with_incidental_json(monkeypatch):
+async def test_unified_call_does_not_stop_for_embedded_tool_json(monkeypatch):
     stream = _AsyncChunkStream(
         [
             {"type": "response.created"},
@@ -331,28 +326,21 @@ async def test_unified_call_stops_after_tool_root_with_incidental_json(monkeypat
 
     async def response_callback(chunk: str, full: str):
         seen.append((chunk, full))
-        snapshot = extract_tools.extract_json_root_string(full)
-        if not snapshot:
-            return None
-        parsed_snapshot = extract_tools.json_parse_dirty(snapshot)
-        if parsed_snapshot is None:
-            return None
-        try:
-            extract_tools.normalize_tool_request(parsed_snapshot)
-        except ValueError:
-            return None
-        return snapshot
+        return full.strip() if extract_tools.extract_tool_request(full) else None
 
     response, reasoning = await wrapper.unified_call(
         messages=[],
         response_callback=response_callback,
     )
 
-    assert response == '{"tool_name":"response","tool_args":{"text":"ok"}}'
+    assert response == (
+        'Preamble {"note":"not the tool"}.\n'
+        '{"tool_name":"response","tool_args":{"text":"ok"}} trailing text unreachable'
+    )
     assert reasoning == ""
-    assert stream.index == 3
-    assert stream.closed is True
-    assert len(seen) == 2
+    assert stream.index == 4
+    assert stream.closed is False
+    assert len(seen) == 3
     assert seen[0][1] == 'Preamble {"note":"not the tool"}.\n'
     assert (
         seen[1][1]
@@ -435,6 +423,44 @@ async def test_chat_completions_escape_hatch_still_uses_acompletion(monkeypatch)
     assert response == "hello"
     assert reasoning == ""
     assert calls == ["chat"]
+
+
+@pytest.mark.asyncio
+async def test_unified_turn_stops_chat_stream_after_text_tool_request(monkeypatch):
+    message = (
+        '{"thoughts":["test"],"actions":['
+        '{"tool_name":"response","tool_args":{"text":"ok"}}]}'
+    )
+    stream = _AsyncChunkStream([_chunk(message), _chunk(" unreachable")])
+
+    async def fake_acompletion(*args, **kwargs):
+        assert kwargs["stream"] is True
+        return stream
+
+    async def fake_rate_limiter(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(litellm_transport, "acompletion", fake_acompletion)
+    monkeypatch.setattr(models, "apply_rate_limiter", fake_rate_limiter)
+
+    wrapper = models.LiteLLMChatWrapper(
+        model="test-model",
+        provider="openai",
+        model_config=None,
+        a0_api_mode="chat",
+    )
+
+    async def response_callback(chunk: str, full: str):
+        return full if extract_tools.extract_tool_request(full) else None
+
+    result = await wrapper.unified_turn(
+        messages=[],
+        response_callback=response_callback,
+    )
+
+    assert result.response == message
+    assert stream.index == 1
+    assert stream.closed is True
 
 
 @pytest.mark.asyncio

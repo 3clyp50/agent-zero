@@ -20,17 +20,88 @@ def json_parse_dirty(json: str) -> dict[str, Any] | None:
     return first_data
 
 
+def extract_tool_request(content: str) -> dict[str, Any] | None:
+    if not content or not isinstance(content, str):
+        return None
+
+    content = content.strip()
+    root = extract_json_root_string(content)
+    if root != content:
+        return None
+
+    request = _parse_json_root_object(root)
+    return request if request is not None and _is_tool_request(request) else None
+
+
+def is_misformatted_tool_request(content: str) -> bool:
+    if not content or not isinstance(content, str):
+        return False
+
+    content = content.strip()
+    for fenced_content in re.findall(
+        r"```(?:json)?\s*(.*?)```", content, flags=re.IGNORECASE | re.DOTALL
+    ):
+        request = json_parse_dirty(fenced_content)
+        if isinstance(request, dict) and _is_tool_request(request):
+            return True
+
+    if (
+        not content.endswith("}")
+        or re.match(r'^\{\s*"thoughts"\s*:', content) is None
+    ):
+        return False
+
+    request = json_parse_dirty(content)
+    thoughts = request.get("thoughts") if isinstance(request, dict) else None
+    thoughts_text = (
+        "\n".join(thought for thought in thoughts if isinstance(thought, str))
+        if isinstance(thoughts, list)
+        else ""
+    )
+    return (
+        isinstance(thoughts, list)
+        and all(
+            f'{field}\":' in thoughts_text
+            for field in ("headline", "tool_name", "tool_args")
+        )
+    )
+
+
 def normalize_tool_request(tool_request: Any) -> tuple[str, dict]:
     if not isinstance(tool_request, dict):
         raise ValueError("Tool request must be a dictionary")
+    if (
+        not tool_request.get("tool_name")
+        and not tool_request.get("tool")
+        and "actions" in tool_request
+    ):
+        actions = tool_request["actions"]
+        # Text tool calls allow one request per turn; do not silently discard extras.
+        if (
+            not isinstance(actions, list)
+            or len(actions) != 1
+            or not isinstance(actions[0], dict)
+        ):
+            raise ValueError(
+                "Tool request actions wrapper must contain exactly one dictionary"
+            )
+        tool_request = actions[0]
+
     tool_name = tool_request.get("tool_name")
     if not tool_name or not isinstance(tool_name, str):
         tool_name = tool_request.get("tool")
+    if (
+        (not tool_name or not isinstance(tool_name, str))
+        and tool_request.get("type") == "function"
+    ):
+        tool_name = tool_request.get("name")
     if not tool_name or not isinstance(tool_name, str):
         raise ValueError("Tool request must have a tool_name (type string) field")
     tool_args = tool_request.get("tool_args")
     if not isinstance(tool_args, dict):
         tool_args = tool_request.get("args")
+    if not isinstance(tool_args, dict) and tool_request.get("type") == "function":
+        tool_args = tool_request.get("parameters")
     if not isinstance(tool_args, dict):
         raise ValueError("Tool request must have a tool_args (type dictionary) field")
     tool_args = dict(tool_args)
