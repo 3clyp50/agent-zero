@@ -84,13 +84,14 @@ chat.
 
 ![Agent Profile selector](../res/usage/webui/agent-profile-selector.png)
 
-Use the profile menu near the chat input to switch the current chat. Use
-**Settings -> Agent Config** when you want to change the default for new chats.
+Use the profile menu near the chat input to switch the current chat or edit a
+profile. Select **Manage agents** to create, duplicate, reset, delete, or change
+profile availability for Global or one project.
 
-The same menu includes **Create new Agent Profile**. It places a ready-to-send
-message in the input so Agent Zero can guide you through creating a new profile.
+![Manage agents with a project-specific availability choice](../res/usage/webui/agent-profile-manager.png)
 
-![Create Agent Profile prompt](../res/usage/webui/agent-profile-create-prompt.png)
+Use **Settings -> Agent Config** when you want to change the default profile for
+new Global chats.
 
 See the [Agent Profiles guide](agent-profiles.md).
 

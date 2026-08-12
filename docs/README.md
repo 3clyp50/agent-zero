@@ -30,7 +30,7 @@ docs focus on practical setup, screenshots, and user workflows.
 - **[A0 CLI Connector](guides/a0-cli-connector.md):** Terminal-first host connector for Agent Zero, with screenshots of the host picker, connected shell, command palette, and Browser modes.
 - **[Create a Small Plugin](guides/create-plugin.md):** Build and review a tiny Web UI plugin that adds an unread dot to the chat list.
 - **[Skills Guide](guides/skills.md):** Open the Skills selector, add active skills, and remove prompt protocol entries you no longer need.
-- **[Agent Profiles](guides/agent-profiles.md):** Switch the current chat profile or create a new guided profile from the chat input.
+- **[Agent Profiles](guides/agent-profiles.md):** Create and manage profiles in Easy or Advanced mode, set project availability, and control Tool, MCP, and Skill access.
 - **[Model Presets](guides/model-presets.md):** Create simple named shortcuts for model setups.
 - **[Memory Guide](guides/memory.md):** Search, edit, delete, and curate memories so useful context does not become stale noise.
 - **[Projects Tutorial](guides/projects.md):** Learn to create isolated workspaces with dedicated context and memory.

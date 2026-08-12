@@ -102,6 +102,10 @@ workspace for that chat.
 Each chat can use a different project. This lets you keep a client chat, a code
 chat, and a research chat separate at the same time.
 
+Projects can also own Agent Profile overrides and availability. In **Manage
+agents**, select a project before editing or turning a profile off; the Global
+profile remains unchanged. See [Agent Profiles](agent-profiles.md).
+
 ## What Changes After Activation
 
 When a project is active, Agent Zero can use:

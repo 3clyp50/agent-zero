@@ -107,7 +107,8 @@ available from `Ctrl+P`.
 | `/new` | Create a new empty chat. |
 | `/chats` | List previous chats. Add `--project`, `--all-projects`, or `--sort=updated|created|name` when needed. |
 | `/project` | Open the project menu, or switch directly with `/project <name>`. |
-| `/profile` | Pick or set the active Agent Zero Core profile. |
+| `/profile` | Open the profile menu; add a name to select, or a quoted name and instructions to create. |
+| `/permissions` | Edit Tool, MCP, and Skill access for the current profile. |
 | `/compact` | Compact the current chat after confirmation. |
 | `/pause` | Pause the active run. |
 | `/resume` | Resume a paused run. |
@@ -120,6 +121,37 @@ available from `Ctrl+P`.
 | `/disconnect` | Disconnect and return to the host connection flow. |
 | `/help` | Print the available command list in the shell. |
 | `/quit` | Disconnect and exit the CLI. |
+
+### Agent profiles and permissions
+
+Open the compact profile menu:
+
+```text
+/profile
+```
+
+![A0 CLI profile menu](../res/usage/a0-cli/a0-cli-profile-menu.png)
+
+Select an existing profile by its unquoted name or ID, or create one directly:
+
+```text
+/profile Developer
+/profile "Source Scout" "Verify every important claim and cite the source."
+```
+
+Quick creation opens a fresh chat with the new profile selected.
+
+![A0 CLI quick profile creation confirmation](../res/usage/a0-cli/a0-cli-profile-created.png)
+
+Use `/permissions` to edit the current profile's Tools, MCPs, and Skills.
+Entries move through **Default**, **On**, and **Off**; the Tools, MCPs, and
+Skills tabs each expose their own category default.
+
+![A0 CLI permission editor](../res/usage/a0-cli/a0-cli-permissions.png)
+
+Profile editing follows the current chat scope. A project chat writes project
+overrides; a chat with no project writes Global overrides. For the complete Web
+UI and file-format guide, see [Agent Profiles](agent-profiles.md).
 
 ## Host Browser
 

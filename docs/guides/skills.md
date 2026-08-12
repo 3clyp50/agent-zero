@@ -63,6 +63,10 @@ usually easier for the agent to follow.
 If Agent Zero starts following an old procedure you no longer want, open the
 Skills selector and remove any active skill that does not belong in the chat.
 
+The Agent Editor can also set a profile-wide Skills visibility policy. That
+policy controls discovery and new loading; it does not erase skill text already
+stored in a chat's history. See [Agent Profiles](agent-profiles.md#choose-capability-access).
+
 ## Creating Skills
 
 This page is about using skills in the Web UI.

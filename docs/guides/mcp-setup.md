@@ -73,7 +73,10 @@ After applying the config, look for the status below the editor.
 | Green status | The connection is working. |
 | Error text | The command, URL, network, or credentials need attention. |
 
-MCP tools become available automatically after the connection works.
+After the connection works, Agent Zero discovers the MCP tools. The active
+Agent Profile's MCP policy still decides which discovered tools it may use. Use
+**Edit agent -> MCPs** to keep the category default or set an individual tool
+to **On** or **Off**. See [Agent Profiles](agent-profiles.md#choose-capability-access).
 
 You can still ask naturally:
 

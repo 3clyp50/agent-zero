@@ -152,7 +152,8 @@ Shows the chat input **+** menu, the Skills selector, and how active skills are 
 
 ### [Open A0 Agent Profiles Guide](guides/agent-profiles.md)
 
-Shows how to switch profiles in a chat and start the guided profile-creation flow.
+Shows how to switch profiles, create one in Easy mode, edit prompts in Advanced
+mode, and set Tool, MCP, Skill, and project-availability policies.
 
 ### [Open A0 Model Presets Guide](guides/model-presets.md)
 
