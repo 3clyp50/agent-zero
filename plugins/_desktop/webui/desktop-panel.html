@@ -723,6 +723,12 @@
       }
 
     }
+
+    /* While the canvas is being resized, the left-edge drag sweeps the cursor across this
+       iframe, which captures the pointermove and freezes shrinking (widening drags away, so
+       it works). Disable hit-testing on the frame during the drag — right-canvas-store.js
+       toggles `right-canvas-resizing` on <body> for the duration of the drag. */
+    body.right-canvas-resizing .office-desktop-frame { pointer-events: none; }
   </style>
 </body>
 </html>
