@@ -296,6 +296,9 @@ def test_agent_editor_store_has_no_conversational_or_model_builder_path() -> Non
     assert "save_agent_data" not in source
     assert not re.search(r"utility.?model|call.?model|generate", source, re.IGNORECASE)
     assert "Advanced <span" not in modal
+    assert 'class="toast-action-row"' in source
+    assert 'class="button confirm"' in source
+    assert "toast-link" not in source and ".toast-link" not in modal
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="node is required")

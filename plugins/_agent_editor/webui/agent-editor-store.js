@@ -1255,7 +1255,7 @@ const model = {
         await this.openFreshChat(profileId, creating);
       } else {
         globalThis.justToast?.(
-          `Agent saved. <button class="toast-link" type="button" onclick="window.testAgentProfile('${profileId}')">Test in new chat</button>`,
+          `Agent saved.<div class="toast-action-row"><button class="button confirm" type="button" onclick="window.testAgentProfile('${profileId}')">Test in new chat</button></div>`,
           "success", 8000, "agent-editor-saved",
         );
       }
