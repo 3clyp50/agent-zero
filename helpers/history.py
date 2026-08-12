@@ -724,6 +724,8 @@ def output_langchain(messages: list[OutputMessage]):
             result.append(HumanMessage(content))  # type: ignore
     # ensure message type alternation
     result = group_messages_abab(result)
+    while result and isinstance(result[0], AIMessage):
+        result.pop(0)
     return result
 
 

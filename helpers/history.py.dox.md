@@ -80,6 +80,7 @@
 - Update this file whenever public functions, classes, persistence behavior, path/security assumptions, side effects, or cross-module contracts change.
 - `clear_responses_provider_state(agent)` removes the active provider continuation IDs after local history rewrites while preserving stored response ID lists for later cleanup.
 - `Message.from_dict()` normalizes legacy AI Responses metadata through `LLMResult.metadata()` so loaded chats shed transient payloads while unrelated metadata and non-AI tool-result inputs remain intact.
+- `output_langchain()` removes leading assistant messages after grouping so provider histories always begin with a user turn; the WebUI greeting remains persisted and displayed but is not sent as an orphaned assistant message.
 - Observed side-effect areas: filesystem writes, filesystem deletion, model calls, plugin state, settings/state persistence, secret handling.
 - Imported dependency areas include: `abc`, `asyncio`, `collections`, `collections.abc`, `enum`, `helpers`, `json`, `langchain_core.messages`, `math`, `plugins._model_config.helpers.model_config`, `typing`, `uuid`.
 
