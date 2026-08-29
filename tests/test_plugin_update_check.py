@@ -83,7 +83,7 @@ def test_custom_plugin_update_controls_use_the_shared_updater():
     assert "pluginListStore.open" in update_check
 
 
-def test_daily_plugin_check_persists_updates_and_notifies(monkeypatch):
+def test_daily_plugin_check_notifies_only_for_new_updates(monkeypatch):
     update_check = importlib.import_module(
         "extensions.python.user_message_ui._10_update_check"
     )
@@ -94,6 +94,14 @@ def test_daily_plugin_check_persists_updates_and_notifies(monkeypatch):
             commits_since_local=1,
         )
     ]
+    current = plugins.PluginUpdateInfo(
+        name="demo",
+        path="/a0/usr/plugins/demo",
+    )
+    state = {
+        "checked_at": "2026-08-28T00:00:00+00:00",
+        "updates": {"demo": current},
+    }
     saved = []
     sent = []
 
@@ -106,9 +114,15 @@ def test_daily_plugin_check_persists_updates_and_notifies(monkeypatch):
     monkeypatch.setattr(
         update_check.plugins,
         "get_custom_plugin_update_state",
-        lambda: ("2026-08-28T00:00:00+00:00", {"demo": updates[0]}),
+        lambda: (state["checked_at"], state["updates"]),
     )
-    monkeypatch.setattr(update_check.plugins, "save_custom_plugin_updates", lambda *args: saved.append(args))
+
+    def save(saved_updates, checked_at):
+        saved.append((saved_updates, checked_at))
+        state["checked_at"] = checked_at
+        state["updates"] = {update.name: update for update in saved_updates}
+
+    monkeypatch.setattr(update_check.plugins, "save_custom_plugin_updates", save)
     monkeypatch.setattr(update_check.asyncio, "to_thread", fake_to_thread)
     checker = update_check.UpdateCheck(
         SimpleNamespace(
@@ -129,6 +143,15 @@ def test_daily_plugin_check_persists_updates_and_notifies(monkeypatch):
     assert saved == [(updates, "2026-08-29T00:00:00+00:00")]
     assert sent[0]["id"] == "custom_plugin_updates_available"
     assert "pluginListStore.open" in sent[0]["message"]
+
+    asyncio.run(
+        checker.check_plugin_updates(
+            datetime.datetime(2026, 8, 30, tzinfo=datetime.UTC)
+        )
+    )
+
+    assert len(saved) == 2
+    assert len(sent) == 1
 
 
 def test_plugin_check_preserves_good_state_and_retries_only_failures(monkeypatch):

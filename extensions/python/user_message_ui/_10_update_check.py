@@ -164,9 +164,7 @@ class UpdateCheck(Extension):
             for name, update in merged_updates.items()
             if update.commits_since_local > 0
         }
-        if available and (
-            not failed_plugin_names or available - previous_available
-        ):
+        if available - previous_available:
             self.send_plugin_update_notification(len(available))
 
 
