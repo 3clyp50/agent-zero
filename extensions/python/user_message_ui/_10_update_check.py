@@ -105,7 +105,7 @@ class UpdateCheck(Extension):
     async def check_plugin_updates(self, now: datetime.datetime):
         global last_plugin_check
 
-        checked_at, previous_updates = plugins.get_custom_plugin_update_state()
+        checked_at, previous_updates = plugins.get_plugin_update_state()
         failed_plugin_names = [
             name for name, update in previous_updates.items() if update.error
         ]
@@ -146,7 +146,7 @@ class UpdateCheck(Extension):
 
         has_errors = any(update.error for update in merged_updates.values())
         try:
-            plugins.save_custom_plugin_updates(
+            plugins.save_plugin_update_state(
                 list(merged_updates.values()),
                 checked_at if has_errors else now.isoformat(),
             )

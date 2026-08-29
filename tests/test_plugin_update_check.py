@@ -19,7 +19,7 @@ def test_custom_plugin_list_uses_persisted_update_status(tmp_path, monkeypatch):
     plugin_dir.mkdir(parents=True)
     (plugin_dir / "plugin.yaml").write_text("name: demo\ntitle: Demo\n", encoding="utf-8")
 
-    plugins.save_custom_plugin_updates(
+    plugins.save_plugin_update_state(
         [
             plugins.PluginUpdateInfo(
                 name="demo",
@@ -34,14 +34,12 @@ def test_custom_plugin_list_uses_persisted_update_status(tmp_path, monkeypatch):
         custom=True, builtin=False, plugin_names=["demo"]
     )[0]
     assert item.update_available is True
-    assert item.update_commits == 2
 
-    plugins.clear_custom_plugin_update("demo")
+    plugins.clear_plugin_update("demo")
     item = plugins.get_enhanced_plugins_list(
         custom=True, builtin=False, plugin_names=["demo"]
     )[0]
     assert item.update_available is False
-    assert item.update_commits == 0
 
 
 def test_update_status_cleanup_cannot_fail_a_completed_plugin_update(monkeypatch):
@@ -52,12 +50,12 @@ def test_update_status_cleanup_cannot_fail_a_completed_plugin_update(monkeypatch
 
     monkeypatch.setattr(
         plugins,
-        "get_custom_plugin_update_state",
+        "get_plugin_update_state",
         lambda: ("2026-08-29T12:00:00+00:00", {"demo": update}),
     )
-    monkeypatch.setattr(plugins, "save_custom_plugin_updates", fail_save)
+    monkeypatch.setattr(plugins, "save_plugin_update_state", fail_save)
 
-    plugins.clear_custom_plugin_update("demo")
+    plugins.clear_plugin_update("demo")
 
 
 def test_custom_plugin_update_controls_use_the_shared_updater():
@@ -113,7 +111,7 @@ def test_daily_plugin_check_notifies_only_for_new_updates(monkeypatch):
     monkeypatch.setattr(update_check, "last_plugin_check", datetime.datetime.min.replace(tzinfo=datetime.UTC))
     monkeypatch.setattr(
         update_check.plugins,
-        "get_custom_plugin_update_state",
+        "get_plugin_update_state",
         lambda: (state["checked_at"], state["updates"]),
     )
 
@@ -122,7 +120,7 @@ def test_daily_plugin_check_notifies_only_for_new_updates(monkeypatch):
         state["checked_at"] = checked_at
         state["updates"] = {update.name: update for update in saved_updates}
 
-    monkeypatch.setattr(update_check.plugins, "save_custom_plugin_updates", save)
+    monkeypatch.setattr(update_check.plugins, "save_plugin_update_state", save)
     monkeypatch.setattr(update_check.asyncio, "to_thread", fake_to_thread)
     checker = update_check.UpdateCheck(
         SimpleNamespace(
@@ -189,10 +187,10 @@ def test_plugin_check_preserves_good_state_and_retries_only_failures(monkeypatch
     )
     monkeypatch.setattr(
         update_check.plugins,
-        "get_custom_plugin_update_state",
+        "get_plugin_update_state",
         lambda: (state["checked_at"], state["updates"]),
     )
-    monkeypatch.setattr(update_check.plugins, "save_custom_plugin_updates", save)
+    monkeypatch.setattr(update_check.plugins, "save_plugin_update_state", save)
     monkeypatch.setattr(update_check.asyncio, "to_thread", fake_to_thread)
     checker = update_check.UpdateCheck(None)
 
