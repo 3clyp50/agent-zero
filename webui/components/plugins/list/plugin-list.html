@@ -97,6 +97,14 @@
                                             <code class="plugin-path" x-text="plugin.path"></code>
                                         </div>
                                         <div class="plugin-actions" x-data="{ actionsOpen: false }">
+                                            <template x-if="$store.pluginListStore.activeTab === 'custom' && plugin.update_available">
+                                                <button type="button"
+                                                    class="button confirm"
+                                                    :disabled="$store.pluginListStore.loading"
+                                                    @click="$store.pluginListStore.updatePlugin(plugin)">
+                                                    <x-icon class="icon" name="system_update"></x-icon> Update
+                                                </button>
+                                            </template>
                                             <template x-if="plugin.has_main_screen">
                                                 <button type="button"
                                                     class="button"
