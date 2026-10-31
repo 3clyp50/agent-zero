@@ -22,7 +22,7 @@ docs focus on practical setup, screenshots, and user workflows.
 
 ## User Guides
 
-- **[Migrate Agents](guides/migrate-agents.md):** Preview and import retained work from other agents, with a real Pi chat walkthrough and branch/file limits.
+- **[Migrate Agents](guides/migrate-agents.md):** Move real Pi, Hermes Agent, and Claude Code chats, copy their working files, and continue the project in Agent Zero.
 - **[Usage Guide](guides/usage.md):** Practical tour of Agent Zero's main workflows.
 - **[Agent Zero Launcher](guides/launcher.md):** Fresh-machine setup, Installs, Instances, and workspace folder or Docker volume choices.
 - **[Use Local Folders With Agent Zero](guides/local-folders.md):** Bind mounts, persistent user data, separate work folders, Docker CLI/Desktop/Compose examples, and Launcher storage links.

@@ -266,17 +266,25 @@ def _events_from_messages(messages: Iterable[dict[str, Any]]) -> list[Event]:
         content = message.get("content")
         when = _timestamp(message.get("timestamp") or message.get("created_at"), index + 1)
         if role in {"user", "human"}:
-            text = _content_text(content)
-            if text:
-                events.append(Event("user", text=text, timestamp=when))
+            visible = (
+                [block for block in content if not isinstance(block, dict) or block.get("type") != "tool_result"]
+                if isinstance(content, list) else content
+            )
+            text = _content_text(visible)
             if isinstance(content, list):
                 for block in content:
                     if not isinstance(block, dict) or block.get("type") != "tool_result":
                         continue
                     tool_id = str(block.get("tool_use_id") or "")
                     result = _content_text(block.get("content"))
+                    if block.get("is_error") is True:
+                        result = f"[Tool error]\n{result}"
                     if tool_id in pending_tools:
                         pending_tools[tool_id].tool_result = result
+                    else:
+                        events.append(Event("tool", timestamp=when, tool_name="unmatched tool result", tool_result=result))
+            if text:
+                events.append(Event("user", text=text, timestamp=when))
             continue
         if role in {"assistant", "agent", "ai"}:
             text = _content_text(content)
@@ -426,8 +434,15 @@ def _parse_claude(asset: Upload) -> list[Conversation]:
     messages: list[dict[str, Any]] = []
     session_id = Path(asset.name).stem
     cwd = ""
+    titles: dict[str, str] = {}
     for row in rows:
-        if row.get("isSidechain") is True or row.get("type") not in {"user", "assistant"}:
+        if row.get("isSidechain") is True:
+            continue
+        if row.get("type") == "custom-title" and isinstance(row.get("customTitle"), str):
+            if row["customTitle"].strip():
+                titles[str(row.get("sessionId") or "")] = row["customTitle"].strip()
+            continue
+        if row.get("type") not in {"user", "assistant"}:
             continue
         message = row.get("message")
         if not isinstance(message, dict):
@@ -435,7 +450,7 @@ def _parse_claude(asset: Upload) -> list[Conversation]:
         messages.append({**message, "timestamp": row.get("timestamp")})
         session_id = str(row.get("sessionId") or session_id)
         cwd = str(row.get("cwd") or cwd)
-    item = _conversation(session_id, "", _events_from_messages(messages), cwd=cwd)
+    item = _conversation(session_id, titles.get(session_id, titles.get("", "")), _events_from_messages(messages), cwd=cwd)
     return [item] if item else []
 
 

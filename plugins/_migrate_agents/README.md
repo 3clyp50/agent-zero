@@ -20,7 +20,7 @@ Credentials, authentication files, and hidden reasoning are excluded.
 
 Enable **Migrate Agents** in Plugins, then use its **Open** button.
 
-For the screenshot walkthrough, see [Migrate chats into Agent Zero](../../docs/guides/migrate-agents.md).
+For real Pi, Hermes Agent, and Claude Code walkthroughs, see [Move your chats into Agent Zero](../../docs/guides/migrate-agents.md). It covers finding exports, checking the import, copying working files, and continuing a chat.
 
 ## Prepare an export
 
@@ -36,6 +36,8 @@ For the screenshot walkthrough, see [Migrate chats into Agent Zero](../../docs/g
 You can choose individual files, a whole directory, ZIP, TAR, or TAR.GZ. The
 preview is read-only. Import does not start until you review the manifest and
 confirm it.
+
+To export only selected Hermes sessions, use `hermes sessions list` to find their IDs, then `hermes sessions export chat.jsonl --session-id SESSION_ID --redact`. Use a different filename for each session. Claude Code custom chat titles are retained when present; tool results remain attached to historical tools instead of becoming extra user messages.
 
 ## Pi sessions and branches
 

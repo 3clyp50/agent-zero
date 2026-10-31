@@ -32,6 +32,21 @@ setup, the chat holds your message while you complete
 Use **Restart** from the sidebar when you need the framework to reload after
 settings or code changes.
 
+### Find a chat or message
+
+Use **Search** below **Chats** to enter a chat title or a phrase you remember.
+Matching message excerpts appear under the chat name. Click a result to open
+the conversation. Your project, status, and activity filters still apply.
+
+![Sidebar search finding a phrase in imported repair cafe conversations](../res/usage/migration/imported-message-search.png)
+
+Clear the query with the close button or Escape. If you do not see the field,
+open **Sidebar view options → Search → Standard**. **Compact** puts search
+behind a magnifier; **No search** hides it. Search covers the current chat list,
+not deleted or archived chats, and is separate from the Welcome Chats search.
+
+For conversations from another app, see [Move your chats into Agent Zero](migrate-agents.md).
+
 ### Customize Welcome
 
 Drag a section's handle to move it, or click the handle for **Move up** and
